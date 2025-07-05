@@ -1,5 +1,6 @@
 #include "CefClientRender.h"
 
+#include <unordered_map>
 #include <string>
 #include <iostream>
 
@@ -46,7 +47,39 @@ public:
 
     virtual void onWebKitInitialized() override
     {
+        // DWORD pid = GetCurrentProcessId();
+    // DWORD tid = GetCurrentThreadId();
+    // std::cout << "ClientApp::OnWebKitInitialized (Process id " << pid << "), (Thread id " << tid << ")" << std::endl;
 
+    // Register the client_app extension.
+    CefRefPtr<ClientAppExtensionHandler> handler(new ClientAppExtensionHandler(this));
+    std::string app_code =
+        "var app;"
+        "if (!app)"
+        "  app = {};"
+        "(function() {"
+        "  app.sendMessage = function(name, arguments) {"
+        "    native function sendMessage();"
+        "    return sendMessage(name, arguments);"
+        "  };"
+        "  app.setMessageCallback = function(name, callback) {"
+        "    native function setMessageCallback();"
+        "    return setMessageCallback(name, callback);"
+        "  };"
+        "  app.removeMessageCallback = function(name) {"
+        "    native function removeMessageCallback();"
+        "    return removeMessageCallback(name);"
+        "  };"
+        "})();";
+    CefRegisterExtension("v8/app", app_code, handler.get());
+
+
+    CefRefPtr<CefJSHandler> handler = new CefJSHandler();
+
+    if (!render_js_bridge_.get())
+        render_js_bridge_.reset(new CefJSBridge);
+    handler->AttachJSBridge(render_js_bridge_);
+     CefRegisterExtension("v8/extern", extensionCode, handler);
         CefRefPtr<CefJSHandler> handler = new CefJSHandler();
 
         if (!render_js_bridge_.get())
@@ -61,13 +94,10 @@ public:
             render_js_bridge_.reset(new CefJSBridge);
     }
 
-    virtual void onContextReleased(CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefFrame> frame,
-        CefRefPtr<CefV8Context> context) override
+    virtual void onContextReleased(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context) override
     {
         render_js_bridge_->RemoveCallbackFuncWithFrame(frame);
         render_js_bridge_->UnRegisterJSFuncWithFrame(frame);
-
 
         // Remove any JavaScript callbacks registered for the context that has been
         // released.
@@ -82,10 +112,9 @@ public:
         }
     }
 
-    virtual void onFocusedNodeChanged(CefRefPtr<ClientApp> app,
-                                    CefRefPtr<CefBrowser> browser,
-                                    CefRefPtr<CefFrame> frame,
-                                    CefRefPtr<CefDOMNode> node) override {
+    virtual void onFocusedNodeChanged(CefRefPtr<ClientApp> app, CefRefPtr<CefBrowser> browser,
+        CefRefPtr<CefFrame> frame, CefRefPtr<CefDOMNode> node) override
+    {
         bool isEditable = (node.get() && node->IsEditable());
         if (isEditable != lastNodeIsEditable_) {
             // Notify the browser of the change in focused element type.
@@ -96,7 +125,7 @@ public:
         }
     }
 
-    virtual void OnUncaughtException(CefRefPtr<ClientApp> app,
+    virtual void onUncaughtException(CefRefPtr<ClientApp> app,
         CefRefPtr<CefBrowser> browser,
         CefRefPtr<CefFrame> frame,
         CefRefPtr<CefV8Context> context,
@@ -169,7 +198,7 @@ public:
 private:
     bool lastNodeIsEditable_;
     // Map of message callbacks.
-    typedef std::map<std::pair<std::string, int>,
+    typedef std::unordered_map<std::pair<std::string, int>,
                      std::pair<CefRefPtr<CefV8Context>, CefRefPtr<CefV8Value>>> CallbackMap;
     CallbackMap callback_map_;
 

@@ -6,7 +6,6 @@
  */
 #pragma once
 
-#include <map>
 #include <set>
 #include <string>
 #include <utility>
@@ -32,6 +31,10 @@ public:
         virtual void onBeforeChildProcessLaunch(
             CefRefPtr<ClientApp> app,
             CefRefPtr<CefCommandLine> command_line) {}
+
+        virtual void onRenderProcessThreadCreated(
+            CefRefPtr<ClientApp> app,
+            CefRefPtr<CefListValue> extra_info) {}
 
         virtual void onRenderProcessThreadCreated(
             CefRefPtr<ClientApp> app,
@@ -130,6 +133,7 @@ private:
     virtual void OnBeforeChildProcessLaunch( CefRefPtr<CefCommandLine> command_line) override;
     // CefRenderProcessHandler methods.
     virtual void OnWebKitInitialized() override;
+    virtual void OnRenderThreadCreated(CefRefPtr<CefListValue> extra_info) override;
     virtual void OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra_info) override;
     virtual void OnBrowserDestroyed(CefRefPtr<CefBrowser> browser) override;
     virtual void OnContextCreated(CefRefPtr<CefBrowser> browser,

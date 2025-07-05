@@ -15,8 +15,6 @@
 #include "export.h"
 
 
-int WEBVIEW_EXPORTS CefClientInit(int& argc, char** argv, QtCefCommandLineOption *option, void (*settings_func)(CefSettings& settings), bool logging);
-void WEBVIEW_EXPORTS CefClientQuit();
-void WEBVIEW_EXPORTS CefClientDoMessageLoopWork();
+
 
 #endif //!CEFCLIENTAPI_H

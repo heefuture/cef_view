@@ -2,52 +2,36 @@
 #define CEFMANAGER_H
 #pragma once
 
+#include "include/cef_app.h"
 #include "export.h"
 
-class ClientApp;
-class CefCommandLine;
-
+namespace cef {
 class WEBVIEW_EXPORTS CefManager
 {
+public:
+    static CefManager* getInstance();
 
-// Initialize CEF.
-//int CefInit(int &argc, char **argv, QtCefCommandLineOption *option, void (*settings_func)(CefSettings& settings), bool logging);
+    // quit CEF.
+    void quitCef();
+    // doMessageLoopWork
+    void doCefMessageLoopWork();
 
-// Quit CEF.
-void CefQuit();
+    void initCefSettings(CefSettings& settings);
+    // Initialize CEF.
+    int initCef(CefSettings& settings, bool logging);
 
+    // Returns the application working directory.
+    CefString getAppWorkingDirectory();
 
-// Quit CEF until all browser windows have closed.
-void CefQuitUntilAllBrowserClosed();
+    // Returns the temp directory.
+    CefString getAppTempDirectory();
 
-// Returns the application working directory.
-CefString AppGetWorkingDirectory();
-
-// Returns the temp directory.
-CefString AppGetTempDirectory();
-
-// Initialize the application command line.
-void AppInitCommandLine(int argc, const char* const* argv);
-
-// Returns the application command line object.
-CefRefPtr<CefCommandLine> AppGetCommandLine();
-
-//// Returns the application settings based on command line arguments.
-//void AppGetSettings(CefSettings& settings);
-
-// Returns true if off-screen rendering is enabled via the command line argument.
-bool AppIsOffScreenRenderingEnabled();
-
-// Returns true if transparent painting is enabled via the command line argument.
-bool AppIsTransparentPaintingEnabled();
-
-// Quit the application message loop.
-void AppQuitMessageLoop();
-
-// add a para: g_handler
-// Notify all browser windows have closed.
-void NotifyAllBrowserClosed(CefRefPtr<ClientHandler> g_handler);
+    // Quit the application message loop.
+    void AppQuitMessageLoop();
+private:
+    CefManager(const CefManager&) = delete;
+    CefManager& operator=(const CefManager&) = delete;
 };
-
+}
 
 #endif //!CEFMANAGER_H

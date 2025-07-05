@@ -1,5 +1,4 @@
-#include "stdafx.h"
-#include "client_app.h"
+#include "CefClient.h"
 #include <string>
 
 #include "include/cef_cookie.h"
@@ -14,7 +13,6 @@ namespace cef
 
 ClientApp::ClientApp()
 {
-    last_node_is_editable_ = false;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -38,81 +36,66 @@ void ClientApp::OnBeforeCommandLineProcessing(const CefString& process_type, Cef
 // CefBrowserProcessHandler methods.
 void ClientApp::OnContextInitialized()
 {
-    // Register cookieable schemes with the global cookie manager.
-    CefRefPtr<CefCookieManager> manager = CefCookieManager::GetGlobalManager(NULL);
-    ASSERT(manager.get());
-    manager->SetSupportedSchemes(cookieable_schemes_, NULL);
-
-    // 这里可以删除了保存的Cooies信息
-    // manager->DeleteCookies(L"", L"", nullptr);
+    BrowserDelegateSet::iterator it = browser_delegates_.begin();
+    for (; it != browser_delegates_.end(); ++it)
+        (*it)->onContextInitialized(this);
 }
 
 void ClientApp::OnBeforeChildProcessLaunch(CefRefPtr<CefCommandLine> command_line)
 {
+    BrowserDelegateSet::iterator it = browser_delegates_.begin();
+    for (; it != browser_delegates_.end(); ++it)
+        (*it)->onBeforeChildProcessLaunch(this, command_line);
+}
+
+void ClientApp::OnRenderProcessThreadCreated(CefRefPtr<CefListValue> extra_info)
+{
+    BrowserDelegateSet::iterator it = browser_delegates_.begin();
+    for (; it != browser_delegates_.end(); ++it)
+        (*it)->onRenderProcessThreadCreated(this, extra_info);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // CefRenderProcessHandler methods.
-
 void ClientApp::OnWebKitInitialized()
 {
-    DWORD pid = GetCurrentProcessId();
-    DWORD tid = GetCurrentThreadId();
-    std::cout << "ClientApp::OnWebKitInitialized (Process id " << pid << "), (Thread id " << tid << ")" << std::endl;
+    RenderDelegateSet::iterator it = render_delegates_.begin();
+    for (; it != render_delegates_.end(); ++it)
+        (*it)->onWebKitInitialized(this);
+}
 
-    // Register the client_app extension.
-    CefRefPtr<ClientAppExtensionHandler> handler(new ClientAppExtensionHandler(this));
-    std::string app_code =
-        "var app;"
-        "if (!app)"
-        "  app = {};"
-        "(function() {"
-        "  app.sendMessage = function(name, arguments) {"
-        "    native function sendMessage();"
-        "    return sendMessage(name, arguments);"
-        "  };"
-        "  app.setMessageCallback = function(name, callback) {"
-        "    native function setMessageCallback();"
-        "    return setMessageCallback(name, callback);"
-        "  };"
-        "  app.removeMessageCallback = function(name) {"
-        "    native function removeMessageCallback();"
-        "    return removeMessageCallback(name);"
-        "  };"
-        "})();";
-    CefRegisterExtension("v8/app", app_code, handler.get());
-
-
-    CefRefPtr<CefJSHandler> handler = new CefJSHandler();
-
-    if (!render_js_bridge_.get())
-        render_js_bridge_.reset(new CefJSBridge);
-    handler->AttachJSBridge(render_js_bridge_);
-     CefRegisterExtension("v8/extern", extensionCode, handler);
+void ClientApp::OnRenderThreadCreated(CefRefPtr<CefListValue> extra_info) {
+    RenderDelegateSet::iterator it = render_delegates_.begin();
+    for (; it != render_delegates_.end(); ++it)
+        (*it)->onRenderThreadCreated(this, extra_info);
 }
 
 void ClientApp::OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra_info)
 {
-    if (!render_js_bridge_.get())
-        render_js_bridge_.reset(new CefJSBridge);
+    RenderDelegateSet::iterator it = render_delegates_.begin();
+    for (; it != render_delegates_.end(); ++it)
+        (*it)->OnBrowserCreated(this, browser, extra_info);
 }
 
 void ClientApp::OnBrowserDestroyed(CefRefPtr<CefBrowser> browser)
 {
+    RenderDelegateSet::iterator it = render_delegates_.begin();
+    for (; it != render_delegates_.end(); ++it)
+        (*it)->onBrowserCreated(this, browser, extra_info);
 }
 
 void ClientApp::OnContextCreated(CefRefPtr<CefBrowser> browser,	CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context)
 {
     RenderDelegateSet::iterator it = render_delegates_.begin();
     for (; it != render_delegates_.end(); ++it)
-        (*it)->OnContextCreated(this, browser, frame, context);
+        (*it)->onContextCreated(this, browser, frame, context);
 }
 
 void ClientApp::OnContextReleased(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,	CefRefPtr<CefV8Context> context)
 {
     RenderDelegateSet::iterator it = render_delegates_.begin();
     for (; it != render_delegates_.end(); ++it)
-        (*it)->OnContextReleased(this, browser, frame, context);
+        (*it)->onContextReleased(this, browser, frame, context);
 
 }
 
@@ -123,7 +106,7 @@ void ClientApp::OnUncaughtException(CefRefPtr<CefBrowser> browser,
                                     CefRefPtr<CefV8StackTrace> stackTrace) {
   RenderDelegateSet::iterator it = render_delegates_.begin();
   for (; it != render_delegates_.end(); ++it) {
-    (*it)->OnUncaughtException(this, browser, frame, context, exception,
+    (*it)->onUncaughtException(this, browser, frame, context, exception,
                                stackTrace);
   }
 }
@@ -143,7 +126,7 @@ bool ClientApp::OnProcessMessageReceived(
     CefProcessId source_process,
     CefRefPtr<CefProcessMessage> message)
 {
-    ASSERT(source_process == PID_BROWSER);
+    assert(source_process == PID_BROWSER);
 
     bool handled = false;
     RenderDelegateSet::iterator it = render_delegates_.begin();

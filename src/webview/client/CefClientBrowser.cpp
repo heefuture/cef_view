@@ -15,21 +15,10 @@ class ClientBrowserDelegate : public ClientApp::BrowserDelegate {
 public:
     ClientBrowserDelegate()
     {
-        // Default schemes that support cookies.
-        cookieable_schemes_.push_back("http");
-        cookieable_schemes_.push_back("https");
     }
 
-    virtual void OnContextInitialized(CefRefPtr<ClientApp> app) override
+    virtual void onContextInitialized(CefRefPtr<ClientApp> app) override
     {
-
-        // Register cookieable schemes with the global cookie manager.
-        CefRefPtr<CefCookieManager> manager = CefCookieManager::GetGlobalManager(NULL);
-        ASSERT(manager.get());
-        manager->SetSupportedSchemes(cookieableSchemes_, NULL);
-
-        // 这里可以删除了保存的Cooies信息
-        // manager->DeleteCookies(L"", L"", nullptr);
     }
 
 
@@ -42,8 +31,6 @@ public:
     }
 
 private:
-    // Schemes that will be registered with the global cookie manager.
-    std::vector<CefString> cookieableSchemes_;
     IMPLEMENT_REFCOUNTING(ClientBrowserDelegate);
 };
 
