@@ -1,5 +1,7 @@
 #include <windows.h>
 
+#include <manager/CefManager.h>
+
 // 窗口过程函数
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
@@ -13,6 +15,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     const wchar_t CLASS_NAME[] = L"MyWindowClass";
+
+     CefSettings cefSettings;
+    int result = CefManager::getInstance()->initCef(cefSettings, false);
+    if (result == 0)
+        return result;
 
     WNDCLASS wc = {};
     wc.lpfnWndProc   = WndProc;
@@ -37,10 +44,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
 
+
+    if (!cefSettings.multi_threaded_message_loop) {
+        CefManager::getInstance()->doCefMessageLoopWork();
+    }
+
     MSG msg = {};
     while (GetMessage(&msg, nullptr, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+
+    CefManager::getInstance()->quitCef();
     return 0;
 }

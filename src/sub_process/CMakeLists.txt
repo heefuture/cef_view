@@ -1,49 +1,55 @@
-# message("this is browser project")
 
-# #set(QtCefWebViewDir ../qtcefwebview)
-# #set(CrashHunterDir ${CMAKE_CURRENT_SOURCE_DIR}/../../CrashHunter)
-# #set(CRASHHUNTER_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../../CrashHunter/x86/CrashHunter_PC3.lib)
-# set(Srcs
-# 	${QtCefWebViewDir}/client_app.cpp
-# 	${QtCefWebViewDir}/client_app_delegates.cpp
-# 	${QtCefWebViewDir}/client_renderer.cpp
-# 	${QtCefWebViewDir}/client_switches.cpp
+cmake_minimum_required(VERSION 3.14)
 
-# 	main_process.cpp
-# )
+set(BROWSER_TARGET "browser")
 
-# add_executable(browser ${Srcs})
+message("this is browser project")
 
+set(CEFVIEWDIR ${CMAKE_CURRENT_SOURCE_DIR}/../cefview)
 
-# # Logical target used to link the libcef library.
-# #ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
+# 主应用程序源文件
+
+set(APP_SRCS
+    ${CEFVIEWDIR}/client/CefClient.cpp
+    ${CEFVIEWDIR}/client/CefClientRenderer.cpp
+    ${CEFVIEWDIR}/client/CefSwitches.cpp
+
+    main_process.cpp
+)
+
+# 创建主应用程序包
+add_executable(${BROWSER_TARGET} ${APP_SRCS})
+
+add_dependencies(${BROWSER_TARGET} libcef_dll_wrapper)
+
+# Logical target used to link the libcef library.
+ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
 # #ADD_LOGICAL_TARGET("CrashHunter_PC3_lib" "${CRASHHUNTER_LIB}" "${CRASHHUNTER_LIB}")
 
-# target_link_libraries(
-#     browser PRIVATE
-# 	libcef_lib
-# 	libcef_dll_wrapper
-# 	${CEF_STANDARD_LIBS}
-# 	glu32.lib
-# 	imm32.lib
-# 	opengl32.lib
-# 	CrashHunter_PC3_lib
-# )
+# 链接库
+target_link_libraries(
+    browser PRIVATE
+    libcef_lib
+    libcef_dll_wrapper
+    ${CEF_STANDARD_LIBS}
+    glu32.lib
+    imm32.lib
+    opengl32.lib
+)
 
-# target_link_options(browser PRIVATE "/LARGEADDRESSAWARE")
-# target_link_options(browser PRIVATE "/STACK:0x8000")
+target_include_directories(
+    browser PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CEFVIEWDIR}/
+    ${CEFVIEWDIR}/include
+)
 
 
-# target_include_directories(
-#     browser PRIVATE
-#     ${CMAKE_CURRENT_SOURCE_DIR}/..
-# 	${QtCefWebViewDir}/
-# 	${QtCefWebViewDir}/include
-# 	${CrashHunterDir}/include/
-# )
 
-# set(BuildTarget ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/browser.exe)
-# add_custom_command(
-# 	TARGET browser POST_BUILD
-#     COMMAND mt.exe -nologo -manifest ${CMAKE_CURRENT_SOURCE_DIR}/browser.manifest -outputresource:${BuildTarget}
-# )
+
+
+
+
+
+
+

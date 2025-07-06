@@ -1,8 +1,6 @@
 #include "include/cef_base.h"
 #include "include/cef_app.h"
 #include "cefclient/client_app.h"
-#include "mycrashhandler.h"
-#include "HSAngCrashHelper.h"
 
 #define STRINGIFY(x) #x
 #define SVN_REVISION_STR(x) STRINGIFY(x)
@@ -25,18 +23,6 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
   // Enable High-DPI support on Windows 7 or newer.
   CefEnableHighDPISupport();
 
-
-	MyCrashHandler *crashHandler = MyCrashHandler::getInstance();
-	crashHandler->setParam(KEY_OS_TYPE, "windesktop");
-	crashHandler->setParam(KEY_PROJECT, "dep477");
-	crashHandler->setParam(KEY_APP_KEY, "653b8f9e0a1d8254c156e0acab45551a");
-	crashHandler->setParam(KEY_ENGINE_VER, HSAngCrashHelper::GetVersion().c_str());
-	crashHandler->setParam(KEY_RES_VER, SVN_REVISION_STR(SVN_REVISION));
-	HSAngCrashHelper::get().getUrs([crashHandler](string urs) {
-		crashHandler->setParam(KEY_UID, urs.c_str());
-		crashHandler->setParam(KEY_URS, urs.c_str());
-	});
-	crashHandler->startCrashHunter();
 
   // Structure for passing command-line arguments.
   // The definition of this structure is platform-specific.
