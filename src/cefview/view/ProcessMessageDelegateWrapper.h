@@ -11,8 +11,8 @@
 #define PROCESSMESSAGEDELEGATEWRAPPER_H
 #pragma once
 
-#include "CefHandler.h"
-#include "ProcessMessageHandler.h"
+#include <handler/CefHandler.h>
+#include <view/ProcessMessageHandler.h>
 #include <memory>
 
 namespace cef {

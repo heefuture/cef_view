@@ -1,6 +1,5 @@
-#include "stdafx.h"
 #include "CefJsBridgeRender.h"
-//#include "ipc_string_define.h"
+#include "CefSwitches.h"
 
 namespace cef {
 
@@ -12,23 +11,23 @@ CefJsBridgeRender::~CefJsBridgeRender()
 {
 }
 
-bool CefJsBridgeRender::CallCppFunction(const CefString& function_name, const CefString& params, CefRefPtr<CefV8Value> callback)
+bool CefJsBridgeRender::callCppFunction(const CefString& functionName, const CefString& params, CefRefPtr<CefV8Value> callback)
 {
-    auto it = render_callback_.find(js_callback_id_);
-    if (it == render_callback_.cend())
+    auto it = _renderCallback.find(_jsCallbackId);
+    if (it == _renderCallback.cend())
     {
         CefRefPtr<CefV8Context> context = CefV8Context::GetCurrentContext();
         CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kCallCppFunctionMessage);
 
-        message->GetArgumentList()->SetString(0, function_name);
+        message->GetArgumentList()->SetString(0, functionName);
         message->GetArgumentList()->SetString(1, params);
-        message->GetArgumentList()->SetInt(2, js_callback_id_);
+        message->GetArgumentList()->SetInt(2, _jsCallbackId);
 
-        render_callback_.emplace(js_callback_id_++, std::make_pair(context, callback));
+        _renderCallback.emplace(_jsCallbackId++, std::make_pair(context, callback));
 
         // 发送消息到 browser 进程
         CefRefPtr<CefBrowser> browser = context->GetBrowser();
-        browser->SendProcessMessage(PID_BROWSER, message);
+        browser->GetMainFrame()->SendProcessMessage(PID_BROWSER, message);
 
         return true;
     }
@@ -36,28 +35,26 @@ bool CefJsBridgeRender::CallCppFunction(const CefString& function_name, const Ce
     return false;
 }
 
-void CefJsBridgeRender::RemoveCallbackFuncWithFrame(CefRefPtr<CefFrame> frame)
+void CefJsBridgeRender::removeCallbackFuncWithFrame(CefRefPtr<CefFrame> frame)
 {
-    if (!render_callback_.empty())
+    if (!_renderCallback.empty())
     {
-        for (auto it = render_callback_.begin(); it != render_callback_.end();)
+        for (auto it = _renderCallback.begin(); it != _renderCallback.end();)
         {
-            if (it->second.first->IsSame(frame->GetV8Context()))
-            {
-                it = render_callback_.erase(it);
+            if (it->second.first->IsSame(frame->GetV8Context())) {
+                it = _renderCallback.erase(it);
             }
-            else
-            {
+            else {
                 ++it;
             }
         }
     }
 }
 
-bool CefJsBridgeRender::ExecuteJSCallbackFunc(int js_callback_id, bool has_error, const CefString& json_result)
+bool CefJsBridgeRender::executeJSCallbackFunc(int jsCallbackId, bool hasError, const CefString& jsonString)
 {
-    auto it = render_callback_.find(js_callback_id);
-    if (it != render_callback_.cend())
+    auto it = _renderCallback.find(jsCallbackId);
+    if (it != _renderCallback.cend())
     {
         auto context = it->second.first;
         auto callback = it->second.second;
@@ -69,17 +66,17 @@ bool CefJsBridgeRender::ExecuteJSCallbackFunc(int js_callback_id, bool has_error
             CefV8ValueList arguments;
 
             // 第一个参数标记函数执行结果是否成功
-            arguments.push_back(CefV8Value::CreateBool(has_error));
+            arguments.push_back(CefV8Value::CreateBool(hasError));
 
             // 第二个参数携带函数执行后返回的数据
-            CefV8ValueList json_parse_args;
-            json_parse_args.push_back(CefV8Value::CreateString(json_result));
-            CefRefPtr<CefV8Value> json_parse = context->GetGlobal()->GetValue("JSON")->GetValue("parse");
-            CefRefPtr<CefV8Value> json_object = json_parse->ExecuteFunction(NULL, json_parse_args);
-            arguments.push_back(json_object);
+            CefV8ValueList jsonParseArgs;
+            jsonParseArgs.push_back(CefV8Value::CreateString(jsonString));
+            CefRefPtr<CefV8Value> jsonParse = context->GetGlobal()->GetValue("JSON")->GetValue("parse");
+            CefRefPtr<CefV8Value> jsonObject = jsonParse->ExecuteFunction(nullptr, jsonParseArgs);
+            arguments.push_back(jsonObject);
 
             // 执行 JS 方法
-            CefRefPtr<CefV8Value> retval = callback->ExecuteFunction(NULL, arguments);
+            CefRefPtr<CefV8Value> retval = callback->ExecuteFunction(nullptr, arguments);
             if (retval.get())
             {
                 if (retval->IsBool())
@@ -91,7 +88,7 @@ bool CefJsBridgeRender::ExecuteJSCallbackFunc(int js_callback_id, bool has_error
             context->Exit();
 
             // 从列表中移除 callback 缓存
-            render_callback_.erase(js_callback_id);
+            _renderCallback.erase(jsCallbackId);
 
             return true;
         }
@@ -103,20 +100,20 @@ bool CefJsBridgeRender::ExecuteJSCallbackFunc(int js_callback_id, bool has_error
     return false;
 }
 
-bool CefJsBridgeRender::RegisterJSFunc(const CefString& function_name, CefRefPtr<CefV8Value> function, bool replace/* = false*/)
+bool CefJsBridgeRender::registerJSFunc(const CefString& functionName, CefRefPtr<CefV8Value> function, bool replace/* = false*/)
 {
     CefRefPtr<CefV8Context> context = CefV8Context::GetCurrentContext();
     CefRefPtr<CefFrame> frame = context->GetFrame();
 
     if (replace) {
-        render_registered_function_.emplace(std::make_pair(function_name, frame->GetIdentifier()), function);
+        _renderRegisteredFunction.emplace(std::make_pair(functionName, frame->GetIdentifier()), function);
         return true;
     }
     else {
-        auto it = render_registered_function_.find(std::make_pair(function_name, frame->GetIdentifier()));
-        if (it == render_registered_function_.cend())
+        auto it = _renderRegisteredFunction.find(std::make_pair(functionName, frame->GetIdentifier()));
+        if (it == _renderRegisteredFunction.cend())
         {
-            render_registered_function_.emplace(std::make_pair(function_name, frame->GetIdentifier()), function);
+            _renderRegisteredFunction.emplace(std::make_pair(functionName, frame->GetIdentifier()), function);
             return true;
         }
 
@@ -126,20 +123,20 @@ bool CefJsBridgeRender::RegisterJSFunc(const CefString& function_name, CefRefPtr
     return false;
 }
 
-void CefJsBridgeRender::UnRegisterJSFunc(const CefString& function_name, CefRefPtr<CefFrame> frame)
+void CefJsBridgeRender::unRegisterJSFunc(const CefString& functionName, CefRefPtr<CefFrame> frame)
 {
-    render_registered_function_.erase(std::make_pair(function_name, frame->GetIdentifier()));
+    _renderRegisteredFunction.erase(std::make_pair(functionName, frame->GetIdentifier()));
 }
 
-void CefJsBridgeRender::UnRegisterJSFuncWithFrame(CefRefPtr<CefFrame> frame)
+void CefJsBridgeRender::unRegisterJSFuncWithFrame(CefRefPtr<CefFrame> frame)
 {
     // 所以这里获取的 browser 都是全局唯一的，可以根据这个 browser 获取所有 frame 和 context
     auto browser = frame->GetBrowser();
-    if (!render_registered_function_.empty()) {
-        for (auto it = render_registered_function_.begin(); it != render_registered_function_.end();) {
-            auto child_frame = browser->GetFrame(it->first.second);
-            if (child_frame.get() && child_frame->GetV8Context()->IsSame(frame->GetV8Context())) {
-                it = render_registered_function_.erase(it);
+    if (!_renderRegisteredFunction.empty()) {
+        for (auto it = _renderRegisteredFunction.begin(); it != _renderRegisteredFunction.end();) {
+            auto childFrame = browser->GetFrameByIdentifier(it->first.second);
+            if (childFrame.get() && childFrame->GetV8Context()->IsSame(frame->GetV8Context())) {
+                it = _renderRegisteredFunction.erase(it);
             }
             else
             {
@@ -149,10 +146,10 @@ void CefJsBridgeRender::UnRegisterJSFuncWithFrame(CefRefPtr<CefFrame> frame)
     }
 }
 
-bool CefJsBridgeRender::ExecuteJSFunc(const CefString& function_name, const CefString& json_params, CefRefPtr<CefFrame> frame, int cpp_callback_id)
+bool CefJsBridgeRender::executeJSFunc(const CefString& functionName, const CefString& jsonParams, CefRefPtr<CefFrame> frame, int cppCallbackid)
 {
-    auto it = render_registered_function_.find(std::make_pair(function_name, frame->GetIdentifier()));
-    if (it != render_registered_function_.cend()) {
+    auto it = _renderRegisteredFunction.find(std::make_pair(functionName, frame->GetIdentifier()));
+    if (it != _renderRegisteredFunction.cend()) {
         auto context = frame->GetV8Context();
         auto function = it->second;
 
@@ -161,28 +158,28 @@ bool CefJsBridgeRender::ExecuteJSFunc(const CefString& function_name, const CefS
 
             CefV8ValueList arguments;
             // 将 C++ 传递过来的 JSON 转换成 Object
-            CefV8ValueList json_parse_args;
-            json_parse_args.push_back(CefV8Value::CreateString(json_params));
-            CefRefPtr<CefV8Value> json_object = context->GetGlobal()->GetValue("JSON");
-            CefRefPtr<CefV8Value> json_parse = json_object->GetValue("parse");
-            CefRefPtr<CefV8Value> json_stringify = json_object->GetValue("stringify");
-            CefRefPtr<CefV8Value> json_object_args = json_parse->ExecuteFunction(NULL, json_parse_args);
-            arguments.push_back(json_object_args);
+            CefV8ValueList jsonParseArgs;
+            jsonParseArgs.push_back(CefV8Value::CreateString(jsonParams));
+            CefRefPtr<CefV8Value> jsonObject = context->GetGlobal()->GetValue("JSON");
+            CefRefPtr<CefV8Value> jsonParse = jsonObject->GetValue("parse");
+            CefRefPtr<CefV8Value> jsonStringify = jsonObject->GetValue("stringify");
+            CefRefPtr<CefV8Value> jsonObjectArgs = jsonParse->ExecuteFunction(nullptr, jsonParseArgs);
+            arguments.push_back(jsonObjectArgs);
 
             // 执行回调函数
-            CefRefPtr<CefV8Value> retval = function->ExecuteFunction(NULL, arguments);
+            CefRefPtr<CefV8Value> retval = function->ExecuteFunction(nullptr, arguments);
             if (retval.get() && retval->IsObject()) {
                 // 回复调用 JS 后的返回值
-                CefV8ValueList json_stringify_args;
-                json_stringify_args.push_back(retval);
-                CefRefPtr<CefV8Value> json_string = json_stringify->ExecuteFunction(NULL, json_stringify_args);
-                CefString str = json_string->GetStringValue();
+                CefV8ValueList jsonStringifyArgs;
+                jsonStringifyArgs.push_back(retval);
+                CefRefPtr<CefV8Value> jsonString = jsonStringify->ExecuteFunction(nullptr, jsonStringifyArgs);
+                CefString str = jsonString->GetStringValue();
 
                 CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kExecuteCppCallbackMessage);
                 CefRefPtr<CefListValue> args = message->GetArgumentList();
-                args->SetString(0, json_string->GetStringValue());
-                args->SetInt(1, cpp_callback_id);
-                context->GetBrowser()->SendProcessMessage(PID_BROWSER, message);
+                args->SetString(0, jsonString->GetStringValue());
+                args->SetInt(1, cppCallbackid);
+                context->GetBrowser()->GetMainFrame()->SendProcessMessage(PID_BROWSER, message);
             }
 
             context->Exit();

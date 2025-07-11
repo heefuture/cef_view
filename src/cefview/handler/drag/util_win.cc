@@ -1,12 +1,11 @@
 // Copyright (c) 2015 The Chromium Embedded Framework Authors. All rights
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
-#include "stdafx.h"
 #include "util_win.h"
 
 #include "include/base/cef_logging.h"
 
-namespace client {
+namespace cef {
 
 void SetUserDataPtr(HWND hWnd, void* ptr) {
   SetLastError(ERROR_SUCCESS);
@@ -25,7 +24,7 @@ WNDPROC SetWndProcPtr(HWND hWnd, WNDPROC wndProc) {
   return old;
 }
 
-std::wstring GetResourceString(UINT id) {
+std::string GetResourceString(UINT id) {
   #define MAX_LOADSTRING 100
   TCHAR buff[MAX_LOADSTRING] = {0};
   LoadString(::GetModuleHandle(NULL), id, buff, MAX_LOADSTRING);

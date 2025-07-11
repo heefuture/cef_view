@@ -1,10 +1,35 @@
 #include <windows.h>
+#include <string>
 
+#include <view/CefWebView.h>
+#include <view/CefWebViewBase.h>
 #include <manager/CefManager.h>
+
+using namespace cef;
+
+// typedef void (*SubWindowRepaintCallback)(void*);
+
+// struct SubWindowUserData {
+//     SubWindowRepaintCallback repaint_callback;
+//     void* repaint_callback_param;
+// };
 
 // 窗口过程函数
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
+    case WM_SIZE:
+            // 调整底部子窗口高度
+            //if (hwndBottom) {
+            //int width = LOWORD(lParam);
+            //int height = HIWORD(lParam);
+                //SetWindowPos(hwndBottom, NULL, 0, 100, 1920, height, SWP_NOZORDER);
+            //}
+//            auto user_data =
+//             (SubWindowUserData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+//         if (user_data && user_data->repaint_callback) {
+//             user_data->repaint_callback(user_data->repaint_callback_param);
+//         }
+        break;
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
@@ -13,10 +38,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
-    const wchar_t CLASS_NAME[] = L"MyWindowClass";
 
-     CefSettings cefSettings;
+// static LRESULT CALLBACK subWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+//     if (uMsg == WM_PAINT) {
+//         auto user_data =
+//             (SubWindowUserData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+//         if (user_data && user_data->repaint_callback) {
+//             user_data->repaint_callback(user_data->repaint_callback_param);
+//         }
+//     } else if (uMsg == WM_NCDESTROY) {
+//         SubWindowUserData* user_data =
+//             (SubWindowUserData*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+//         delete user_data;
+//     }
+//     return DefWindowProc(hwnd, uMsg, wParam, lParam);
+// }
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
+    const std::wstring ClassName = L"MainEmptyWindowClass";
+
+    CefSettings cefSettings;
     int result = CefManager::getInstance()->initCef(cefSettings, false);
     if (result == 0)
         return result;
@@ -24,16 +65,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     WNDCLASS wc = {};
     wc.lpfnWndProc   = WndProc;
     wc.hInstance     = hInstance;
-    wc.lpszClassName = CLASS_NAME;
+    wc.lpszClassName = ClassName.c_str();
+    ::RegisterClass(&wc);
 
-    RegisterClass(&wc);
-
-    HWND hwnd = CreateWindowEx(
+    HWND hwnd = ::CreateWindowEx(
         0,                              // 扩展样式
-        CLASS_NAME,                     // 窗口类名
-        L"空窗体",                      // 窗口标题
+        ClassName.c_str(),                     // 窗口类名
+        L"CefApp",                      // 窗口标题
         WS_OVERLAPPEDWINDOW,            // 窗口样式
-        CW_USEDEFAULT, CW_USEDEFAULT, 500, 400, // 位置和大小
+        CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, // 位置和大小
         nullptr, nullptr, hInstance, nullptr
     );
 
@@ -41,20 +81,25 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         return 0;
     }
 
-    ShowWindow(hwnd, nCmdShow);
-    UpdateWindow(hwnd);
+    ::ShowWindow(hwnd, nCmdShow);
 
+    CefWebView* cefView = new CefWebView(hwnd);
+    cefView->setVisible(true);
+    cefView->loadURL("https://www.bing.com");
+    //CefView.createSubWindow(hwnd, 0, 0, 800, 600, true);
+    //CefView.setRect(0, 0, 800, 600); // 设置
 
-    if (!cefSettings.multi_threaded_message_loop) {
-        CefManager::getInstance()->doCefMessageLoopWork();
-    }
+    ::UpdateWindow(hwnd);
 
     MSG msg = {};
     while (GetMessage(&msg, nullptr, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
+        if (!cefSettings.multi_threaded_message_loop) {
+            CefManager::getInstance()->doCefMessageLoopWork();
+        }
     }
-
+    // CefManager::getInstance()->runCefMessageLoop();
 
     CefManager::getInstance()->quitCef();
     return 0;

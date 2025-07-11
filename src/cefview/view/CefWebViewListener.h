@@ -1,28 +1,21 @@
 /**
 * @file        CefViewListener.h
-* @brief       CefViewListener 类的定义
-*              用于监听 CefViewBase 的各种事件
+* @brief       CefWebViewListener 类的定义
 * @version     1.0
 * @author      heefuture
-* @date        2025.07.02
-* @copyright
+* @date        2025.07.08
+* @copyright   Copyright (C) 2025 Tencent. All rights reserved.
 */
 #ifndef CEFVIEWLISTENER_H
 #define CEFVIEWLISTENER_H
 #pragma once
-
-//#include "include/cef_load_handler.h"
-//#include "include/cef_request_handler.h"
-//#include "include/cef_context_menu_handler.h"
-//#include "include/cef_download_handler.h"
-//#include "include/cef_dialog_handler.h"
-
+#include <string>
 namespace cef
 {
-class CefViewListener {
+class CefWebViewListener {
     public:
-    CefViewListener() = default;
-    virtual ~CefViewListener() = default;
+    CefWebViewListener() = default;
+    virtual ~CefWebViewListener() = default;
 
     virtual void onTitleChange(int browserId, const std::string& title) = 0;
     virtual void onUrlChange(int browserId, const std::string& oldUrl, const std::string& url) = 0;

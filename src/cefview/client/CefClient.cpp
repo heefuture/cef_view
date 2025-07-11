@@ -5,8 +5,12 @@
 #include "include/cef_process_message.h"
 #include "include/cef_task.h"
 #include "include/cef_v8.h"
-#include <manager/cefManager.h>
+
 #include <util/util.h>
+#include <manager/cefManager.h>
+#include <client/CefSwitches.h>
+#include <client/CefClientRender.h>
+#include <client/CefClientBrowser.h>
 
 namespace cef
 {
@@ -19,8 +23,8 @@ ClientApp::ClientApp()
 // CefApp methods.
 void ClientApp::OnBeforeCommandLineProcessing(const CefString& process_type, CefRefPtr<CefCommandLine> command_line)
 {
-    command_line->AppendSwitch(cefclient::kNoProxyServer);
-    command_line->AppendSwitch(cefclient::kWinHttpProxyResolver);
+    command_line->AppendSwitch(cef::kNoProxyServer);
+    command_line->AppendSwitch(cef::kWinHttpProxyResolver);
 
 #ifdef _CEF_DEBUG
     CefString tempDir = AppGetTempDirectory();
@@ -48,13 +52,6 @@ void ClientApp::OnBeforeChildProcessLaunch(CefRefPtr<CefCommandLine> command_lin
         (*it)->onBeforeChildProcessLaunch(this, command_line);
 }
 
-void ClientApp::OnRenderProcessThreadCreated(CefRefPtr<CefListValue> extra_info)
-{
-    BrowserDelegateSet::iterator it = browser_delegates_.begin();
-    for (; it != browser_delegates_.end(); ++it)
-        (*it)->onRenderProcessThreadCreated(this, extra_info);
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////
 // CefRenderProcessHandler methods.
 void ClientApp::OnWebKitInitialized()
@@ -64,24 +61,18 @@ void ClientApp::OnWebKitInitialized()
         (*it)->onWebKitInitialized(this);
 }
 
-void ClientApp::OnRenderThreadCreated(CefRefPtr<CefListValue> extra_info) {
-    RenderDelegateSet::iterator it = render_delegates_.begin();
-    for (; it != render_delegates_.end(); ++it)
-        (*it)->onRenderThreadCreated(this, extra_info);
-}
-
 void ClientApp::OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra_info)
 {
     RenderDelegateSet::iterator it = render_delegates_.begin();
     for (; it != render_delegates_.end(); ++it)
-        (*it)->OnBrowserCreated(this, browser, extra_info);
+        (*it)->onBrowserCreated(this, browser, extra_info);
 }
 
 void ClientApp::OnBrowserDestroyed(CefRefPtr<CefBrowser> browser)
 {
     RenderDelegateSet::iterator it = render_delegates_.begin();
     for (; it != render_delegates_.end(); ++it)
-        (*it)->onBrowserCreated(this, browser, extra_info);
+        (*it)->onBrowserDestroyed(this, browser);
 }
 
 void ClientApp::OnContextCreated(CefRefPtr<CefBrowser> browser,	CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context)
@@ -123,6 +114,7 @@ void ClientApp::OnFocusedNodeChanged(
 
 bool ClientApp::OnProcessMessageReceived(
     CefRefPtr<CefBrowser> browser,
+    CefRefPtr<CefFrame> frame,
     CefProcessId source_process,
     CefRefPtr<CefProcessMessage> message)
 {

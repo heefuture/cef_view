@@ -5,7 +5,7 @@
 #include "include/cef_process_message.h"
 #include "include/cef_task.h"
 #include "include/cef_v8.h"
-#include "cef_control/util/util.h"
+
 
 namespace cef
 {
@@ -25,11 +25,6 @@ public:
     virtual void onBeforeChildProcessLaunch(CefRefPtr<ClientApp> app, CefRefPtr<CefCommandLine> command_line) override
     {
     }
-
-    virtual void onRenderProcessThreadCreated(CefRefPtr<ClientApp> app, CefRefPtr<CefListValue> extra_info) override
-    {
-    }
-
 private:
     IMPLEMENT_REFCOUNTING(ClientBrowserDelegate);
 };

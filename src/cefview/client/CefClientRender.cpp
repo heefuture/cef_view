@@ -1,18 +1,19 @@
 #include "CefClientRender.h"
 
-#include <unordered_map>
+#include <map>
+#include <array>
 #include <string>
 #include <iostream>
+#include <fstream>
 
 #include "include/cef_cookie.h"
 #include "include/cef_process_message.h"
 #include "include/cef_task.h"
 #include "include/cef_v8.h"
-#include "cef_control/util/util.h"
 
-//#include "cef_control/app/js_handler.h"
 #include "CefSwitches.h"
 #include "CefJsBridgeRender.h"
+#include "CefJsHandler.h"
 
 namespace cef
 {
@@ -36,7 +37,6 @@ std::shared_ptr<std::ofstream> getLogFileStream() {
         [](std::ofstream *ptr) { ptr->close(); delete ptr; });
   return logFileStream;
 }
-
 //////////////////////////////////////////////////////////////////////////////////////////
 // CefRenderProcessHandler methods.
 class ClientRenderDelegate : public ClientApp::RenderDelegate {
@@ -45,67 +45,90 @@ public:
       : lastNodeIsEditable_(false) {
     }
 
-    virtual void onWebKitInitialized() override
+    virtual void onWebKitInitialized(CefRefPtr<ClientApp> app) override
     {
         // DWORD pid = GetCurrentProcessId();
-    // DWORD tid = GetCurrentThreadId();
-    // std::cout << "ClientApp::OnWebKitInitialized (Process id " << pid << "), (Thread id " << tid << ")" << std::endl;
+        // DWORD tid = GetCurrentThreadId();
+        // std::cout << "ClientApp::OnWebKitInitialized (Process id " << pid << "), (Thread id " << tid << ")" << std::endl;
 
-    // Register the client_app extension.
-    CefRefPtr<ClientAppExtensionHandler> handler(new ClientAppExtensionHandler(this));
-    std::string app_code =
-        "var app;"
-        "if (!app)"
-        "  app = {};"
-        "(function() {"
-        "  app.sendMessage = function(name, arguments) {"
-        "    native function sendMessage();"
-        "    return sendMessage(name, arguments);"
-        "  };"
-        "  app.setMessageCallback = function(name, callback) {"
-        "    native function setMessageCallback();"
-        "    return setMessageCallback(name, callback);"
-        "  };"
-        "  app.removeMessageCallback = function(name) {"
-        "    native function removeMessageCallback();"
-        "    return removeMessageCallback(name);"
-        "  };"
-        "})();";
-    CefRegisterExtension("v8/app", app_code, handler.get());
+        // Register the client_app extension.
+        CefRefPtr<ClientAppExtensionHandler> appHandler(new ClientAppExtensionHandler(this));
+        std::string appCode =
+            "var app;"
+            "if (!app)"
+            "  app = {};"
+            "(function() {"
+            "  app.sendMessage = function(name, arguments) {"
+            "    native function sendMessage();"
+            "    return sendMessage(name, arguments);"
+            "  };"
+            "  app.setMessageCallback = function(name, callback) {"
+            "    native function setMessageCallback();"
+            "    return setMessageCallback(name, callback);"
+            "  };"
+            "  app.removeMessageCallback = function(name) {"
+            "    native function removeMessageCallback();"
+            "    return removeMessageCallback(name);"
+            "  };"
+            "})();";
+        CefRegisterExtension("v8/app", appCode, appHandler.get());
 
 
-    CefRefPtr<CefJSHandler> handler = new CefJSHandler();
-
-    if (!render_js_bridge_.get())
-        render_js_bridge_.reset(new CefJSBridge);
-    handler->AttachJSBridge(render_js_bridge_);
-     CefRegisterExtension("v8/extern", extensionCode, handler);
+        /**
+        * JavaScript 扩展代码，这里定义一个 NimCefWebFunction 对象提供 call 方法来让 Web 端触发 native 的 CefV8Handler 处理代码
+        * param[in] functionName	要调用的 C++ 方法名称
+        * param[in] params			调用该方法传递的参数，在前端指定的是一个 Object，但转到 Native 的时候转为了字符串
+        * param[in] callback		执行该方法后的回调函数
+        * 前端调用示例
+        * NimCefWebHelper.call('showMessage', { message: 'Hello C++' }, (arguments) => {
+        *    console.log(arguments)
+        * })
+        */
+        std::string extensionCode = R"(
+            var CefWebExtension = {};
+            (() => {
+                CefWebExtension.call = (functionName, arg1, arg2) => {
+                    if (typeof arg1 === 'function') {
+                        native function call(functionName, arg1);
+                        return call(functionName, arg1);
+                    } else {
+                        const jsonString = JSON.stringify(arg1);
+                        native function call(functionName, jsonString, arg2);
+                        return call(functionName, jsonString, arg2);
+                    }
+                };
+                CefWebExtension.register = (functionName, callback) => {
+                    native function register(functionName, callback);
+                    return register(functionName, callback);
+                };
+            })();
+        )";
         CefRefPtr<CefJSHandler> handler = new CefJSHandler();
 
-        if (!render_js_bridge_.get())
-            render_js_bridge_.reset(new CefJSBridge);
-        handler->AttachJSBridge(render_js_bridge_);
+        if (!_renderJsBridge.get())
+            _renderJsBridge.reset(new CefJsBridgeRender);
+        handler->AttachJSBridge(_renderJsBridge);
         CefRegisterExtension("v8/extern", extensionCode, handler);
     }
 
-    virtual void onBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra_info) override
+    virtual void onBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra_info)
     {
-        if (!render_js_bridge_.get())
-            render_js_bridge_.reset(new CefJSBridge);
+        if (!_renderJsBridge.get())
+            _renderJsBridge.reset(new CefJsBridgeRender);
     }
 
-    virtual void onContextReleased(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context) override
+    virtual void onContextReleased(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context)
     {
-        render_js_bridge_->RemoveCallbackFuncWithFrame(frame);
-        render_js_bridge_->UnRegisterJSFuncWithFrame(frame);
+        _renderJsBridge->removeCallbackFuncWithFrame(frame);
+        _renderJsBridge->unRegisterJSFuncWithFrame(frame);
 
         // Remove any JavaScript callbacks registered for the context that has been
         // released.
-        if (!callback_map_.empty()) {
-            CallbackMap::iterator it = callback_map_.begin();
-            for (; it != callback_map_.end();) {
+        if (!_callbackMap.empty()) {
+            CallbackMap::iterator it = _callbackMap.begin();
+            for (; it != _callbackMap.end();) {
                 if (it->second.first->IsSame(context))
-                    callback_map_.erase(it++);
+                    _callbackMap.erase(it++);
                 else
                     ++it;
             }
@@ -125,12 +148,14 @@ public:
         }
     }
 
-    virtual void onUncaughtException(CefRefPtr<ClientApp> app,
+    virtual void onUncaughtException(
+        CefRefPtr<ClientApp> app,
         CefRefPtr<CefBrowser> browser,
         CefRefPtr<CefFrame> frame,
         CefRefPtr<CefV8Context> context,
         CefRefPtr<CefV8Exception> exception,
-        CefRefPtr<CefV8StackTrace> stackTrace) override {
+        CefRefPtr<CefV8StackTrace> stackTrace) override
+    {
 
         std::shared_ptr<std::ofstream> logFileStream = getLogFileStream();
         std::ofstream &out = *logFileStream;
@@ -141,68 +166,71 @@ public:
         }
     }
 
-    virtual bool onProcessMessageReceived(CefRefPtr<CefBrowser> browser,
+    virtual bool onProcessMessageReceived(
+        CefRefPtr<ClientApp> app,
+        CefRefPtr<CefBrowser> browser,
         CefProcessId source_process,
         CefRefPtr<CefProcessMessage> message) override
     {
-        ASSERT(source_process == PID_BROWSER);
+        assert(source_process == PID_BROWSER);
         // 收到 browser 的消息回复
-        const CefString& message_name = message->GetName();
-        if (message_name == kExecuteJsCallbackMessage)
+        const CefString& messageName = message->GetName();
+        if (messageName == kExecuteJsCallbackMessage)
         {
-            int     callback_id	= message->GetArgumentList()->GetInt(0);
-            bool        has_error	= message->GetArgumentList()->GetBool(1);
-            CefString	json_string = message->GetArgumentList()->GetString(2);
+            int         callbackId	= message->GetArgumentList()->GetInt(0);
+            bool        hasError	= message->GetArgumentList()->GetBool(1);
+            CefString	jsonString = message->GetArgumentList()->GetString(2);
 
             // 将收到的参数通过管理器传递给调用时传递的回调函数
-            render_js_bridge_->ExecuteJSCallbackFunc(callback_id, has_error, json_string);
+            _renderJsBridge->executeJSCallbackFunc(callbackId, hasError, jsonString);
         }
-        else if (message_name == kCallJsFunctionMessage)
+        else if (messageName == kCallJsFunctionMessage)
         {
-            CefString function_name = message->GetArgumentList()->GetString(0);
-            CefString json_string = message->GetArgumentList()->GetString(1);
-            int cpp_callback_id = message->GetArgumentList()->GetInt(2);
-            int64 frame_id = message->GetArgumentList()->GetInt(3);
+            CefString functionName = message->GetArgumentList()->GetString(0);
+            CefString jsonString = message->GetArgumentList()->GetString(1);
+            int cppCallbackId = message->GetArgumentList()->GetInt(2);
+            CefString frameId = message->GetArgumentList()->GetString(3);
 
             // 通过 C++ 执行一个已经注册过的 JS 方法
             // frame_id 小于 0 则可能是 browser 进程的 browser 是无效的，所以这里为了避免出现错误就获取一个顶层 frame 执行代码
-            render_js_bridge_->ExecuteJSFunc(function_name, json_string, frame_id < 0 ? browser->GetMainFrame() : browser->GetFrame(frame_id), cpp_callback_id);
+            _renderJsBridge->executeJSFunc(functionName, jsonString, frameId.empty() ? browser->GetMainFrame() : browser->GetFrameByIdentifier(frameId), cppCallbackId);
         }
 
         return false;
-
-        // 收到 browser 的消息回复
-    const CefString& message_name = message->GetName();
-    if (message_name == kExecuteJsCallbackMessage)
-    {
-        int         callback_id	= message->GetArgumentList()->GetInt(0);
-        bool        has_error	= message->GetArgumentList()->GetBool(1);
-        CefString   json_string = message->GetArgumentList()->GetString(2);
-
-        // 将收到的参数通过管理器传递给调用时传递的回调函数
-        render_js_bridge_->ExecuteJSCallbackFunc(callback_id, has_error, json_string);
     }
-    else if (message_name == kCallJsFunctionMessage)
-    {
-        CefString function_name = message->GetArgumentList()->GetString(0);
-        CefString json_string = message->GetArgumentList()->GetString(1);
-        int cpp_callback_id = message->GetArgumentList()->GetInt(2);
-        CefString frame_id = message->GetArgumentList()->GetInt(3);
 
-        // 通过 C++ 执行一个已经注册过的 JS 方法
-        // frame_id 小于 0 则可能是 browser 进程的 browser 是无效的，所以这里为了避免出现错误就获取一个顶层 frame 执行代码
-        render_js_bridge_->ExecuteJSFunc(function_name, json_string, frame_id < 0 ? browser->GetMainFrame() : browser->GetFrame(frame_id), cpp_callback_id);
+    virtual void setMessageCallback(
+        const std::string& messageName,
+        int browserId,
+        CefRefPtr<CefV8Context> context,
+        CefRefPtr<CefV8Value> function) override
+    {
+        assert(CefCurrentlyOn(TID_RENDERER));
+
+        _callbackMap.insert(std::make_pair(std::make_pair(messageName, browserId), std::make_pair(context, function)));
     }
+
+    virtual bool removeMessageCallback(const std::string& messageName, int browserId) override
+    {
+        assert(CefCurrentlyOn(TID_RENDERER));
+
+        CallbackMap::iterator it = _callbackMap.find(std::make_pair(messageName, browserId));
+        if (it != _callbackMap.end()) {
+            _callbackMap.erase(it);
+            return true;
+        }
+
+        return false;
     }
 
 private:
     bool lastNodeIsEditable_;
     // Map of message callbacks.
-    typedef std::unordered_map<std::pair<std::string, int>,
+    typedef std::map<std::pair<std::string, int>,
                      std::pair<CefRefPtr<CefV8Context>, CefRefPtr<CefV8Value>>> CallbackMap;
-    CallbackMap callback_map_;
+    CallbackMap _callbackMap;
 
-    std::shared_ptr<CefJSBridge> render_js_bridge_;
+    std::shared_ptr<CefJsBridgeRender> _renderJsBridge;
 
     IMPLEMENT_REFCOUNTING(ClientRenderDelegate);
 };

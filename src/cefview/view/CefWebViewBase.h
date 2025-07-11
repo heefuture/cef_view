@@ -1,16 +1,19 @@
 /**
-* @file        CefViewBase.h
-* @brief       CefViewBase 类的定义
+* @file        CefWebViewBase.h
+* @brief       CefWebViewBase 类的定义
 *              用于处理 CefHandler 浏览器的基本操作和事件
 * @version     1.0
 * @author      heefuture
-* @date        2025.06.27
-* @copyright
+* @date        2025.07.08
+* @copyright   Copyright (C) 2025 Tencent. All rights reserved.
 */
+#ifndef CEFWEBVIEWBASE_H
+#define CEFWEBVIEWBASE_H
 #pragma once
-#include "CefHandler.h"
-#include "CefViewListener.h"
-#include "ProcessMessageDelegateWrapper.h"
+#include <handler/CefHandler.h>
+#include <view/CefWebViewListener.h>
+#include <view/ProcessMessageDelegateWrapper.h>
+
 #include "include/cef_base.h"
 
 #include <memory>
@@ -18,11 +21,11 @@
 
 namespace cef{
 
-class CefViewBase : public CefHandler::HandlerDelegate
+class CefWebViewBase : public CefHandler::HandlerDelegate
 {
 public:
-    CefViewBase();
-    virtual ~CefViewBase();
+    CefWebViewBase();
+    virtual ~CefWebViewBase();
 
 public:
     /**
@@ -115,7 +118,6 @@ public:
 
     /**
     * @brief 打开开发者工具
-    * @param[in] view 一个 CefControl 控件实例(仅在CefControl类里需要传入)
     * @return 成功返回 true，失败返回 false
     */
     virtual bool openDevTools();
@@ -132,20 +134,30 @@ public:
     */
     virtual bool isDevToolsOpened() const { return devtool_opened_; }
 
+    /**
+    * @brief 执行 JavaScript 代码
+    * @param[in] script 一段可以执行的 JavaScript 代码
+    * @return 无
+    */
+    virtual void evaluateJavaScript(const std::string& script);
+
+    // virtual bool onExecuteCppFunc(const CefString& function_name, const CefString& params, int js_callback_id, CefRefPtr<CefBrowser> browser) override;
+
+    // virtual bool onExecuteCppCallbackFunc(int cpp_callback_id, const CefString& json_string) override;
 public:
-    void addListener(std::shared_ptr<CefViewListener> listener);
+    void addListener(std::shared_ptr<CefWebViewListener> listener);
 
 private:
     virtual void onPaint(CefRefPtr<CefBrowser> browser,
-        CefRenderHandler::PaintElementType type,
-        const CefRenderHandler::RectList &dirtyRects,
+        ::CefRenderHandler::PaintElementType type,
+        const ::CefRenderHandler::RectList &dirtyRects,
         const void *buffer,
         int width,
         int height) override;
 
     virtual void onAcceleratedPaint(CefRefPtr<CefBrowser> browser,
-        CefRenderHandler::PaintElementType type,
-        const CefRenderHandler::RectList &dirtyRects,
+        ::CefRenderHandler::PaintElementType type,
+        const ::CefRenderHandler::RectList &dirtyRects,
         const CefAcceleratedPaintInfo &info) override;
 
     virtual bool getRootScreenRect(CefRefPtr<CefBrowser> browser, CefRect &rect) override;
@@ -242,7 +254,9 @@ protected:
     //std::shared_ptr<CefJSBridge> js_bridge_;
     CefString _url;
     bool devtool_opened_{false}; // 是否打开了开发者工具
-    std::vector<std::shared_ptr<CefViewListener>> _listeners; // 监听器列表
+    std::vector<std::shared_ptr<CefWebViewListener>> _listeners; // 监听器列表
     //int                         js_callback_thread_id_ = -1; // 保存接收到 JS 调用 CPP 函数的代码所属线程，以后触发 JS 回调时把回调转到那个线程
 };
 }
+
+#endif //!CEFWEBVIEWBASE_H

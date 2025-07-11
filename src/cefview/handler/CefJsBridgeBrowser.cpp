@@ -1,6 +1,5 @@
-#include "stdafx.h"
 #include "CefJsBridgeBrowser.h"
-//#include "ipc_string_define.h"
+#include <client/CefSwitches.h>
 
 namespace cef
 {
@@ -15,22 +14,22 @@ CefJsBridgeBrowser::~CefJsBridgeBrowser()
 
 }
 
-bool CefJsBridgeBrowser::CallJSFunction(const CefString& js_function_name, const CefString& params, CefRefPtr<CefFrame> frame, CallJsFunctionCallback callback)
+bool CefJsBridgeBrowser::callJSFunction(const CefString& jsFunctionName, const CefString& params, CefRefPtr<CefFrame> frame, CallJsFunctionCallback callback)
 {
     if (!frame.get()) {
         return false;
     }
 
-    auto it = browser_callback_.find(cpp_callback_id_);
-    if (it == browser_callback_.cend())
+    auto it = _browserCallback.find(_cppCallbackId);
+    if (it == _browserCallback.cend())
     {
-        browser_callback_.emplace(cpp_callback_id_, callback);
+        _browserCallback.emplace(_cppCallbackId, callback);
         // 发送消息给 render 要求执行一个 js function
         CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kCallJsFunctionMessage);
         CefRefPtr<CefListValue> args = message->GetArgumentList();
-        args->SetString(0, js_function_name);
+        args->SetString(0, jsFunctionName);
         args->SetString(1, params);
-        args->SetInt(2, cpp_callback_id_++);
+        args->SetInt(2, _cppCallbackId++);
         args->SetString(3, frame->GetIdentifier());
 
         frame->SendProcessMessage(PID_RENDERER, message);
@@ -41,32 +40,32 @@ bool CefJsBridgeBrowser::CallJSFunction(const CefString& js_function_name, const
     return false;
 }
 
-bool CefJsBridgeBrowser::ExecuteCppCallbackFunc(int cpp_callback_id, const CefString& json_string)
+bool CefJsBridgeBrowser::executeCppCallbackFunc(int cppCallbackId, const CefString& jsonString)
 {
-    auto it = browser_callback_.find(cpp_callback_id);
-    if (it != browser_callback_.cend()) {
+    auto it = _browserCallback.find(cppCallbackId);
+    if (it != _browserCallback.cend()) {
         auto callback = it->second;
         if (callback) {
-            callback(json_string);
+            callback(jsonString);
         }
 
         // 执行完成后从缓存中移除
-        browser_callback_.erase(cpp_callback_id);
+        _browserCallback.erase(cppCallbackId);
     }
 
     return false;
 }
 
-bool CefJsBridgeBrowser::RegisterCppFunc(const CefString& function_name, CppFunction function, CefRefPtr<CefBrowser> browser, bool replace /*= false*/)
+bool CefJsBridgeBrowser::registerCppFunc(const CefString& functionName, CppFunction function, CefRefPtr<CefBrowser> browser, bool replace /*= false*/)
 {
     if (replace) {
-        browser_registered_function_.emplace(std::make_pair(function_name, browser ? browser->GetIdentifier() : -1), function);// = ;
+        _browserRegisteredFunction.emplace(std::make_pair(functionName, browser ? browser->GetIdentifier() : -1), function);// = ;
         return true;
     }
     else {
-        auto it = browser_registered_function_.find(std::make_pair(function_name, browser ? browser->GetIdentifier() : -1));
-        if (it == browser_registered_function_.cend()) {
-            browser_registered_function_.emplace(std::make_pair(function_name, browser ? browser->GetIdentifier() : -1), function);
+        auto it = _browserRegisteredFunction.find(std::make_pair(functionName, browser ? browser->GetIdentifier() : -1));
+        if (it == _browserRegisteredFunction.cend()) {
+            _browserRegisteredFunction.emplace(std::make_pair(functionName, browser ? browser->GetIdentifier() : -1), function);
             return true;
         }
 
@@ -76,21 +75,21 @@ bool CefJsBridgeBrowser::RegisterCppFunc(const CefString& function_name, CppFunc
     return false;
 }
 
-void CefJsBridgeBrowser::UnRegisterCppFunc(const CefString& function_name, CefRefPtr<CefBrowser> browser)
+void CefJsBridgeBrowser::unRegisterCppFunc(const CefString& functionName, CefRefPtr<CefBrowser> browser)
 {
-    browser_registered_function_.erase(std::make_pair(function_name, browser ? browser->GetIdentifier() : -1));
+    _browserRegisteredFunction.erase(std::make_pair(functionName, browser ? browser->GetIdentifier() : -1));
 }
 
-bool CefJsBridgeBrowser::ExecuteCppFunc(const CefString& function_name, const CefString& params, int js_callback_id, CefRefPtr<CefBrowser> browser)
+bool CefJsBridgeBrowser::executeCppFunc(const CefString& functionName, const CefString& params, int jsCallbackId, CefRefPtr<CefBrowser> browser)
 {
     CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kExecuteJsCallbackMessage);
     CefRefPtr<CefListValue> args = message->GetArgumentList();
 
-    auto it = browser_registered_function_.find(std::make_pair(function_name, browser->GetIdentifier()));
-    if (it != browser_registered_function_.cend()) {
+    auto it = _browserRegisteredFunction.find(std::make_pair(functionName, browser->GetIdentifier()));
+    if (it != _browserRegisteredFunction.cend()) {
         auto function = it->second;
         std::string& result = function(params);
-        args->SetInt(0, js_callback_id);
+        args->SetInt(0, jsCallbackId);
         args->SetBool(1, true);
         args->SetString(2, result);
         browser->GetMainFrame()->SendProcessMessage(PID_RENDERER, message);
@@ -98,18 +97,18 @@ bool CefJsBridgeBrowser::ExecuteCppFunc(const CefString& function_name, const Ce
         return true;
     }
 
-    it = browser_registered_function_.find(std::make_pair(function_name, -1));
-    if (it != browser_registered_function_.cend()) {
+    it = _browserRegisteredFunction.find(std::make_pair(functionName, -1));
+    if (it != _browserRegisteredFunction.cend()) {
         auto function = it->second;
          std::string& result = function(params);
-        args->SetInt(0, js_callback_id);
+        args->SetInt(0, jsCallbackId);
         args->SetBool(1, true);
         args->SetString(2, result);
         browser->GetMainFrame()->SendProcessMessage(PID_RENDERER, message);
         return true;
     }
     else {
-        args->SetInt(0, js_callback_id);
+        args->SetInt(0, jsCallbackId);
         args->SetBool(1, true);
         args->SetString(2, R"({"message":"Function does not exist."})");
         browser->GetMainFrame()->SendProcessMessage(PID_RENDERER, message);

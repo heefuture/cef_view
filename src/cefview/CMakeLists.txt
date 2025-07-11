@@ -4,6 +4,9 @@ set(CEFVIEW_TARGET "cefview")
 
 message(STATUS "Output dir : ${TARGET_OUT_DIR}")
 
+# Logical target used to link the libcef library.
+ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
+
 file(GLOB_RECURSE UTIL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/util/*.*)
 list(APPEND SRC_FILES ${UTIL_SRCS})
 source_group(utils FILES ${UTIL_SRCS})
@@ -18,10 +21,14 @@ source_group(handler FILES ${HANDLER_SRCS})
 
 file(GLOB_RECURSE VIEW_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/view/*.*)
 list(APPEND SRC_FILES ${VIEW_SRCS})
-source_group(handler FILES ${VIEW_SRCS})
+source_group(view FILES ${VIEW_SRCS})
 
-option(BUILD_STATIC "option for static lib" ON)
-if(BUILD_STATIC)
+file(GLOB_RECURSE MGR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/manager/*.*)
+list(APPEND SRC_FILES ${MGR_SRCS})
+source_group(manager FILES ${MGR_SRCS})
+
+
+if(WEBVIEW_BUILD_STATIC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCEF_STATIC")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 else()
@@ -41,5 +48,5 @@ endif ()
 #     LIBRARY_OUTPUT_DIRECTORY "${TARGET_OUT_DIR}"
 # )
 
-target_link_libraries(${CEFVIEW_TARGET} libcef_dll_wrapper)
+target_link_libraries(${CEFVIEW_TARGET} libcef_lib libcef_dll_wrapper)
 

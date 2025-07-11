@@ -150,9 +150,9 @@ public:
             CefRefPtr<CefDownloadItemCallback> callback) = 0;
 
         // 封装一些 JS 与 C++ 交互的功能
-        virtual bool onExecuteCppFunc(const CefString& function_name, const CefString& params, int js_callback_id, CefRefPtr<CefBrowser> browser) = 0;
+        //virtual bool onExecuteCppFunc(const CefString& function_name, const CefString& params, int js_callback_id, CefRefPtr<CefBrowser> browser) = 0;
 
-        virtual bool onExecuteCppCallbackFunc(int cpp_callback_id, const CefString& json_string) = 0;
+        //virtual bool onExecuteCppCallbackFunc(int cpp_callback_id, const CefString& json_string) = 0;
     };
 
 public:

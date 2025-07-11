@@ -10,10 +10,14 @@
 #define EXPORT_H
 #pragma once
 
+#ifdef WEBVIEW_BUILD_STATIC
+#define WEBVIEW_EXPORTS 
+#else
 #ifdef WEBVIEW_EXPORTS
 #define WEBVIEW_EXPORTS __declspec(dllexport)
 #else
 #define WEBVIEW_EXPORTS __declspec(dllimport)
 #endif
+#endif // !IS_WEBVIEW_STATIC
 
 #endif //!EXPORT_H

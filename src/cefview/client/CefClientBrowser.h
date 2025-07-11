@@ -3,7 +3,7 @@
 #pragma once
 
 #include "include/cef_base.h"
-#include "CefClient.h"
+#include <client/CefClient.h>
 
 namespace cef {
 

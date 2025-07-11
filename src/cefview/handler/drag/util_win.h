@@ -11,7 +11,7 @@
 
 #include "include/internal/cef_types_wrappers.h"
 
-namespace client {
+namespace cef {
 
 // Set the window's user data pointer.
 void SetUserDataPtr(HWND hWnd, void* ptr);
@@ -26,7 +26,7 @@ T GetUserDataPtr(HWND hWnd) {
 WNDPROC SetWndProcPtr(HWND hWnd, WNDPROC wndProc);
 
 // Return the resource string with the specified id.
-std::wstring GetResourceString(UINT id);
+std::string GetResourceString(UINT id);
 
 int GetCefMouseModifiers(WPARAM wparam);
 int GetCefKeyboardModifiers(WPARAM wparam, LPARAM lparam);

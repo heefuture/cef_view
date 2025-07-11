@@ -11,75 +11,70 @@
 #include <utility>
 #include <vector>
 #include "include/cef_app.h"
-#include "webview/client/cef_js_bridge.h"
+#include "include/cef_base.h"
 
 namespace cef
 {
 
 class ClientApp : public CefApp,
-                      public CefBrowserProcessHandler,
-                      public CefRenderProcessHandler
+                  public CefBrowserProcessHandler,
+                  public CefRenderProcessHandler
 {
 public:
     // Interface for browser delegates. All BrowserDelegates must be returned via
     // CreateBrowserDelegates. Do not perform work in the BrowserDelegate
     // constructor. See CefBrowserProcessHandler for documentation.
-    class BrowserDelegate : public virtual CefBase {
+    class BrowserDelegate : public virtual CefBaseRefCounted {
     public:
         virtual void onContextInitialized(CefRefPtr<ClientApp> app) {}
 
         virtual void onBeforeChildProcessLaunch(
             CefRefPtr<ClientApp> app,
             CefRefPtr<CefCommandLine> command_line) {}
-
-        virtual void onRenderProcessThreadCreated(
-            CefRefPtr<ClientApp> app,
-            CefRefPtr<CefListValue> extra_info) {}
-
-        virtual void onRenderProcessThreadCreated(
-            CefRefPtr<ClientApp> app,
-            CefRefPtr<CefListValue> extra_info) {}
     };
     typedef std::set<CefRefPtr<BrowserDelegate> > BrowserDelegateSet;
 
     // Interface for renderer delegates. All RenderDelegates must be returned via
     // CreateRenderDelegates. Do not perform work in the RenderDelegate
     // constructor. See CefRenderProcessHandler for documentation.
-    class RenderDelegate : public virtual CefBase {
+    class RenderDelegate : public virtual CefBaseRefCounted {
     public:
-        virtual void onRenderThreadCreated(CefRefPtr<ClientApp> app,
-            CefRefPtr<CefListValue> extra_info) {}
-
         virtual void onWebKitInitialized(CefRefPtr<ClientApp> app) {}
 
         virtual void onBrowserCreated(CefRefPtr<ClientApp> app,
             CefRefPtr<CefBrowser> browser,
-            CefRefPtr<CefDictionaryValue> extra_info) {}
+            CefRefPtr<CefDictionaryValue> extra_info) {
+        }
 
         virtual void onBrowserDestroyed(CefRefPtr<ClientApp> app,
-            CefRefPtr<CefBrowser> browser) {}
+            CefRefPtr<CefBrowser> browser) {
+        }
 
         virtual void onContextCreated(CefRefPtr<ClientApp> app,
             CefRefPtr<CefBrowser> browser,
             CefRefPtr<CefFrame> frame,
-            CefRefPtr<CefV8Context> context) {}
+            CefRefPtr<CefV8Context> context) {
+        }
 
         virtual void onContextReleased(CefRefPtr<ClientApp> app,
             CefRefPtr<CefBrowser> browser,
             CefRefPtr<CefFrame> frame,
-            CefRefPtr<CefV8Context> context) {}
+            CefRefPtr<CefV8Context> context) {
+        }
 
         virtual void onUncaughtException(CefRefPtr<ClientApp> app,
             CefRefPtr<CefBrowser> browser,
             CefRefPtr<CefFrame> frame,
             CefRefPtr<CefV8Context> context,
             CefRefPtr<CefV8Exception> exception,
-            CefRefPtr<CefV8StackTrace> stackTrace) {}
+            CefRefPtr<CefV8StackTrace> stackTrace) {
+        }
 
         virtual void onFocusedNodeChanged(CefRefPtr<ClientApp> app,
             CefRefPtr<CefBrowser> browser,
             CefRefPtr<CefFrame> frame,
-            CefRefPtr<CefDOMNode> node) {}
+            CefRefPtr<CefDOMNode> node) {
+        }
 
         // Called when a process message is received. Return true if the message was
         // handled and should not be passed on to other handlers. RenderDelegates
@@ -90,33 +85,81 @@ public:
             CefRefPtr<CefBrowser> browser,
             CefProcessId source_process,
             CefRefPtr<CefProcessMessage> message) {
-                return false;
+            return false;
         }
 
-        typedef std::set<CefRefPtr<RenderDelegate>> RenderDelegateSet;
+        // Set a JavaScript callback for the specified |message_name| and |browser_id|
+        // combination. Will automatically be removed when the associated context is
+        // released. Callbacks can also be set in JavaScript using the
+        // app.setMessageCallback function.
+        virtual void setMessageCallback(
+            const std::string &message_name,
+            int browser_id,
+            CefRefPtr<CefV8Context> context,
+            CefRefPtr<CefV8Value> function) {
+        }
+
+        // Removes the JavaScript callback for the specified |message_name| and
+        // |browser_id| combination. Returns true if a callback was removed. Callbacks
+        // can also be removed in JavaScript using the app.removeMessageCallback
+        // function.
+        virtual bool removeMessageCallback(const std::string &message_name, int browser_id) {
+            return false;
+        }
+    };
+    typedef std::set<CefRefPtr<RenderDelegate>> RenderDelegateSet;
 public:
     ClientApp();
-
-    // Set a JavaScript callback for the specified |message_name| and |browser_id|
-    // combination. Will automatically be removed when the associated context is
-    // released. Callbacks can also be set in JavaScript using the
-    // app.setMessageCallback function.
-    void SetMessageCallback(const std::string &message_name,
-        int browser_id,
-        CefRefPtr<CefV8Context> context,
-        CefRefPtr<CefV8Value> function);
-
-    // Removes the JavaScript callback for the specified |message_name| and
-    // |browser_id| combination. Returns true if a callback was removed. Callbacks
-    // can also be removed in JavaScript using the app.removeMessageCallback
-    // function.
-    bool RemoveMessageCallback(const std::string &message_name, int browser_id);
 
 protected:
     // CefApp methods.
     virtual void OnBeforeCommandLineProcessing(const CefString &process_type, CefRefPtr<CefCommandLine> command_line) override;
 
 private:
+    virtual CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler() override { return this; }
+
+    virtual CefRefPtr<CefRenderProcessHandler> GetRenderProcessHandler() override { return this; }
+
+    // CefBrowserProcessHandler methods.
+    virtual void OnContextInitialized() override;
+
+    virtual void OnBeforeChildProcessLaunch( CefRefPtr<CefCommandLine> command_line) override;
+
+    // CefRenderProcessHandler methods.
+    virtual void OnWebKitInitialized() override;
+
+    virtual void OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra_info) override;
+
+    virtual void OnBrowserDestroyed(CefRefPtr<CefBrowser> browser) override;
+
+    virtual void OnContextCreated(
+        CefRefPtr<CefBrowser> browser,
+        CefRefPtr<CefFrame> frame,
+        CefRefPtr<CefV8Context> context) override;
+
+    virtual void OnContextReleased(
+        CefRefPtr<CefBrowser> browser,
+        CefRefPtr<CefFrame> frame,
+        CefRefPtr<CefV8Context> context) override;
+
+    virtual void OnUncaughtException(
+        CefRefPtr<CefBrowser> browser,
+        CefRefPtr<CefFrame> frame,
+        CefRefPtr<CefV8Context> context,
+        CefRefPtr<CefV8Exception> exception,
+        CefRefPtr<CefV8StackTrace> stackTrace) override;
+
+    virtual void OnFocusedNodeChanged(
+        CefRefPtr<CefBrowser> browser,
+        CefRefPtr<CefFrame> frame,
+        CefRefPtr<CefDOMNode> node) override;
+
+    virtual bool OnProcessMessageReceived(
+        CefRefPtr<CefBrowser> browser,
+        CefRefPtr<CefFrame> frame,
+        CefProcessId source_process,
+        CefRefPtr<CefProcessMessage> message) override;
+
     // Creates all of the BrowserDelegate objects. Implemented in
     // client_app_delegates.
     static void CreateBrowserDelegates(BrowserDelegateSet& delegates);
@@ -125,36 +168,7 @@ private:
     // client_app_delegates.
     static void CreateRenderDelegates(RenderDelegateSet& delegates);
 
-    virtual CefRefPtr<CefBrowserProcessHandler> GetBrowserProcessHandler() override { return this; }
-    virtual CefRefPtr<CefRenderProcessHandler> GetRenderProcessHandler() override { return this; }
-
-    // CefBrowserProcessHandler methods.
-    virtual void OnContextInitialized() override;
-    virtual void OnBeforeChildProcessLaunch( CefRefPtr<CefCommandLine> command_line) override;
-    // CefRenderProcessHandler methods.
-    virtual void OnWebKitInitialized() override;
-    virtual void OnRenderThreadCreated(CefRefPtr<CefListValue> extra_info) override;
-    virtual void OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra_info) override;
-    virtual void OnBrowserDestroyed(CefRefPtr<CefBrowser> browser) override;
-    virtual void OnContextCreated(CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefFrame> frame,
-        CefRefPtr<CefV8Context> context) override;
-    virtual void OnContextReleased(CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefFrame> frame,
-        CefRefPtr<CefV8Context> context) override;
-    virtual void OnUncaughtException(CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefFrame> frame,
-        CefRefPtr<CefV8Context> context,
-        CefRefPtr<CefV8Exception> exception,
-        CefRefPtr<CefV8StackTrace> stackTrace) override;
-    virtual void OnFocusedNodeChanged(CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefFrame> frame,
-        CefRefPtr<CefDOMNode> node) override;
-    virtual bool OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefFrame> frame,
-        CefProcessId source_process,
-        CefRefPtr<CefProcessMessage> message) override;
-
+private:
     // Set of supported BrowserDelegates.
     BrowserDelegateSet browser_delegates_;
 

@@ -1,14 +1,14 @@
 #include "CefManager.h"
+#include <client/CefClient.h>
+#include <string>
 
-#include <string.h>
-#include "CefManager.h"
 //#include "cefclient/client_switches.h"
 
 // Whether to use a separate sub-process executable? cefclient_process.exe
 //#define SUB_PROCESS_DISABLED
 namespace cef{
 
-static CefManager* CefManager::getInstance() {
+CefManager* CefManager::getInstance() {
     static CefManager typeInstance;
     return &typeInstance;
 }
@@ -26,7 +26,7 @@ void CefManager::initCefSettings(CefSettings& settings) {
     CefString(&settings.cookieable_schemes_list) = list_str;
 
     // Store cache data will on disk.
-    std::string cache_path = getAppWorkingDirectory().ToString() + "/.cache";
+    std::string cache_path = getAppWorkingDirectory().ToString() + "/cache";
     CefString(&settings.cache_path) = CefString(cache_path);
 
     // Completely disable logging.
@@ -91,7 +91,7 @@ int CefManager::initCef(CefSettings &settings, bool logging)
         return init_code;
 #endif
 
-    CefSettings settings;
+    // CefSettings settings;
     initCefSettings(settings);
 
     void *sandbox_info = NULL;
@@ -142,6 +142,11 @@ void CefManager::quitCef()
 void CefManager::doCefMessageLoopWork()
 {
     CefDoMessageLoopWork();
+}
+
+void CefManager::runCefMessageLoop()
+{
+    CefRunMessageLoop();
 }
 
 void CefManager::quitCefMessageLoop()
