@@ -36,6 +36,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     default:
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
+    return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
 
@@ -73,7 +74,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         ClassName.c_str(),                     // 窗口类名
         L"CefApp",                      // 窗口标题
         WS_OVERLAPPEDWINDOW,            // 窗口样式
-        CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, // 位置和大小
+        CW_USEDEFAULT, CW_USEDEFAULT, 1080, 720, // 位置和大小
         nullptr, nullptr, hInstance, nullptr
     );
 

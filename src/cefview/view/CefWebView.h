@@ -39,7 +39,7 @@ public:
 protected:
     HWND createSubWindow(HWND parentHwnd, int x, int y,int width, int height, bool showWindow = true);
 
-    void reCreateBrowser(int width, int height);
+    void reCreateBrowser();
 
     void destroy();
 private:

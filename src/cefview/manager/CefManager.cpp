@@ -5,7 +5,9 @@
 //#include "cefclient/client_switches.h"
 
 // Whether to use a separate sub-process executable? cefclient_process.exe
-//#define SUB_PROCESS_DISABLED
+//
+#define SUB_PROCESS_DISABLED
+
 namespace cef{
 
 CefManager* CefManager::getInstance() {

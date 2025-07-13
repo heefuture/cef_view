@@ -37,7 +37,7 @@ endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-if (BUILD_STATIC)
+if (WEBVIEW_BUILD_STATIC)
 add_library (${CEFVIEW_TARGET} STATIC ${SRC_FILES})
 else ()
 add_library (${CEFVIEW_TARGET} SHARED ${SRC_FILES})

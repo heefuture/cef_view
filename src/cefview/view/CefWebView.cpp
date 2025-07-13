@@ -84,7 +84,7 @@ void CefWebView::init()
         _cefHandler = new CefHandler;
         //_cefHandler->SetHostWindow(_hwnd);
         _cefHandler->SetHandlerDelegate(this);
-        // reCreateBrowser();
+        reCreateBrowser();
     }
 
     // if (!js_bridge_.get())
@@ -118,7 +118,7 @@ HWND CefWebView::createSubWindow(HWND parentHwnd, int x, int y,int width, int he
                         className,
                         L"CefWindow",
                         WS_CHILD|WS_DISABLED,
-                        x,y,width,height,
+                        0,0,width,height,
                         parentHwnd,
                         nullptr,
                         nullptr,
@@ -141,7 +141,7 @@ void CefWebView::destroy() {
     //UnregisterClassA(_className.c_str(), nullptr);
 }
 
-void CefWebView::reCreateBrowser(int width, int height)
+void CefWebView::reCreateBrowser()
 {
     if (_cefHandler.get() == nullptr)
         return;
@@ -156,7 +156,8 @@ void CefWebView::reCreateBrowser(int width, int height)
 
     // 创建新的浏览器
     CefWindowInfo window_info;
-    CefRect cefrect; //(rect.left, rect.top, rect.right, rect.bottom);
+    CefRect cefrect = getWindowRect(_hwnd);
+    cefrect.x = cefrect.y = 0; // 确保坐标从0开始
     window_info.SetAsChild(_hwnd, cefrect);
 
     CefBrowserSettings browser_settings;
