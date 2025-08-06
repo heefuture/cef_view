@@ -1,6 +1,6 @@
 #include "CefHandler.h"
 
-#include <util/util.h>
+#include <utils/util.h>
 
 #include "include/cef_app.h"
 #include "include/cef_frame.h"
@@ -286,6 +286,37 @@ void CefHandler::OnAcceleratedPaint(CefRefPtr<CefBrowser> browser,
     }
 }
 
+bool CefHandler::StartDragging(CefRefPtr<CefBrowser> browser,
+        CefRefPtr<CefDragData> drag_data,
+        CefRenderHandler::DragOperationsMask allowed_ops,
+        int x, int y)
+{
+    REQUIRE_UI_THREAD();
+    if (handle_delegate_) {
+        handle_delegate_->startDragging(browser, drag_data, allowed_ops, x, y);
+    }
+}
+
+void CefHandler::UpdateDragCursor(CefRefPtr<CefBrowser> browser,
+        CefRenderHandler::DragOperation operation)
+{
+    REQUIRE_UI_THREAD();
+    if (handle_delegate_) {
+        handle_delegate_->updateDragCursor(browser, operation);
+    }
+}
+
+void CefHandler::OnImeCompositionRangeChanged(
+        CefRefPtr<CefBrowser> browser,
+        const CefRange& selection_range,
+        const CefRenderHandler::RectList& character_bounds)
+{
+    REQUIRE_UI_THREAD();
+    if (handle_delegate_) {
+        handle_delegate_->onImeCompositionRangeChanged(browser, selection_range, character_bounds);
+    }
+}
+
 #pragma endregion
 
 #pragma region CefContextMenuHandler
@@ -363,6 +394,7 @@ bool CefHandler::OnCursorChange(CefRefPtr<CefBrowser> browser, CefCursorHandle c
     }
     return false;
 }
+
 
 bool CefHandler::OnConsoleMessage(CefRefPtr<CefBrowser> browser, cef_log_severity_t level, const CefString& message, const CefString& source, int line)
 {

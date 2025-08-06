@@ -2,16 +2,20 @@
 // reserved. Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
-#ifndef CEF_TESTS_CEFCLIENT_BROWSER_UTIL_WIN_H_
-#define CEF_TESTS_CEFCLIENT_BROWSER_UTIL_WIN_H_
+#ifndef CEF_TESTS_SHARED_BROWSER_UTIL_WIN_H_
+#define CEF_TESTS_SHARED_BROWSER_UTIL_WIN_H_
 #pragma once
 
 #include <windows.h>
+
 #include <string>
 
 #include "include/internal/cef_types_wrappers.h"
 
-namespace cef {
+namespace client {
+
+// Returns the current time in microseconds.
+uint64_t GetTimeNow();
 
 // Set the window's user data pointer.
 void SetUserDataPtr(HWND hWnd, void* ptr);
@@ -38,4 +42,4 @@ float GetDeviceScaleFactor();
 
 }  // namespace client
 
-#endif  // CEF_TESTS_CEFCLIENT_BROWSER_UTIL_WIN_H_
+#endif  // CEF_TESTS_SHARED_BROWSER_UTIL_WIN_H_

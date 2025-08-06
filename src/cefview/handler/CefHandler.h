@@ -84,6 +84,17 @@ public:
 
         virtual void onPopupSize(CefRefPtr<CefBrowser> browser, const CefRect& rect) = 0;
 
+        virtual bool startDragging(CefRefPtr<CefBrowser> browser,
+            CefRefPtr<CefDragData> drag_data,
+            CefRenderHandler::DragOperationsMask allowed_ops,
+            int x, int y) = 0;
+
+        virtual void updateDragCursor(CefRefPtr<CefBrowser> browser, CefRenderHandler::DragOperation operation) = 0;
+
+        virtual void onImeCompositionRangeChanged(CefRefPtr<CefBrowser> browser,
+            const CefRange& selection_range,
+            const CefRenderHandler::RectList& character_bounds) = 0;
+
         // 在非UI线程中被调用
         virtual void onBeforeContextMenu(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefContextMenuParams> params, CefRefPtr<CefMenuModel> model) = 0;
 
@@ -99,9 +110,9 @@ public:
         virtual void onTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title) = 0;
 
         virtual bool onCursorChange(CefRefPtr<CefBrowser> browser,
-                              CefCursorHandle cursor,
-                              cef_cursor_type_t type,
-                              const CefCursorInfo& custom_cursor_info) = 0;
+            CefCursorHandle cursor,
+            cef_cursor_type_t type,
+            const CefCursorInfo& custom_cursor_info) = 0;
 
         virtual void onLoadingStateChange(CefRefPtr<CefBrowser> browser, bool isLoading, bool canGoBack, bool canGoForward) = 0;
 
@@ -237,19 +248,18 @@ public:
         const RectList &dirtyRects,
         const CefAcceleratedPaintInfo &info) override;
 
-    virtual bool OnCursorChange(CefRefPtr<CefBrowser> browser,
-        CefCursorHandle cursor,
-        cef_cursor_type_t type,
-        const CefCursorInfo &custom_cursor_info) override;
+    virtual bool StartDragging(CefRefPtr<CefBrowser> browser,
+        CefRefPtr<CefDragData> drag_data,
+        CefRenderHandler::DragOperationsMask allowed_ops,
+        int x, int y) override;
 
-    // virtual bool StartDragging(CefRefPtr<CefBrowser> browser,
-    //     CefRefPtr<CefDragData> drag_data,
-    //     CefRenderHandler::DragOperationsMask allowed_ops,
-    //     int x,
-    //     int y) override;
-    //
-    // virtual void UpdateDragCursor(CefRefPtr<CefBrowser> browser,
-    //     CefRenderHandler::DragOperation operation) override;
+    virtual void UpdateDragCursor(CefRefPtr<CefBrowser> browser,
+        CefRenderHandler::DragOperation operation) override;
+
+    virtual void OnImeCompositionRangeChanged(
+        CefRefPtr<CefBrowser> browser,
+        const CefRange& selection_range,
+        const CefRenderHandler::RectList& character_bounds) override;
 
     // CefContextMenuHandler methods
     virtual void OnBeforeContextMenu(CefRefPtr<CefBrowser> browser,
@@ -269,6 +279,11 @@ public:
         const CefString& url) override;
 
     virtual void OnTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title) override;
+
+    virtual bool OnCursorChange(CefRefPtr<CefBrowser> browser,
+        CefCursorHandle cursor,
+        cef_cursor_type_t type,
+        const CefCursorInfo &custom_cursor_info) override;
 
     virtual bool OnConsoleMessage(CefRefPtr<CefBrowser> browser,
         cef_log_severity_t level,

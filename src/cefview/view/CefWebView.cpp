@@ -117,7 +117,7 @@ HWND CefWebView::createSubWindow(HWND parentHwnd, int x, int y,int width, int he
                         WS_EX_NOPARENTNOTIFY,  // do not bother our parent window
                         className,
                         L"CefWindow",
-                        WS_CHILD|WS_DISABLED,
+                        WS_CHILD,
                         0,0,width,height,
                         parentHwnd,
                         nullptr,

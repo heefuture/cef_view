@@ -3,7 +3,7 @@
 #include "CefJsBridgeRender.h"
 #include "CefClient.h"
 
-#include <util/util.h>
+#include <utils/util.h>
 #include <sstream>
 namespace cef
 {
@@ -172,10 +172,10 @@ bool ClientAppExtensionHandler::Execute(
             assert(frame.get());
             if (frame.get())
             {
-                CefString name = arguments[0]->GetStringValue();
-                if (!name.empty())
+                CefString msgName = arguments[0]->GetStringValue();
+                if (!msgName.empty())
                 {
-                    CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(name);
+                    CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(msgName);
                     // Translate the arguments, if any.
                     if (arguments.size() == 2 && arguments[1]->IsArray())
                         SetList(arguments[1], message->GetArgumentList());
@@ -191,7 +191,7 @@ bool ClientAppExtensionHandler::Execute(
         if (arguments.size() == 2 && arguments[0]->IsString() &&
             arguments[1]->IsFunction())
         {
-            std::string name = arguments[0]->GetStringValue();
+            std::string msgName = arguments[0]->GetStringValue();
             CefRefPtr<CefV8Context> context = CefV8Context::GetCurrentContext();
             if (context.get())
             {
@@ -199,7 +199,7 @@ bool ClientAppExtensionHandler::Execute(
                 if (browser.get())
                 {
                     int browser_id = context->GetBrowser()->GetIdentifier();
-                    _renderDelegate->setMessageCallback(name, browser_id, context,
+                    _renderDelegate->setMessageCallback(msgName, browser_id, context,
                                                     arguments[1]);
                     handled = true;
                 }
@@ -211,7 +211,7 @@ bool ClientAppExtensionHandler::Execute(
         // Remove a message callback.
         if (arguments.size() == 1 && arguments[0]->IsString())
         {
-            std::string name = arguments[0]->GetStringValue();
+            std::string msgName = arguments[0]->GetStringValue();
             CefRefPtr<CefV8Context> context = CefV8Context::GetCurrentContext();
             if (context.get())
             {
@@ -219,7 +219,7 @@ bool ClientAppExtensionHandler::Execute(
                 if (browser.get())
                 {
                     int browser_id = browser->GetIdentifier();
-                    bool removed = _renderDelegate->removeMessageCallback(name, browser_id);
+                    bool removed = _renderDelegate->removeMessageCallback(msgName, browser_id);
                     retval = CefV8Value::CreateBool(removed);
                     handled = true;
                 }

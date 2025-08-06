@@ -172,6 +172,17 @@ private:
 
     virtual void onPopupSize(CefRefPtr<CefBrowser> browser, const CefRect &rect) override;
 
+    virtual bool startDragging(CefRefPtr<CefBrowser> browser,
+        CefRefPtr<CefDragData> drag_data,
+        CefRenderHandler::DragOperationsMask allowed_ops,
+        int x, int y) override;
+
+    virtual void updateDragCursor(CefRefPtr<CefBrowser> browser, CefRenderHandler::DragOperation operation) override;
+
+    virtual void onImeCompositionRangeChanged(CefRefPtr<CefBrowser> browser,
+        const CefRange& selection_range,
+        const CefRenderHandler::RectList& character_bounds) override;
+
     // 在非UI线程中被调用
     virtual void onBeforeContextMenu(CefRefPtr<CefBrowser> browser,
         CefRefPtr<CefFrame> frame,

@@ -237,6 +237,26 @@ void CefWebViewBase::onPopupSize(CefRefPtr<CefBrowser> browser, const CefRect& r
     return;
 }
 
+bool CefWebViewBase::startDragging(CefRefPtr<CefBrowser> browser,
+    CefRefPtr<CefDragData> drag_data,
+    CefRenderHandler::DragOperationsMask allowed_ops,
+    int x, int y)
+{
+    return false;
+}
+
+void CefWebViewBase::updateDragCursor(CefRefPtr<CefBrowser> browser, CefRenderHandler::DragOperation operation)
+{
+    return;
+}
+
+void CefWebViewBase::onImeCompositionRangeChanged(CefRefPtr<CefBrowser> browser,
+    const CefRange& selection_range,
+    const CefRenderHandler::RectList& character_bounds)
+{
+    return;
+}
+
 void CefWebViewBase::onBeforeContextMenu(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefContextMenuParams> params, CefRefPtr<CefMenuModel> model)
 {
     return;
