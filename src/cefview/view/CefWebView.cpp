@@ -4,7 +4,7 @@
 
 #include <sstream>
 
-namespace cef {
+namespace cefview {
 
 typedef void (*SubWindowRepaintCallback)(void*);
 // struct SubWindowUserData {

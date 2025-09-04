@@ -1,8 +1,16 @@
+/**
+* @file        CefSwitches.h
+* @brief       defines all of the command line switches used by cefView.
+* @version     1.0
+* @author      heefuture
+* @date        2025.09.04
+* @copyright
+*/
 #ifndef CEFSWITCHES_H
 #define CEFSWITCHES_H
 #pragma once
 
-namespace cef {
+namespace cefview {
 
 /* Defines all of the command line switches used by cefclient. */
 extern const char kNoProxyServer[];
@@ -34,6 +42,6 @@ extern const char kCallCppFunctionMessage[];     // web调用C++接口接口的�
 extern const char kExecuteJsCallbackMessage[];   // web调用C++接口接口的通知
 extern const char kCallJsFunctionMessage[];      // C++ 调用 JavaScript 通知
 
-}  // namespace cef
+}  // namespace cefview
 
 #endif //!CEFSWITCHES_H

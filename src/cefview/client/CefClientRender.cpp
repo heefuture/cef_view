@@ -15,7 +15,7 @@
 #include "CefJsBridgeRender.h"
 #include "CefJsHandler.h"
 
-namespace cef
+namespace cefview
 {
 
 #define UNCAUGHT_EXCEPTION_LOG_FILE_NAME "browser_uncaught_exception_"

@@ -2,7 +2,7 @@
 
 #include "CefWebViewBase.h"
 
-using namespace cef;
+using namespace cefview;
 
 CefWebViewBase::CefWebViewBase()
 {
@@ -139,13 +139,13 @@ CefWindowHandle CefWebViewBase::getWindowHandle() const
     return NULL;
 }
 
-void CefWebViewBase::registerProcessMessageHandler(ProcessMessageHandler* handler)
-{
-    if (handler) {
-        CefRefPtr<ProcessMessageDelegateWrapper> delegateWrapper = new ProcessMessageDelegateWrapper(handler);
-        _cefHandler->RegisterProcessMessageDelegates(delegateWrapper);
-    }
-}
+// void CefWebViewBase::registerProcessMessageHandler(ProcessMessageHandler* handler)
+// {
+//     if (handler) {
+//         CefRefPtr<ProcessMessageDelegateWrapper> delegateWrapper = new ProcessMessageDelegateWrapper(handler);
+//         _cefHandler->RegisterProcessMessageDelegates(delegateWrapper);
+//     }
+// }
 
 bool CefWebViewBase::openDevTools()
 {

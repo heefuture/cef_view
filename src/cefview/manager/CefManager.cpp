@@ -1,5 +1,5 @@
 #include "CefManager.h"
-#include <client/CefClient.h>
+#include <client/CefViewApp.h>
 #include <string>
 
 //#include "cefclient/client_switches.h"
@@ -8,7 +8,7 @@
 //
 #define SUB_PROCESS_DISABLED
 
-namespace cef{
+namespace cefview {
 
 CefManager* CefManager::getInstance() {
     static CefManager typeInstance;

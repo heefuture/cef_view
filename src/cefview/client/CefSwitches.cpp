@@ -1,7 +1,7 @@
 
 #include "CefSwitches.h"
 
-namespace cef {
+namespace cefview {
 
 // CEF and Chromium support a wide range of command-line switches. This file
 // only contains command-line switches specific to the cefclient application.
@@ -44,4 +44,4 @@ const char kCallCppFunctionMessage[] = "CallCppFunction";
 const char kExecuteJsCallbackMessage[] = "ExecuteJsCallback";
 const char kCallJsFunctionMessage[] = "CallJsFunction";
 
-}  // namespace cefclient
+}  // namespace cefview

@@ -3,7 +3,7 @@
 
 #include <map>
 #include <functional>
-namespace cef
+namespace cefview
 {
 
 typedef std::function<void(const std::string& result)> CallJsFunctionCallback;

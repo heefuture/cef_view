@@ -3,16 +3,16 @@
 #pragma once
 
 #include "include/cef_base.h"
-#include <client/CefClient.h>
+#include <client/CefViewApp.h>
 
-namespace cef {
+namespace cefview {
 
 // Message sent when the focused node changes.
 extern const char kFocusedNodeChangedMessage[];
 
 // Create the render delegate.
-void CreateRenderDelegatesInner(ClientApp::RenderDelegateSet& delegates);
+void CreateRenderDelegatesInner(CefViewApp::RenderDelegateSet& delegates);
 
-}  // namespace client_renderer
+}  // namespace cefview
 
 #endif //!CEFCLIENTRENDER_H

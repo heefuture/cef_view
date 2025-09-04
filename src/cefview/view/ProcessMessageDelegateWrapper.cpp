@@ -4,9 +4,9 @@
 #include "ProcessMessageDelegateWrapper.h"
 #include "include/wrapper/cef_stream_resource_handler.h"
 
-using namespace cef;
-ProcessMessageDelegateWrapper::ProcessMessageDelegateWrapper(cef::ProcessMessageHandler* msgHandler) :
-    _handler(msgHandler, [](cef::ProcessMessageHandler* inst) { inst->releseAndDelete(); }) {
+using namespace cefview;
+ProcessMessageDelegateWrapper::ProcessMessageDelegateWrapper(cefview::ProcessMessageHandler* msgHandler) :
+    _handler(msgHandler, [](cefview::ProcessMessageHandler* inst) { inst->releaseAndDelete(); }) {
 }
 
   // From CefHandler::ProcessMessageDelegate.
@@ -24,7 +24,7 @@ bool ProcessMessageDelegateWrapper::onProcessMessageReceived(
         CefRefPtr<CefListValue> args = message->GetArgumentList();
         if (args->GetSize() > 0 && args->GetType(0) == VTYPE_STRING) {
             std::string strArgs = args->GetString(0).ToString();
-            result = _handler->hanldeProcessMessage(strArgs);
+            result = _handler->handleProcessMessage(strArgs);
         }
         else {
             result = "Invalid request";

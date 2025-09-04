@@ -8,9 +8,9 @@
 #include "include/cef_base.h"
 #include "include/cef_app.h"
 
-#include <client/CefClient.h>
+#include <client/CefViewApp.h>
 
-namespace cef
+namespace cefview
 {
 class CefJsBridgeRender;
 
@@ -30,7 +30,7 @@ private:
 class ClientAppExtensionHandler : public CefV8Handler
 {
 public:
-    explicit ClientAppExtensionHandler(CefRefPtr<ClientApp::RenderDelegate> renderDelegate)
+    explicit ClientAppExtensionHandler(CefRefPtr<CefViewApp::RenderDelegate> renderDelegate)
         : _renderDelegate(renderDelegate)
     {
     }
@@ -43,7 +43,7 @@ public:
         CefString& exception) override;
 
 private:
-    CefRefPtr<ClientApp::RenderDelegate> _renderDelegate;
+    CefRefPtr<CefViewApp::RenderDelegate> _renderDelegate;
 
     IMPLEMENT_REFCOUNTING(ClientAppExtensionHandler);
 };

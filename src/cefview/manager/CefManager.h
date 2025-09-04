@@ -5,7 +5,7 @@
 #include "include/cef_app.h"
 #include <utils/export.h>
 
-namespace cef {
+namespace cefview {
 
 class WEBVIEW_EXPORTS CefManager
 {

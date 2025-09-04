@@ -1,7 +1,7 @@
 #include "CefJsBridgeBrowser.h"
 #include <client/CefSwitches.h>
 
-namespace cef
+namespace cefview
 {
 
 CefJsBridgeBrowser::CefJsBridgeBrowser()

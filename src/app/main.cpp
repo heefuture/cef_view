@@ -5,7 +5,7 @@
 #include <view/CefWebViewBase.h>
 #include <manager/CefManager.h>
 
-using namespace cef;
+using namespace cefview;
 
 // typedef void (*SubWindowRepaintCallback)(void*);
 

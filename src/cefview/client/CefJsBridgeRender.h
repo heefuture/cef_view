@@ -3,7 +3,7 @@
 
 #include <map>
 
-namespace cef
+namespace cefview
 {
 
 typedef std::map<int/* jsCallbackid*/, std::pair<CefRefPtr<CefV8Context>/* context*/, CefRefPtr<CefV8Value>/* callback*/>> RenderCallbackMap;

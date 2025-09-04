@@ -15,12 +15,12 @@
 #include <memory>
 #include <string>
 
-namespace cef {
+namespace cefview {
 
     class ProcessMessageHandler {
     public:
-        virtual void releseAndDelete() = 0;
-        virtual std::string hanldeProcessMessage(const std::string& request) = 0;
+        virtual void releaseAndDelete() = 0;
+        virtual std::string handleProcessMessage(const std::string& request) = 0;
     };
 }
 

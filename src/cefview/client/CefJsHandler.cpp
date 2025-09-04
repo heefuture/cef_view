@@ -1,11 +1,11 @@
 #include "CefJsHandler.h"
 #include "CefSwitches.h"
 #include "CefJsBridgeRender.h"
-#include "CefClient.h"
+#include "CefViewApp.h"
 
 #include <utils/util.h>
 #include <sstream>
-namespace cef
+namespace cefview
 {
 // Forward declarations.
 void SetList(CefRefPtr<CefV8Value> source, CefRefPtr<CefListValue> target);

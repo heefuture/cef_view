@@ -4,13 +4,13 @@
 * @version     1.0
 * @author      heefuture
 * @date        2025.07.08
-* @copyright   Copyright (C) 2025 Tencent. All rights reserved.
+* @copyright
 */
 #ifndef CEFVIEWLISTENER_H
 #define CEFVIEWLISTENER_H
 #pragma once
 #include <string>
-namespace cef
+namespace cefview
 {
 class CefWebViewListener {
     public:

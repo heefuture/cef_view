@@ -15,10 +15,10 @@
 #include <view/ProcessMessageHandler.h>
 #include <memory>
 
-namespace cef {
+namespace cefview {
 class ProcessMessageDelegateWrapper : public CefHandler::ProcessMessageDelegate {
 public:
-    ProcessMessageDelegateWrapper(cef::ProcessMessageHandler* msgHandler);
+    ProcessMessageDelegateWrapper(cefview::ProcessMessageHandler* msgHandler);
     bool onProcessMessageReceived(
         CefRefPtr<CefHandler> handler,
         CefRefPtr<CefBrowser> browser,
@@ -28,7 +28,7 @@ public:
 
     IMPLEMENT_REFCOUNTING(ProcessMessageDelegateWrapper);
 private:
-    std::shared_ptr<cef::ProcessMessageHandler> _handler;
+    std::shared_ptr<cefview::ProcessMessageHandler> _handler;
 };
 }
 #endif //!PROCESSMESSAGEDELEGATEWRAPPER_H

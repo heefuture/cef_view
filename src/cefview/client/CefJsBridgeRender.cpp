@@ -1,7 +1,7 @@
 #include "CefJsBridgeRender.h"
 #include "CefSwitches.h"
 
-namespace cef {
+namespace cefview {
 
 CefJsBridgeRender::CefJsBridgeRender()
 {

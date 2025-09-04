@@ -19,7 +19,7 @@
 #include <memory>
 #include <functional>
 
-namespace cef{
+namespace cefview {
 
 class CefWebViewBase : public CefHandler::HandlerDelegate
 {
@@ -110,11 +110,11 @@ public:
     */
     virtual void resize(int width, int height);
 
-    /**
-    * @brief 注册一个 ProcessMessageHandler 对象，主要用来处理js消息
-    * @param [in] handler ProcessMessageHandler 对象指针
-    */
-    virtual void registerProcessMessageHandler(ProcessMessageHandler* handler);
+    // /**
+    // * @brief 注册一个 ProcessMessageHandler 对象，主要用来处理js消息
+    // * @param [in] handler ProcessMessageHandler 对象指针
+    // */
+    // virtual void registerProcessMessageHandler(ProcessMessageHandler* handler);
 
     /**
     * @brief 打开开发者工具

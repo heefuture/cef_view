@@ -15,7 +15,7 @@
 
 #include <windows.h>
 #include <string>
-namespace cef {
+namespace cefview {
 
 class CefWebView : public CefWebViewBase
 {
