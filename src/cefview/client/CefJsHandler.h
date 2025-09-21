@@ -18,7 +18,12 @@ class CefJSHandler : public CefV8Handler
 {
 public:
     CefJSHandler() {}
-    virtual bool Execute(const CefString& name,	CefRefPtr<CefV8Value> object, const CefV8ValueList& arguments, CefRefPtr<CefV8Value>& retval, CefString& exception) override;
+    virtual bool Execute(const CefString& name,
+                         CefRefPtr<CefV8Value> object,
+                         const CefV8ValueList& arguments,
+                         CefRefPtr<CefV8Value>& retval,
+                         CefString& exception) override;
+
     void AttachJSBridge(std::shared_ptr<CefJsBridgeRender> jsBridge) { _jsBridge = jsBridge; }
 
     IMPLEMENT_REFCOUNTING(CefJSHandler);
@@ -30,20 +35,19 @@ private:
 class ClientAppExtensionHandler : public CefV8Handler
 {
 public:
-    explicit ClientAppExtensionHandler(CefRefPtr<CefViewApp::RenderDelegate> renderDelegate)
+    explicit ClientAppExtensionHandler(CefRefPtr<CefViewAppDelegateBase> renderDelegate)
         : _renderDelegate(renderDelegate)
     {
     }
 
-    virtual bool Execute(
-        const CefString& name,
-        CefRefPtr<CefV8Value> object,
-        const CefV8ValueList& arguments,
-        CefRefPtr<CefV8Value>& retval,
-        CefString& exception) override;
+    virtual bool Execute(const CefString& name,
+                         CefRefPtr<CefV8Value> object,
+                         const CefV8ValueList& arguments,
+                         CefRefPtr<CefV8Value>& retval,
+                         CefString& exception) override;
 
 private:
-    CefRefPtr<CefViewApp::RenderDelegate> _renderDelegate;
+    CefRefPtr<CefViewAppDelegateBase> _renderDelegate;
 
     IMPLEMENT_REFCOUNTING(ClientAppExtensionHandler);
 };

@@ -12,7 +12,7 @@
 
 #include "include/internal/cef_types_wrappers.h"
 
-namespace client {
+namespace cefview {
 
 // Returns the current time in microseconds.
 uint64_t GetTimeNow();
@@ -40,6 +40,7 @@ bool IsKeyDown(WPARAM wparam);
 // return 2.0.
 float GetDeviceScaleFactor();
 
+CefRect getWindowRect(HWND hwnd);
 }  // namespace client
 
 #endif  // CEF_TESTS_SHARED_BROWSER_UTIL_WIN_H_

@@ -191,4 +191,12 @@ float GetDeviceScaleFactor() {
   return scale_factor;
 }
 
+CefRect getWindowRect(HWND hwnd) {
+    RECT rect;
+    ::GetClientRect(hwnd, &rect);
+    ::ClientToScreen(hwnd, (LPPOINT)&rect.left);
+    ::ClientToScreen(hwnd, (LPPOINT)&rect.right);
+    return CefRect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+}
+
 }  // namespace client

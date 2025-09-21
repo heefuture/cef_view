@@ -1,16 +1,16 @@
 #include <algorithm>
 #include <string>
 #include <memory>
-#include "ProcessMessageDelegateWrapper.h"
+#include "ProcessMessageDelegate.h"
 #include "include/wrapper/cef_stream_resource_handler.h"
 
 using namespace cefview;
-ProcessMessageDelegateWrapper::ProcessMessageDelegateWrapper(cefview::ProcessMessageHandler* msgHandler) :
+ProcessMessageDelegate::ProcessMessageDelegate(cefview::ProcessMessageHandler* msgHandler) :
     _handler(msgHandler, [](cefview::ProcessMessageHandler* inst) { inst->releaseAndDelete(); }) {
 }
 
   // From CefHandler::ProcessMessageDelegate.
-bool ProcessMessageDelegateWrapper::onProcessMessageReceived(
+bool ProcessMessageDelegate::onProcessMessageReceived(
         CefRefPtr<CefHandler> handler,
         CefRefPtr<CefBrowser> browser,
         CefRefPtr<CefFrame> frame,

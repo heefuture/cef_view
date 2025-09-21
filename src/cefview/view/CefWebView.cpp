@@ -1,4 +1,5 @@
 #include "CefWebView.h"
+#include <utils/util_win.h>
 #include "include/cef_browser.h"
 #include "include/cef_frame.h"
 
@@ -25,14 +26,6 @@ static LRESULT CALLBACK subWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
     //     delete user_data;
     // }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
-}
-
-CefRect getWindowRect(HWND hwnd) {
-    RECT rect;
-    ::GetClientRect(hwnd, &rect);
-    ::ClientToScreen(hwnd, (LPPOINT)&rect.left);
-    ::ClientToScreen(hwnd, (LPPOINT)&rect.right);
-    return CefRect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 }
 
 CefWebView::CefWebView(HWND parentHwnd)
@@ -169,25 +162,8 @@ void CefWebView::setRect(int left, int top, int width, int height)
     if (_hwnd) {
         ::SetWindowPos(_hwnd, nullptr, left, top, width, height, SWP_NOZORDER);
     }
-    __super::resize(width, height);
+    _clientDelegate->resize(width, height);
 }
-
-// void CefWebView::HandleMessage(EventArgs& event)
-// {
-//     if (_cefHandler.get() && _cefHandler->GetBrowser().get() == NULL)
-//         return __super::HandleMessage(event);
-
-//     else if (event.Type == kEventInternalSetFocus)
-//     {
-//         _cefHandler->GetBrowserHost()->SetFocus(true);
-//     }
-//     else if (event.Type == kEventInternalKillFocus)
-//     {
-//         _cefHandler->GetBrowserHost()->SetFocus(false);
-//     }
-
-//     __super::HandleMessage(event);
-// }
 
 void CefWebView::setVisible(bool bVisible /*= true*/)
 {
@@ -201,42 +177,5 @@ void CefWebView::setVisible(bool bVisible /*= true*/)
         }
     }
 }
-
-bool CefWebView::getRootScreenRect(CefRefPtr<CefBrowser> browser, CefRect &rect) {
-    RECT window_rect = { 0 };
-    HWND root_window = GetAncestor(_hwnd, GA_ROOT);
-    if (::GetWindowRect(root_window, &window_rect)) {
-        rect = CefRect(window_rect.left, window_rect.top,
-                       window_rect.right - window_rect.left, window_rect.bottom - window_rect.top);
-        return true;
-    }
-    return false;
-}
-
-void CefWebView::getViewRect(CefRefPtr<CefBrowser> browser, CefRect &rect) {
-    rect.x = rect.y = 0;
-    rect = getWindowRect(_hwnd);
-    if (rect.IsEmpty()) {
-        rect.width = 1;
-        rect.height = 1;
-    }
-}
-
-bool CefWebView::getScreenPoint(CefRefPtr<CefBrowser> browser, int viewX, int viewY, int &screenX, int &screenY) {
-    if (!::IsWindow(_hwnd)) return false;
-
-    // Convert the point from view coordinates to actual screen coordinates.
-    POINT screen_pt = { viewX, viewY };
-    ::ClientToScreen(_hwnd, &screen_pt);
-    screenX = screen_pt.x;
-    screenY = screen_pt.y;
-    return true;
-}
-
-bool CefWebView::getScreenInfo(CefRefPtr<CefBrowser> browser, CefScreenInfo &screenInfo) {
-
-    return false;
-}
-
 
 }

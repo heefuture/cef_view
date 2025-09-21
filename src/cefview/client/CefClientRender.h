@@ -10,8 +10,8 @@ namespace cefview {
 // Message sent when the focused node changes.
 extern const char kFocusedNodeChangedMessage[];
 
-// Create the render delegate.
-void CreateRenderDelegatesInner(CefViewApp::RenderDelegateSet& delegates);
+// // Create the render delegate.
+// void CreateRenderDelegatesInner(CefViewApp::RenderDelegateSet& delegates);
 
 }  // namespace cefview
 

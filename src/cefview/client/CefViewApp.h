@@ -32,7 +32,7 @@ public:
 
 public:
     CefViewApp();
-
+    ~CefViewApp();
 private:
 #pragma region CefApp
     /////////////////////////////////////// CefApp methods: /////////////////////////////////////
@@ -85,7 +85,7 @@ private:
     // static void CreateRenderDelegates(RenderDelegateSet& delegates);
 
 private:
-    ViewAppDelegateSet viewAppDelegates_;
+    ViewAppDelegateSet _viewAppDelegates;
 
     IMPLEMENT_REFCOUNTING(CefViewApp);
 };

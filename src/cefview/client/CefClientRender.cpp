@@ -39,13 +39,13 @@ std::shared_ptr<std::ofstream> getLogFileStream() {
 }
 //////////////////////////////////////////////////////////////////////////////////////////
 // CefRenderProcessHandler methods.
-class ClientRenderDelegate : public ClientApp::RenderDelegate {
+class ClientRenderDelegate : public CefViewAppDelegateBase {
 public:
     ClientRenderDelegate()
-      : lastNodeIsEditable_(false) {
+      : _lastNodeIsEditable(false) {
     }
 
-    virtual void onWebKitInitialized(CefRefPtr<ClientApp> app) override
+    virtual void onWebKitInitialized() override
     {
         // DWORD pid = GetCurrentProcessId();
         // DWORD tid = GetCurrentThreadId();
@@ -135,26 +135,23 @@ public:
         }
     }
 
-    virtual void onFocusedNodeChanged(CefRefPtr<ClientApp> app, CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefFrame> frame, CefRefPtr<CefDOMNode> node) override
+    virtual void onFocusedNodeChanged(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefDOMNode> node) override
     {
         bool isEditable = (node.get() && node->IsEditable());
-        if (isEditable != lastNodeIsEditable_) {
+        if (isEditable != _lastNodeIsEditable) {
             // Notify the browser of the change in focused element type.
-            lastNodeIsEditable_ = isEditable;
+            _lastNodeIsEditable = isEditable;
             CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kFocusedNodeChangedMessage);
             message->GetArgumentList()->SetBool(0, isEditable);
             frame->SendProcessMessage(PID_BROWSER, message);
         }
     }
 
-    virtual void onUncaughtException(
-        CefRefPtr<ClientApp> app,
-        CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefFrame> frame,
-        CefRefPtr<CefV8Context> context,
-        CefRefPtr<CefV8Exception> exception,
-        CefRefPtr<CefV8StackTrace> stackTrace) override
+    virtual void onUncaughtException(CefRefPtr<CefBrowser> browser,
+                                     CefRefPtr<CefFrame> frame,
+                                     CefRefPtr<CefV8Context> context,
+                                     CefRefPtr<CefV8Exception> exception,
+                                     CefRefPtr<CefV8StackTrace> stackTrace) override
     {
 
         std::shared_ptr<std::ofstream> logFileStream = getLogFileStream();
@@ -166,11 +163,7 @@ public:
         }
     }
 
-    virtual bool onProcessMessageReceived(
-        CefRefPtr<ClientApp> app,
-        CefRefPtr<CefBrowser> browser,
-        CefProcessId source_process,
-        CefRefPtr<CefProcessMessage> message) override
+    virtual bool onProcessMessageReceived(CefRefPtr<CefBrowser> browser, CefProcessId source_process, CefRefPtr<CefProcessMessage> message) override
     {
         assert(source_process == PID_BROWSER);
         // 收到 browser 的消息回复
@@ -199,11 +192,10 @@ public:
         return false;
     }
 
-    virtual void setMessageCallback(
-        const std::string& messageName,
-        int browserId,
-        CefRefPtr<CefV8Context> context,
-        CefRefPtr<CefV8Value> function) override
+    virtual void setMessageCallback(const std::string& messageName,
+                                    int browserId,
+                                    CefRefPtr<CefV8Context> context,
+                                    CefRefPtr<CefV8Value> function) override
     {
         assert(CefCurrentlyOn(TID_RENDERER));
 
@@ -224,20 +216,18 @@ public:
     }
 
 private:
-    bool lastNodeIsEditable_;
+    bool _lastNodeIsEditable;
     // Map of message callbacks.
     typedef std::map<std::pair<std::string, int>,
                      std::pair<CefRefPtr<CefV8Context>, CefRefPtr<CefV8Value>>> CallbackMap;
     CallbackMap _callbackMap;
 
     std::shared_ptr<CefJsBridgeRender> _renderJsBridge;
-
-    IMPLEMENT_REFCOUNTING(ClientRenderDelegate);
 };
 
-void CreateRenderDelegatesInner(ClientApp::RenderDelegateSet& delegates) {
-  delegates.insert(new ClientRenderDelegate);
-}
+// void CreateRenderDelegatesInner(ClientApp::RenderDelegateSet& delegates) {
+//   delegates.insert(new ClientRenderDelegate);
+// }
 
 #if defined(OS_WIN)
 CefString AppGetTempDirectory() {

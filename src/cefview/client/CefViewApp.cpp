@@ -19,6 +19,10 @@ CefViewApp::CefViewApp()
 {
 }
 
+CefViewApp::~CefViewApp()
+{
+    _viewAppDelegates.clear();
+}
 //////////////////////////////////////////////////////////////////////////////////////////
 // CefApp methods.
 void CefViewApp::OnBeforeCommandLineProcessing(const CefString& process_type, CefRefPtr<CefCommandLine> command_line)
@@ -40,7 +44,7 @@ void CefViewApp::OnBeforeCommandLineProcessing(const CefString& process_type, Ce
 // CefBrowserProcessHandler methods.
 void CefViewApp::OnContextInitialized()
 {
-    for (auto& weakDelegate : viewAppDelegates_) {
+    for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
             delegate->onContextInitialized();
         }
@@ -49,7 +53,7 @@ void CefViewApp::OnContextInitialized()
 
 void CefViewApp::OnBeforeChildProcessLaunch(CefRefPtr<CefCommandLine> command_line)
 {
-    for (auto& weakDelegate : viewAppDelegates_) {
+    for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
             delegate->onBeforeChildProcessLaunch(command_line);
         }
@@ -60,7 +64,7 @@ void CefViewApp::OnBeforeChildProcessLaunch(CefRefPtr<CefCommandLine> command_li
 // CefRenderProcessHandler methods.
 void CefViewApp::OnWebKitInitialized()
 {
-    for (auto& weakDelegate : viewAppDelegates_) {
+    for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
             delegate->onWebKitInitialized();
         }
@@ -69,7 +73,7 @@ void CefViewApp::OnWebKitInitialized()
 
 void CefViewApp::OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra_info)
 {
-    for (auto& weakDelegate : viewAppDelegates_) {
+    for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
             delegate->onBrowserCreated(browser, extra_info);
         }
@@ -78,7 +82,7 @@ void CefViewApp::OnBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDi
 
 void CefViewApp::OnBrowserDestroyed(CefRefPtr<CefBrowser> browser)
 {
-    for (auto& weakDelegate : viewAppDelegates_) {
+    for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
             delegate->onBrowserDestroyed(browser);
         }
@@ -87,7 +91,7 @@ void CefViewApp::OnBrowserDestroyed(CefRefPtr<CefBrowser> browser)
 
 void CefViewApp::OnContextCreated(CefRefPtr<CefBrowser> browser,	CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context)
 {
-    for (auto& weakDelegate : viewAppDelegates_) {
+    for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
             delegate->onContextCreated(browser, frame, context);
         }
@@ -96,7 +100,7 @@ void CefViewApp::OnContextCreated(CefRefPtr<CefBrowser> browser,	CefRefPtr<CefFr
 
 void CefViewApp::OnContextReleased(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,	CefRefPtr<CefV8Context> context)
 {
-    for (auto& weakDelegate : viewAppDelegates_) {
+    for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
             delegate->onContextReleased(browser, frame, context);
         }
@@ -109,7 +113,7 @@ void CefViewApp::OnUncaughtException(CefRefPtr<CefBrowser> browser,
                                      CefRefPtr<CefV8Exception> exception,
                                      CefRefPtr<CefV8StackTrace> stackTrace)
 {
-    for (auto& weakDelegate : viewAppDelegates_) {
+    for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
         delegate->onUncaughtException(browser, frame, context, exception, stackTrace);
         }
@@ -118,7 +122,7 @@ void CefViewApp::OnUncaughtException(CefRefPtr<CefBrowser> browser,
 
 void CefViewApp::OnFocusedNodeChanged(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefDOMNode> node)
 {
-    for (auto& weakDelegate : viewAppDelegates_) {
+    for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
             delegate->onFocusedNodeChanged(browser, frame, node);
         }
@@ -133,7 +137,7 @@ bool CefViewApp::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
     assert(source_process == PID_BROWSER);
 
     bool handled = false;
-    for (auto& weakDelegate : viewAppDelegates_) {
+    for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
             handled = delegate->onProcessMessageReceived(browser, source_process, message);
         }
@@ -144,13 +148,13 @@ bool CefViewApp::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // static
-void CefViewApp::CreateBrowserDelegates(ViewAppDelegateSet& delegates) {
-    CreateBrowserDelegatesInner(delegates);
+void CefViewApp::CreateViewAppDelegates(ViewAppDelegateSet& delegates) {
+   // CreateBrowserDelegatesInner(delegates);
 }
 
-// static
-void CefViewApp::CreateRenderDelegates(ViewAppDelegateSet& delegates) {
-    CreateRenderDelegatesInner(delegates);
-}
+// // static
+// void CefViewApp::CreateRenderDelegates(ViewAppDelegateSet& delegates) {
+//     CreateRenderDelegatesInner(delegates);
+// }
 
 }

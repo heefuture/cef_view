@@ -24,15 +24,101 @@ public:
     virtual ~CefViewClientDelegateBase() {}
 
 #pragma region CefClient
-    /////////////////////////////////////// CefClient methods: /////////////////////////////////////
     virtual bool onProcessMessageReceived(CefRefPtr<CefBrowser> browser,
                                           CefRefPtr<CefFrame> frame,
                                           CefProcessId source_process,
                                           CefRefPtr<CefProcessMessage> message) { return false; }
 #pragma endregion // CefClient
 
+#pragma region CefContextMenuHandler
+    // 在非UI线程中被调用
+    virtual void onBeforeContextMenu(CefRefPtr<CefBrowser> browser,
+                                     CefRefPtr<CefFrame> frame,
+                                     CefRefPtr<CefContextMenuParams> params,
+                                     CefRefPtr<CefMenuModel> model) = 0;
+
+    // 在非UI线程中被调用
+    virtual bool onContextMenuCommand(CefRefPtr<CefBrowser> browser,
+                                      CefRefPtr<CefFrame> frame,
+                                      CefRefPtr<CefContextMenuParams> params,
+                                      int command_id,
+                                      CefContextMenuHandler::EventFlags event_flags) = 0;
+#pragma endregion // CefContextMenuHandler
+
+#pragma region CefDisplayHandler
+        virtual void onAddressChange(CefRefPtr<CefBrowser> browser,	CefRefPtr<CefFrame> frame, const CefString& url) = 0;
+
+        virtual void onTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title) = 0;
+
+        virtual bool onCursorChange(CefRefPtr<CefBrowser> browser,
+                                    CefCursorHandle cursor,
+                                    cef_cursor_type_t type,
+                                    const CefCursorInfo& custom_cursor_info) = 0;
+
+        virtual bool onConsoleMessage(CefRefPtr<CefBrowser> browser,
+                                    cef_log_severity_t level,
+                                    const CefString& message,
+                                    const CefString& source,
+                                    int line) = 0;
+#pragma endregion // CefDisplayHandler
+
+#pragma region CefDownloadHandler
+    virtual bool onBeforeDownload(CefRefPtr<CefBrowser> browser,
+                                  CefRefPtr<CefDownloadItem> download_item,
+                                  const CefString& suggested_name,
+                                  CefRefPtr<CefBeforeDownloadCallback> callback) = 0;
+
+    virtual void onDownloadUpdated(CefRefPtr<CefBrowser> browser,
+                                   CefRefPtr<CefDownloadItem> download_item,
+                                   CefRefPtr<CefDownloadItemCallback> callback) = 0;
+#pragma endregion // CefDownloadHandler
+
+#pragma region CefDragHandler
+    virtual bool onDragEnter(CefRefPtr<CefBrowser> browser,
+                             CefRefPtr<CefDragData> drag_data,
+                             CefRenderHandler::DragOperationsMask mask) = 0;
+#pragma endregion // CefDragHandler
+
+#pragma region CefKeyboardHandler
+    virtual bool OnKeyEvent(CefRefPtr<CefBrowser> browser, const CefKeyEvent& event, CefEventHandle os_event) = 0;
+#pragma endregion // CefKeyboardHandler
+
+#pragma region CefLifeSpanHandler
+    // 在非UI线程中被调用
+    virtual bool onBeforePopup(CefRefPtr<CefBrowser> browser,
+                               CefRefPtr<CefFrame> frame,
+                               int popup_id,
+                               const CefString &target_url,
+                               const CefString &target_frame_name,
+                               CefLifeSpanHandler::WindowOpenDisposition target_disposition,
+                               bool user_gesture,
+                               const CefPopupFeatures &popupFeatures,
+                               CefWindowInfo &windowInfo,
+                               CefRefPtr<CefClient> &client,
+                               CefBrowserSettings &settings,
+                               CefRefPtr<CefDictionaryValue> &extra_info,
+                               bool *no_javascript_access) = 0;
+
+    virtual bool onAfterCreated(CefRefPtr<CefBrowser> browser) = 0;
+
+    virtual void onBeforeClose(CefRefPtr<CefBrowser> browser) = 0;
+#pragma endregion // CefLifeSpanHandler
+
+#pragma region CefLoadHandler
+    virtual void onLoadingStateChange(CefRefPtr<CefBrowser> browser, bool isLoading, bool canGoBack, bool canGoForward) = 0;
+
+    virtual void onLoadStart(CefRefPtr<CefBrowser> browser,	CefRefPtr<CefFrame> frame, CefLoadHandler::TransitionType transition_type) = 0;
+
+    virtual void onLoadEnd(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int httpStatusCode) = 0;
+
+    virtual void onLoadError(CefRefPtr<CefBrowser> browser,
+                             CefRefPtr<CefFrame> frame,
+                             CefLoadHandler::ErrorCode errorCode,
+                             const CefString& errorText,
+                             const CefString& failedUrl) = 0;
+#pragma endregion // CefLoadHandler
+
 #pragma region CefRenderHandler
-    /////////////////////////////////////// CefRenderHandler methods: /////////////////////////////////////
     virtual void onPaint(CefRefPtr<CefBrowser> browser,
                          CefRenderHandler::PaintElementType type,
                          const CefRenderHandler::RectList& dirtyRects,
@@ -69,80 +155,7 @@ public:
                                               const CefRenderHandler::RectList& character_bounds) = 0;
 #pragma endregion // CefRenderHandler
 
-#pragma region CefContextMenuHandler
-    /////////////////////////////////////// CefContextMenuHandler methods: /////////////////////////////////////
-    // 在非UI线程中被调用
-    virtual void onBeforeContextMenu(CefRefPtr<CefBrowser> browser,
-                                     CefRefPtr<CefFrame> frame,
-                                     CefRefPtr<CefContextMenuParams> params,
-                                     CefRefPtr<CefMenuModel> model) = 0;
-
-    // 在非UI线程中被调用
-    virtual bool onContextMenuCommand(CefRefPtr<CefBrowser> browser,
-                                      CefRefPtr<CefFrame> frame,
-                                      CefRefPtr<CefContextMenuParams> params,
-                                      int command_id,
-                                      CefContextMenuHandler::EventFlags event_flags) = 0;
-#pragma endregion // CefContextMenuHandler
-
-#pragma region CefDisplayHandler
-    /////////////////////////////////////// CefDisplayHandler methods: /////////////////////////////////////
-        virtual void onAddressChange(CefRefPtr<CefBrowser> browser,	CefRefPtr<CefFrame> frame, const CefString& url) = 0;
-
-        virtual void onTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title) = 0;
-
-        virtual bool onCursorChange(CefRefPtr<CefBrowser> browser,
-                                    CefCursorHandle cursor,
-                                    cef_cursor_type_t type,
-                                    const CefCursorInfo& custom_cursor_info) = 0;
-
-        virtual bool onConsoleMessage(CefRefPtr<CefBrowser> browser,
-                                    cef_log_severity_t level,
-                                    const CefString& message,
-                                    const CefString& source,
-                                    int line) = 0;
-#pragma endregion // CefDisplayHandler
-
-#pragma region CefLoadHandler
-    /////////////////////////////////////// CefLoadHandler methods: /////////////////////////////////////
-    virtual void onLoadingStateChange(CefRefPtr<CefBrowser> browser, bool isLoading, bool canGoBack, bool canGoForward) = 0;
-
-    virtual void onLoadStart(CefRefPtr<CefBrowser> browser,	CefRefPtr<CefFrame> frame, CefLoadHandler::TransitionType transition_type) = 0;
-
-    virtual void onLoadEnd(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int httpStatusCode) = 0;
-
-    virtual void onLoadError(CefRefPtr<CefBrowser> browser,
-                             CefRefPtr<CefFrame> frame,
-                             CefLoadHandler::ErrorCode errorCode,
-                             const CefString& errorText,
-                             const CefString& failedUrl) = 0;
-#pragma endregion // CefLoadHandler
-
-#pragma region CefLifeSpanHandler
-    /////////////////////////////////////// CefLifeSpanHandler methods: /////////////////////////////////////
-    // 在非UI线程中被调用
-    virtual bool onBeforePopup(CefRefPtr<CefBrowser> browser,
-                               CefRefPtr<CefFrame> frame,
-                               int popup_id,
-                               const CefString &target_url,
-                               const CefString &target_frame_name,
-                               CefLifeSpanHandler::WindowOpenDisposition target_disposition,
-                               bool user_gesture,
-                               const CefPopupFeatures &popupFeatures,
-                               CefWindowInfo &windowInfo,
-                               CefRefPtr<CefClient> &client,
-                               CefBrowserSettings &settings,
-                               CefRefPtr<CefDictionaryValue> &extra_info,
-                               bool *no_javascript_access) = 0;
-
-    virtual bool onAfterCreated(CefRefPtr<CefBrowser> browser) = 0;
-
-    virtual void onBeforeClose(CefRefPtr<CefBrowser> browser) = 0;
-#pragma endregion // CefLifeSpanHandler
-
 #pragma region CefRequestHandler
-    /////////////////////////////////////// CefRequestHandler methods: /////////////////////////////////////
-    // 在非UI线程中被调用
     virtual bool onBeforeBrowse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request, bool user_gesture, bool is_redirect) = 0;
 
     virtual void onRenderProcessTerminated(CefRefPtr<CefBrowser> browser,
@@ -150,19 +163,6 @@ public:
                                            int error_code,
                                            const CefString& error_string) = 0;
 #pragma endregion // CefRequestHandler
-
-#pragma region CefDownloadHandler
-    /////////////////////////////////////// CefDownloadHandler methods: /////////////////////////////////////
-    virtual bool onBeforeDownload(CefRefPtr<CefBrowser> browser,
-                                  CefRefPtr<CefDownloadItem> download_item,
-                                  const CefString& suggested_name,
-                                  CefRefPtr<CefBeforeDownloadCallback> callback) = 0;
-
-    virtual void onDownloadUpdated(CefRefPtr<CefBrowser> browser,
-                                   CefRefPtr<CefDownloadItem> download_item,
-                                   CefRefPtr<CefDownloadItemCallback> callback) = 0;
-#pragma endregion // CefDownloadHandler
-
     // 封装一些 JS 与 C++ 交互的功能
     //virtual bool onExecuteCppFunc(const CefString& function_name, const CefString& params, int js_callback_id, CefRefPtr<CefBrowser> browser) = 0;
     //virtual bool onExecuteCppCallbackFunc(int cpp_callback_id, const CefString& json_string) = 0;
