@@ -162,7 +162,7 @@ void CefWebView::setRect(int left, int top, int width, int height)
     if (_hwnd) {
         ::SetWindowPos(_hwnd, nullptr, left, top, width, height, SWP_NOZORDER);
     }
-    _clientDelegate->resize(width, height);
+    _viewClientDelegate->resize(width, height);
 }
 
 void CefWebView::setVisible(bool bVisible /*= true*/)
@@ -174,6 +174,122 @@ void CefWebView::setVisible(bool bVisible /*= true*/)
         else {
             ::ShowWindow(_hwnd, SW_HIDE);
             //::SetWindowPos(_hwnd, NULL, 0, 0, 0, 0, SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE);
+        }
+    }
+}
+
+void CefWebView::loadUrl(const std::string& url)
+{
+    if (!_viewClientDelegate) return;
+    _viewClientDelegate->loadUrl(url);
+}
+
+const std::string& CefWebView::getUrl() const
+{
+    if (!_viewClientDelegate) return std::string();
+    return _viewClientDelegate->getUrl();
+}
+
+void CefWebView::goBack()
+{
+    if (auto browser = _viewClientDelegate->getCefBrowser()) {
+        browser->GoBack();
+    }
+}
+
+void CefWebView::goForward()
+{
+    if (auto browser = _viewClientDelegate->getCefBrowser()) {
+        browser->GoForward();
+    }
+}
+
+bool CefWebView::canGoBack()
+{
+    if (auto browser = _viewClientDelegate->getCefBrowser()) {
+        return browser->CanGoBack();
+    }
+    return false;
+}
+
+bool CefWebView::canGoForward()
+{
+    if (auto browser = _viewClientDelegate->getCefBrowser()) {
+        return browser->CanGoForward();
+    }
+    return false;
+}
+
+void CefWebView::refresh()
+{
+    if (auto browser = _viewClientDelegate->getCefBrowser()) {
+        browser->Reload();
+    }
+}
+
+void CefWebView::stopLoad()
+{
+    if (auto browser = _viewClientDelegate->getCefBrowser()) {
+        browser->StopLoad();
+    }
+}
+
+bool CefWebView::isLoading()
+{
+    if (auto browser = _viewClientDelegate->getCefBrowser()) {
+        return browser->IsLoading();
+    }
+    return false;
+}
+
+void CefWebView::startDownload(const std::string& url)
+{
+    if (auto browser = _viewClientDelegate->getCefBrowser()) {
+        browser->GetHost()->StartDownload(url);
+    }
+}
+
+void CefWebView::setZoomLevel(float zoom_level)
+{
+    if (auto browser = _viewClientDelegate->getCefBrowser()) {
+        browser->GetHost()->SetZoomLevel(zoom_level);
+    }
+}
+
+CefWindowHandle CefWebView::getWindowHandle() const
+{
+    if (auto auto browser = _viewClientDelegate->getCefBrowser()) {
+        return browser->GetHost()->GetWindowHandle();
+    }
+    return NULL;
+}
+
+// void CefWebView::registerProcessMessageHandler(ProcessMessageHandler* handler)
+// {
+//     if (handler) {
+//         CefRefPtr<ProcessMessageDelegateWrapper> delegateWrapper = new ProcessMessageDelegateWrapper(handler);
+//         _cefViewCLient->RegisterProcessMessageDelegates(delegateWrapper);
+//     }
+// }
+
+bool CefWebView::openDevTools()
+{
+    if (!_viewClientDelegate) return false;
+    return _viewClientDelegate->openDevTools();
+}
+
+void CefWebView::closeDevTools()
+{
+    if (!_viewClientDelegate) return;
+    _viewClientDelegate->closeDevTools();
+}
+
+void CefWebView::evaluateJavaScript(const std::string& script)
+{
+    if (auto browser = _viewClientDelegate->getCefBrowser()) {
+        CefRefPtr<CefFrame> frame = browser->GetMainFrame();
+        if (frame) {
+            frame->ExecuteJavaScript(CefString(script), frame->GetURL(), 0);
         }
     }
 }

@@ -29,86 +29,24 @@ public:
     virtual ~CefViewClientDelegate();
 
 public:
+    CefRefPtr<CefBrowser> getCefBrowser() const;
     /**
-    * @brief 加载一个地址
-    * @param[in] url 网站地址
-    * @return 无
-    */
-    void loadURL(const std::string& url);
+     * @brief 加载一个地址
+     * @param[in] url 网站地址
+     */
+    void loadUrl(const std::string& url);
 
     /**
-    * @brief 后退
-    * @return 无
-    */
-    void goBack();
+     * @brief 获取页面 URL
+     * @return 返回 URL 地址
+     */
+    const std::string& getUrl() const;
 
     /**
-    * @brief 前进
-    * @return 无
-    */
-    void goForward();
-
-    /**
-    * @brief 判断是否可以后退
-    * @return 返回 true 表示可以，false 表示不可以
-    */
-    bool canGoBack();
-
-    /**
-    * @brief 判断是否可以前进
-    * @return 返回 true 表示可以，false 表示不可以
-    */
-    bool canGoForward();
-
-    /**
-    * @brief 刷新
-    * @return 无
-    */
-    void refresh();
-
-    /**
-    * @brief 停止加载
-    * @return 无
-    */
-    void stopLoad();
-
-    /**
-    * @brief 是否加载中
-    * @return 返回 true 表示加载中，否则为 false
-    */
-    bool isLoading();
-
-    /**
-    * @brief 开始一个下载任务
-    * @param[in] url 要下载的文件地址
-    * @return 无
-    */
-    void startDownload(const std::string& url);
-
-    /**
-    * @brief 设置页面缩放比例
-    * @param[in] zoom_level 比例值
-    * @return 无
-    */
-    void setZoomLevel(float zoom_level);
-
-    /**
-    * @brief 获取浏览器对象所属的窗体句柄
-    * @return 窗口句柄
-    */
-    CefWindowHandle getWindowHandle() const;
-
-    /**
-    * @brief 获取页面 URL
-    * @return 返回 URL 地址
-    */
-    std::string getURL();
-
-    /**
-    * @brief 重设浏览器大小
-    * @param[in] width 新的宽度
-    * @param[in] height 新的高度
-    */
+     * @brief 重设浏览器大小
+     * @param[in] width 新的宽度
+     * @param[in] height 新的高度
+     */
     virtual void resize(int width, int height);
 
     // /**
@@ -118,29 +56,22 @@ public:
     // virtual void registerProcessMessageHandler(ProcessMessageHandler* handler);
 
     /**
-    * @brief 打开开发者工具
-    * @return 成功返回 true，失败返回 false
-    */
+     * @brief 打开开发者工具
+     * @return 成功返回 true，失败返回 false
+     */
     virtual bool openDevTools();
 
     /**
-    * @brief 关闭开发者工具
-    * @return 无
-    */
+     * @brief 关闭开发者工具
+     * @return 无
+     */
     virtual void closeDevTools();
 
     /**
-    * @brief 判断是否打开开发者工具
-    * @return 返回 true 表示已经绑定，false 为未绑定
-    */
+     * @brief 判断是否打开开发者工具
+     * @return 返回 true 表示已经绑定，false 为未绑定
+     */
     virtual bool isDevToolsOpened() const { return _isDevtoolsOpened; }
-
-    /**
-    * @brief 执行 JavaScript 代码
-    * @param[in] script 一段可以执行的 JavaScript 代码
-    * @return 无
-    */
-    virtual void evaluateJavaScript(const std::string& script);
 
     // virtual bool onExecuteCppFunc(const CefString& function_name, const CefString& params, int js_callback_id, CefRefPtr<CefBrowser> browser) override;
 
@@ -290,15 +221,15 @@ private:
     //enum WebState { kNone, kCreating, kCreated };
     //WebState _webstate;
 protected:
-    HWND _hwnd; // Native window handle for the CefWebView
-    std::weak_ptr<CefWebView> _view; // 用于生成 shared_from_this 指针
-    typedef std::function<void(void)> StdClosure;
-    std::vector<StdClosure> _taskListAfterCreated;
+    HWND                                    _hwnd; // Native window handle for the CefWebView
+    std::weak_ptr<CefWebView>               _view;
+    typedef std::function<void(void)>       StdClosure;
+    std::vector<StdClosure>                 _taskListAfterCreated;
     // std::vector<CefRefPtr<ProcessMessageDelegateWrapper>> _delegates;
-    CefRefPtr<CefViewClient> _cefViewCLient;
+    CefRefPtr<CefViewClient>                _cefViewCLient;
     //std::shared_ptr<CefJSBridge> js_bridge_;
-    CefString _url;
-    bool _isDevtoolsOpened{false}; // 是否打开了开发者工具
+    CefString                               _url;
+    bool                                    _isDevtoolsOpened{false};
     //int                         js_callback_thread_id_ = -1; // 保存接收到 JS 调用 CPP 函数的代码所属线程，以后触发 JS 回调时把回调转到那个线程
 };
 }

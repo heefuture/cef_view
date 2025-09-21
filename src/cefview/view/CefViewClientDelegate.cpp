@@ -15,10 +15,16 @@ CefViewClientDelegate::~CefViewClientDelegate()
 {
     _taskListAfterCreated.clear();
     _cefViewCLient.reset();
-    // _delegates.clear();
 }
 
-void CefViewClientDelegate::loadURL(const std::string& url)
+CefRefPtr<CefBrowser> CefViewClientDelegate::getCefBrowser() const
+{
+    if (_cefViewCLient)
+        return _cefViewCLient->GetBrowser();
+    return nullptr;
+}
+
+void CefViewClientDelegate::loadUrl(const std::string& url)
 {
     if (_cefViewCLient && _cefViewCLient->GetBrowser()) {
         CefRefPtr<CefFrame> frame = _cefViewCLient->GetBrowser()->GetMainFrame();
@@ -28,7 +34,7 @@ void CefViewClientDelegate::loadURL(const std::string& url)
         frame->LoadURL(url);
     }
     else {
-        std::function<void(void)> load_url_task = [this, url]() {
+        std::function<void(void)> loadUrlTask = [this, url]() {
             if (_cefViewCLient.get() && _cefViewCLient->GetBrowser())
             {
                 CefRefPtr<CefFrame> frame = _cefViewCLient->GetBrowser()->GetMainFrame();
@@ -38,8 +44,13 @@ void CefViewClientDelegate::loadURL(const std::string& url)
                 }
             }
         };
-        _taskListAfterCreated.push_back(load_url_task);
+        _taskListAfterCreated.push_back(loadUrlTask);
     }
+}
+
+const std::string& CefViewClientDelegate::getUrl() const
+{
+    return _url;
 }
 
 void CefViewClientDelegate::resize(int width, int height)
@@ -49,96 +60,13 @@ void CefViewClientDelegate::resize(int width, int height)
     }
     else
     {
-        std::function<void(void)> resize_task = [this, width, height]() {
+        std::function<void(void)> resizeTask = [this, width, height]() {
             if (_cefViewCLient.get() && _cefViewCLient->GetBrowser()) {
                 _cefViewCLient->NotifyRectUpdated();
             }
         };
-        _taskListAfterCreated.push_back(resize_task);
+        _taskListAfterCreated.push_back(resizeTask);
     }
-}
-
-void CefViewClientDelegate::goBack()
-{
-    if (_cefViewCLient.get() && _cefViewCLient->GetBrowser().get())
-    {
-        return _cefViewCLient->GetBrowser()->GoBack();
-    }
-}
-
-void CefViewClientDelegate::goForward()
-{
-    if (_cefViewCLient.get() && _cefViewCLient->GetBrowser().get())
-    {
-        return _cefViewCLient->GetBrowser()->GoForward();
-    }
-}
-
-bool CefViewClientDelegate::canGoBack()
-{
-    if (_cefViewCLient.get() && _cefViewCLient->GetBrowser().get())
-    {
-        return _cefViewCLient->GetBrowser()->CanGoBack();
-    }
-    return false;
-}
-
-bool CefViewClientDelegate::canGoForward()
-{
-    if (_cefViewCLient.get() && _cefViewCLient->GetBrowser().get())
-    {
-        return _cefViewCLient->GetBrowser()->CanGoForward();
-    }
-    return false;
-}
-
-void CefViewClientDelegate::refresh()
-{
-    if (_cefViewCLient.get() && _cefViewCLient->GetBrowser().get())
-    {
-        return _cefViewCLient->GetBrowser()->Reload();
-    }
-}
-
-void CefViewClientDelegate::stopLoad()
-{
-    if (_cefViewCLient.get() && _cefViewCLient->GetBrowser().get())
-    {
-        return _cefViewCLient->GetBrowser()->StopLoad();
-    }
-}
-
-bool CefViewClientDelegate::isLoading()
-{
-    if (_cefViewCLient.get() && _cefViewCLient->GetBrowser().get())
-    {
-        return _cefViewCLient->GetBrowser()->IsLoading();
-    }
-    return false;
-}
-
-void CefViewClientDelegate::startDownload(const std::string& url)
-{
-    if (_cefViewCLient.get() && _cefViewCLient->GetBrowser().get())
-    {
-        _cefViewCLient->GetBrowser()->GetHost()->StartDownload(url);
-    }
-}
-
-void CefViewClientDelegate::setZoomLevel(float zoom_level)
-{
-    if (_cefViewCLient.get() && _cefViewCLient->GetBrowser().get())
-    {
-        _cefViewCLient->GetBrowser()->GetHost()->SetZoomLevel(zoom_level);
-    }
-}
-
-CefWindowHandle CefViewClientDelegate::getWindowHandle() const
-{
-    if (_cefViewCLient.get() && _cefViewCLient->GetBrowserHost().get())
-        return _cefViewCLient->GetBrowserHost()->GetWindowHandle();
-
-    return NULL;
 }
 
 // void CefViewClientDelegate::registerProcessMessageHandler(ProcessMessageHandler* handler)
@@ -154,8 +82,7 @@ bool CefViewClientDelegate::openDevTools()
     if (_isDevToolsOpened)
         return true;
 
-    auto browser = _cefViewCLient->GetBrowser();
-    if (browser) {
+    if (auto browser = _cefViewCLient->GetBrowser()) {
         CefWindowInfo windowInfo;
         windowInfo.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
         windowInfo.SetAsWindowless(nullptr);
@@ -170,30 +97,33 @@ void CefViewClientDelegate::closeDevTools()
 {
     if (!_isDevToolsOpened)
         return;
-    auto browser = _cefViewCLient->GetBrowser();
-    if (browser != nullptr)
-    {
+
+    if (auto browser = _cefViewCLient->GetBrowser()) {
         browser->GetHost()->CloseDevTools();
         _isDevToolsOpened = false;
     }
 }
 
-void CefViewClientDelegate::evaluateJavaScript(const std::string& script)
-{
-    if (_cefViewCLient && _cefViewCLient->GetBrowser()) {
-        CefRefPtr<CefFrame> frame = _cefViewCLient->GetBrowser()->GetMainFrame();
-        if (frame) {
-            frame->ExecuteJavaScript(CefString(script), frame->GetURL(), 0);
-        }
-    }
-}
-
 #pragma region CefClient
 bool CefViewClientDelegate::onProcessMessageReceived(CefRefPtr<CefBrowser> browser,
-                                                  CefRefPtr<CefFrame> frame,
-                                                  CefProcessId source_process,
-                                                  CefRefPtr<CefProcessMessage> message)
+                                                     CefRefPtr<CefFrame> frame,
+                                                     CefProcessId source_process,
+                                                     CefRefPtr<CefProcessMessage> message)
 {
+    if (message && browser) {
+        auto id = browser->GetIdentifier();
+        auto name = message->GetName().ToString();
+        auto args = message->GetArgumentList();
+        std::string jsonArgs;
+        if (args && args->GetSize() > 0) {
+            jsonArgs = args->GetString(0).ToString();
+        }
+
+        if (auto view = _view.lock()) {
+            view->onProcessMessageReceived(id, name, jsonArgs);
+        }
+        return true;
+    }
     return false;
 }
 #pragma endregion // CefClient
@@ -321,6 +251,8 @@ bool CefViewClientDelegate::onAfterCreated(CefRefPtr<CefBrowser> browser)
                 task();
             }
         }
+        _taskListAfterCreated.clear();
+        return true;
     }
     return false;
 }
