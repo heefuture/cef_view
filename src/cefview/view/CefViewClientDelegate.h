@@ -25,7 +25,7 @@ class CefWebView;
 class CefViewClientDelegate : public CefViewClientDelegateBase
 {
 public:
-    CefViewClientDelegate();
+    CefViewClientDelegate(HWND hwnd);
     virtual ~CefViewClientDelegate();
 
 public:

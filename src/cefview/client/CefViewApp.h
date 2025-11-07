@@ -78,7 +78,7 @@ private:
 
     // Creates all of the ViewDelegate objects. Implemented in
     // client_app_delegates.
-    static void CreateViewAppDelegates(ViewAppDelegateSet& delegates);
+    // static void CreateViewAppDelegates(ViewAppDelegateSet& delegates);
 
     // Creates all of the RenderDelegate objects. Implemented in
     // client_app_delegates.

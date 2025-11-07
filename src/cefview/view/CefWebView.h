@@ -128,14 +128,15 @@ public:
 protected:
     HWND createSubWindow(HWND parentHwnd, int x, int y,int width, int height, bool showWindow = true);
 
-    void reCreateBrowser();
+    void createCefBrowser();
 
     void destroy();
 private:
     HWND _parentHwnd; // Native window handle for the CefWebView
     HWND _hwnd; // Native window handle for the CefWebView
     std::string _className; // Class name for the CefWebView window
-    std::shared_ptr<CefViewClientDelegate> _viewClientDelegate;
+    CefRefPtr<CefViewClient> _client;
+    std::shared_ptr<CefViewClientDelegate> _clientDelegate;
 };
 }
 

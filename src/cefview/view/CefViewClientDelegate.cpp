@@ -7,7 +7,8 @@
 
 using namespace cefview;
 
-CefViewClientDelegate::CefViewClientDelegate()
+CefViewClientDelegate::CefViewClientDelegate(HWND hwnd)
+    : _hwnd(hwnd)
 {
 }
 
@@ -321,7 +322,7 @@ void CefViewClientDelegate::onAcceleratedPaint(CefRefPtr<CefBrowser> browser,
 }
 
 bool CefViewClientDelegate::getRootScreenRect(CefRefPtr<CefBrowser> browser, CefRect &rect) {
-        RECT window_rect = { 0 };
+    RECT window_rect = { 0 };
     HWND root_window = GetAncestor(_hwnd, GA_ROOT);
     if (::GetWindowRect(root_window, &window_rect)) {
         rect = CefRect(window_rect.left, window_rect.top,

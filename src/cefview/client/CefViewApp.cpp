@@ -147,10 +147,10 @@ bool CefViewApp::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
-// static
-void CefViewApp::CreateViewAppDelegates(ViewAppDelegateSet& delegates) {
-   // CreateBrowserDelegatesInner(delegates);
-}
+// // static
+// void CefViewApp::CreateViewAppDelegates(ViewAppDelegateSet& delegates) {
+//    CreateBrowserDelegatesInner(delegates);
+// }
 
 // // static
 // void CefViewApp::CreateRenderDelegates(ViewAppDelegateSet& delegates) {
