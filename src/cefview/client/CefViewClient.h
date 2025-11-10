@@ -34,7 +34,7 @@ class CefViewClient : public CefClient,
     // Include the default reference counting implementation.
     IMPLEMENT_REFCOUNTING(CefViewClient);
 public:
-    CefViewClient(CefViewClientDelegateBase::WeakPtr delegate);
+    CefViewClient(CefViewClientDelegateBase::RefPtr delegate);
     ~CefViewClient();
 
     // 设置Cef渲染内容的大小

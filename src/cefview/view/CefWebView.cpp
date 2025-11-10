@@ -28,7 +28,7 @@ static LRESULT CALLBACK subWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARA
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-CefWebView::CefWebView(HWND parentHwnd)
+CefWebView::CefWebView(const std::string& url, const CefWebViewSetting& settings, HWND parentHwnd)
 {
     if (parentHwnd == nullptr) {
         return;
@@ -36,7 +36,14 @@ CefWebView::CefWebView(HWND parentHwnd)
         _parentHwnd = parentHwnd;
     }
 
-    CefRect rect = getWindowRect(parentHwnd);
+    CefRect rect;
+    if (settings.width > 0 && settings.height > 0) {
+        rect.set(settings.x, settings.y, settings.width, settings.height);
+    }
+    else {
+        CefRect rect = getWindowRect(parentHwnd);
+    }
+
     if (rect.IsEmpty()) {
         return;
     }
@@ -52,28 +59,30 @@ CefWebView::CefWebView(HWND parentHwnd)
     // ::SetParent(_hwnd, _parentHwnd);
     // ::SetWindowPos(_hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     // ::SetWindowPos(_hwnd, nullptr, 0, 0, rect.width, rect.height, SWP_NOMOVE);
-    init();
+
+    LONG style = ::GetWindowLong(_hwnd, GWL_STYLE);
+    ::SetWindowLong(_hwnd, GWL_STYLE, style | WS_CLIPSIBLINGS | WS_CLIPCHILDREN);
+
+    // init();
+    createCefBrowser();
 }
 
-CefWebView::~CefWebView(void)
+CefWebView::~CefWebView()
 {
     if (_clientDelegate && _clientDelegate->GetBrowser().get())
     {
         // Request that the main browser close.
         _clientDelegate->GetBrowser()->GetHost()->CloseBrowser(true);
-        //_cefHandler->SetHostWindow(NULL);
-        _clientDelegate->SetHandlerDelegate(NULL);
+        _clientDelegate.reset();
     }
+    _taskListAfterCreated.clear();
+    destroy();
 }
 
 void CefWebView::init()
 {
     if (!_clientDelegate)
     {
-        LONG style = ::GetWindowLong(_hwnd, GWL_STYLE);
-        ::SetWindowLong(_hwnd, GWL_STYLE, style | WS_CLIPSIBLINGS | WS_CLIPCHILDREN);
-        //ASSERT((GetWindowExStyle(_hwnd) & WS_EX_LAYERED) == 0 && L"无法在分层窗口内使用本控件");
-        createCefBrowser();
     }
 
     // if (!js_bridge_.get())
@@ -130,21 +139,12 @@ void CefWebView::destroy() {
     //UnregisterClassA(_className.c_str(), nullptr);
 }
 
-void CefWebView::createCefBrowser()
+void CefWebView::createCefBrowser(const std::string& url, const CefWebViewSetting& settings)
 {
     if (_clientDelegate) return;
 
-    _clientDelegate = std::make_shared<CefViewClientDelegate>(_hwnd);
+    _clientDelegate = std::make_shared<CefViewClientDelegate>(std::shared_from_this());
     _client = new CefViewClient(_clientDelegate);
-    //_cefHandler->SetHostWindow(_hwnd);
-    // _clientDelegate->SetHandlerDelegate(this);
-    // 如果浏览器已经存在，则先关闭它
-    // if (_clientDelegate->GetBrowser())
-    // {
-    //     _clientDelegate->GetBrowser()->GetHost()->CloseBrowser(true);
-    //     //_cefHandler->SetHostWindow(NULL);
-    //     _clientDelegate->SetHandlerDelegate(NULL);
-    // }
 
     // 创建新的浏览器
     CefWindowInfo windowInfo;
@@ -153,7 +153,7 @@ void CefWebView::createCefBrowser()
     windowInfo.SetAsChild(_hwnd, cefRect);
 
     CefBrowserSettings browser_settings;
-    CefBrowserHost::CreateBrowser(windowInfo, _client, L"", browser_settings, nullptr, nullptr);
+    CefBrowserHost::CreateBrowser(windowInfo, _client, CefString(url), browser_settings, nullptr, nullptr);
 }
 
 void CefWebView::setRect(int left, int top, int width, int height)
@@ -161,7 +161,18 @@ void CefWebView::setRect(int left, int top, int width, int height)
     if (_hwnd) {
         ::SetWindowPos(_hwnd, nullptr, left, top, width, height, SWP_NOZORDER);
     }
-    _clientDelegate->resize(width, height);
+    if (_cefViewCLient && _cefViewCLient->GetBrowser()) {
+        _cefViewCLient->NotifyRectUpdated();
+    }
+    else
+    {
+        std::function<void(void)> resizeTask = [this, width, height]() {
+            if (_cefViewCLient.get() && _cefViewCLient->GetBrowser()) {
+                _cefViewCLient->NotifyRectUpdated();
+            }
+        };
+        _taskListAfterCreated.push_back(resizeTask);
+    }
 }
 
 void CefWebView::setVisible(bool bVisible /*= true*/)
@@ -179,33 +190,51 @@ void CefWebView::setVisible(bool bVisible /*= true*/)
 
 void CefWebView::loadUrl(const std::string& url)
 {
-    if (!_clientDelegate) return;
-    _clientDelegate->loadUrl(url);
+    if (_cefViewCLient && _cefViewCLient->GetBrowser()) {
+        CefRefPtr<CefFrame> frame = _cefViewCLient->GetBrowser()->GetMainFrame();
+        if (!frame)
+            return;
+
+        frame->LoadURL(url);
+        _url = url;
+    }
+    else {
+        std::function<void(void)> loadUrlTask = [this, url]() {
+            if (_cefViewCLient.get() && _cefViewCLient->GetBrowser())
+            {
+                CefRefPtr<CefFrame> frame = _cefViewCLient->GetBrowser()->GetMainFrame();
+                if (frame) {
+                    frame->LoadURL(url);
+                    _url = url;
+                }
+            }
+        };
+        _taskListAfterCreated.push_back(loadUrlTask);
+    }
 }
 
 const std::string& CefWebView::getUrl() const
 {
-    if (!_clientDelegate) return std::string();
-    return _clientDelegate->getUrl();
+    return _url;
 }
 
 void CefWebView::goBack()
 {
-    if (auto browser = _clientDelegate->getCefBrowser()) {
+    if (auto browser = _cefViewCLient->GetBrowser()) {
         browser->GoBack();
     }
 }
 
 void CefWebView::goForward()
 {
-    if (auto browser = _clientDelegate->getCefBrowser()) {
+    if (auto browser = _cefViewCLient->GetBrowser()) {
         browser->GoForward();
     }
 }
 
 bool CefWebView::canGoBack()
 {
-    if (auto browser = _clientDelegate->getCefBrowser()) {
+    if (auto browser = _cefViewCLient->GetBrowser()) {
         return browser->CanGoBack();
     }
     return false;
@@ -213,7 +242,7 @@ bool CefWebView::canGoBack()
 
 bool CefWebView::canGoForward()
 {
-    if (auto browser = _clientDelegate->getCefBrowser()) {
+    if (auto browser = _cefViewCLient->GetBrowser()) {
         return browser->CanGoForward();
     }
     return false;
@@ -221,21 +250,21 @@ bool CefWebView::canGoForward()
 
 void CefWebView::refresh()
 {
-    if (auto browser = _clientDelegate->getCefBrowser()) {
+    if (auto browser = _cefViewCLient->GetBrowser()) {
         browser->Reload();
     }
 }
 
 void CefWebView::stopLoad()
 {
-    if (auto browser = _clientDelegate->getCefBrowser()) {
+    if (auto browser = _cefViewCLient->GetBrowser()) {
         browser->StopLoad();
     }
 }
 
 bool CefWebView::isLoading()
 {
-    if (auto browser = _clientDelegate->getCefBrowser()) {
+    if (auto browser = _cefViewCLient->GetBrowser()) {
         return browser->IsLoading();
     }
     return false;
@@ -243,21 +272,21 @@ bool CefWebView::isLoading()
 
 void CefWebView::startDownload(const std::string& url)
 {
-    if (auto browser = _clientDelegate->getCefBrowser()) {
+    if (auto browser = _cefViewCLient->GetBrowser()) {
         browser->GetHost()->StartDownload(url);
     }
 }
 
 void CefWebView::setZoomLevel(float zoom_level)
 {
-    if (auto browser = _clientDelegate->getCefBrowser()) {
+    if (auto browser = _cefViewCLient->GetBrowser()) {
         browser->GetHost()->SetZoomLevel(zoom_level);
     }
 }
 
 CefWindowHandle CefWebView::getWindowHandle() const
 {
-    if (auto auto browser = _clientDelegate->getCefBrowser()) {
+    if (auto auto browser = _cefViewCLient->GetBrowser()) {
         return browser->GetHost()->GetWindowHandle();
     }
     return NULL;
@@ -273,14 +302,28 @@ CefWindowHandle CefWebView::getWindowHandle() const
 
 bool CefWebView::openDevTools()
 {
-    if (!_clientDelegate) return false;
-    return _clientDelegate->openDevTools();
+    if (_isDevToolsOpened) return true;
+
+    if (auto browser = _cefViewCLient->GetBrowser()) {
+        CefWindowInfo windowInfo;
+        windowInfo.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
+        windowInfo.SetAsWindowless(nullptr);
+        CefBrowserSettings settings;
+        browser->GetHost()->ShowDevTools(windowInfo, _cefViewCLient, settings, CefPoint());
+        _isDevToolsOpened = true;
+    }
+    return _isDevToolsOpened;
 }
 
 void CefWebView::closeDevTools()
 {
-    if (!_clientDelegate) return;
-    _clientDelegate->closeDevTools();
+    if (!_isDevToolsOpened)
+        return;
+
+    if (auto browser = _cefViewCLient->GetBrowser()) {
+        browser->GetHost()->CloseDevTools();
+        _isDevToolsOpened = false;
+    }
 }
 
 void CefWebView::evaluateJavaScript(const std::string& script)

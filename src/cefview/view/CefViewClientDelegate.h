@@ -5,7 +5,7 @@
 * @version     1.0
 * @author      heefuture
 * @date        2025.07.08
-* @copyright   Copyright (C) 2025 Tencent. All rights reserved.
+* @copyright
 */
 #ifndef CEFVIEWCLIENTDELEGATE_H
 #define CEFVIEWCLIENTDELEGATE_H
@@ -25,29 +25,10 @@ class CefWebView;
 class CefViewClientDelegate : public CefViewClientDelegateBase
 {
 public:
-    CefViewClientDelegate(HWND hwnd);
+    CefViewClientDelegate(const std::shared_ptr<CefWebView>& view);
     virtual ~CefViewClientDelegate();
 
 public:
-    CefRefPtr<CefBrowser> getCefBrowser() const;
-    /**
-     * @brief 加载一个地址
-     * @param[in] url 网站地址
-     */
-    void loadUrl(const std::string& url);
-
-    /**
-     * @brief 获取页面 URL
-     * @return 返回 URL 地址
-     */
-    const std::string& getUrl() const;
-
-    /**
-     * @brief 重设浏览器大小
-     * @param[in] width 新的宽度
-     * @param[in] height 新的高度
-     */
-    virtual void resize(int width, int height);
 
     // /**
     // * @brief 注册一个 ProcessMessageHandler 对象，主要用来处理js消息
@@ -55,23 +36,6 @@ public:
     // */
     // virtual void registerProcessMessageHandler(ProcessMessageHandler* handler);
 
-    /**
-     * @brief 打开开发者工具
-     * @return 成功返回 true，失败返回 false
-     */
-    virtual bool openDevTools();
-
-    /**
-     * @brief 关闭开发者工具
-     * @return 无
-     */
-    virtual void closeDevTools();
-
-    /**
-     * @brief 判断是否打开开发者工具
-     * @return 返回 true 表示已经绑定，false 为未绑定
-     */
-    virtual bool isDevToolsOpened() const { return _isDevtoolsOpened; }
 
     // virtual bool onExecuteCppFunc(const CefString& function_name, const CefString& params, int js_callback_id, CefRefPtr<CefBrowser> browser) override;
 
@@ -223,10 +187,8 @@ private:
 protected:
     HWND                                    _hwnd; // Native window handle for the CefWebView
     std::weak_ptr<CefWebView>               _view;
-    typedef std::function<void(void)>       StdClosure;
-    std::vector<StdClosure>                 _taskListAfterCreated;
+
     // std::vector<CefRefPtr<ProcessMessageDelegateWrapper>> _delegates;
-    CefRefPtr<CefViewClient>                _cefViewCLient;
     //std::shared_ptr<CefJSBridge> js_bridge_;
     CefString                               _url;
     bool                                    _isDevtoolsOpened{false};

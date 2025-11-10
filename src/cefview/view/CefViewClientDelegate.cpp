@@ -7,68 +7,19 @@
 
 using namespace cefview;
 
-CefViewClientDelegate::CefViewClientDelegate(HWND hwnd)
-    : _hwnd(hwnd)
+CefViewClientDelegate::CefViewClientDelegate(const std::shared_ptr<CefWebView>& view)
+    : _view(view)
 {
+    if (view) {
+        _hwnd = view->getWindowHandle();
+    }
 }
 
 CefViewClientDelegate::~CefViewClientDelegate()
 {
     _taskListAfterCreated.clear();
-    _cefViewCLient.reset();
 }
 
-CefRefPtr<CefBrowser> CefViewClientDelegate::getCefBrowser() const
-{
-    if (_cefViewCLient)
-        return _cefViewCLient->GetBrowser();
-    return nullptr;
-}
-
-void CefViewClientDelegate::loadUrl(const std::string& url)
-{
-    if (_cefViewCLient && _cefViewCLient->GetBrowser()) {
-        CefRefPtr<CefFrame> frame = _cefViewCLient->GetBrowser()->GetMainFrame();
-        if (!frame)
-            return;
-
-        frame->LoadURL(url);
-    }
-    else {
-        std::function<void(void)> loadUrlTask = [this, url]() {
-            if (_cefViewCLient.get() && _cefViewCLient->GetBrowser())
-            {
-                CefRefPtr<CefFrame> frame = _cefViewCLient->GetBrowser()->GetMainFrame();
-                if (frame)
-                {
-                    frame->LoadURL(url);
-                }
-            }
-        };
-        _taskListAfterCreated.push_back(loadUrlTask);
-    }
-}
-
-const std::string& CefViewClientDelegate::getUrl() const
-{
-    return _url;
-}
-
-void CefViewClientDelegate::resize(int width, int height)
-{
-    if (_cefViewCLient && _cefViewCLient->GetBrowser()) {
-        _cefViewCLient->NotifyRectUpdated();
-    }
-    else
-    {
-        std::function<void(void)> resizeTask = [this, width, height]() {
-            if (_cefViewCLient.get() && _cefViewCLient->GetBrowser()) {
-                _cefViewCLient->NotifyRectUpdated();
-            }
-        };
-        _taskListAfterCreated.push_back(resizeTask);
-    }
-}
 
 // void CefViewClientDelegate::registerProcessMessageHandler(ProcessMessageHandler* handler)
 // {
@@ -77,33 +28,6 @@ void CefViewClientDelegate::resize(int width, int height)
 //         _cefViewCLient->RegisterProcessMessageDelegates(delegateWrapper);
 //     }
 // }
-
-bool CefViewClientDelegate::openDevTools()
-{
-    if (_isDevToolsOpened)
-        return true;
-
-    if (auto browser = _cefViewCLient->GetBrowser()) {
-        CefWindowInfo windowInfo;
-        windowInfo.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
-        windowInfo.SetAsWindowless(nullptr);
-        CefBrowserSettings settings;
-        browser->GetHost()->ShowDevTools(windowInfo, _cefViewCLient, settings, CefPoint());
-        _isDevToolsOpened = true;
-    }
-    return true;
-}
-
-void CefViewClientDelegate::closeDevTools()
-{
-    if (!_isDevToolsOpened)
-        return;
-
-    if (auto browser = _cefViewCLient->GetBrowser()) {
-        browser->GetHost()->CloseDevTools();
-        _isDevToolsOpened = false;
-    }
-}
 
 #pragma region CefClient
 bool CefViewClientDelegate::onProcessMessageReceived(CefRefPtr<CefBrowser> browser,

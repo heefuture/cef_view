@@ -6,7 +6,7 @@
 * @version     1.0
 * @author      heefuture
 * @date        2025.07.08
-* @copyright   Copyright (C) 2025 Tencent. All rights reserved.
+* @copyright
 */
 #ifndef CEFWEBVIEW_H
 #define CEFWEBVIEW_H
@@ -22,8 +22,8 @@ class CefViewClientDelegate;
 class CefWebView : public std::enable_shared_from_this<CefWebView>
 {
 public:
-    CefWebView(HWND parentHwnd);
-    ~CefWebView(void);
+    CefWebView(const std::string& url, const CefWebViewSetting& settings, HWND parentHwnd);
+    ~CefWebView();
 
     void init();
     /**
@@ -104,7 +104,7 @@ public:
      * @brief 判断是否打开开发者工具
      * @return 返回 true 表示已经绑定，false 为未绑定
      */
-    virtual bool isDevToolsOpened() const { return devtool_opened_; }
+    virtual bool isDevToolsOpened() const { return _isDevToolsOpened; }
 
     /**
      * @brief 执行 JavaScript 代码
@@ -128,7 +128,7 @@ public:
 protected:
     HWND createSubWindow(HWND parentHwnd, int x, int y,int width, int height, bool showWindow = true);
 
-    void createCefBrowser();
+    void createCefBrowser(const std::string& url, const CefWebViewSetting& settings);
 
     void destroy();
 private:
@@ -137,6 +137,10 @@ private:
     std::string _className; // Class name for the CefWebView window
     CefRefPtr<CefViewClient> _client;
     std::shared_ptr<CefViewClientDelegate> _clientDelegate;
+    typedef std::function<void(void)>       StdClosure;
+    std::vector<StdClosure>                 _taskListAfterCreated;
+    bool _isDevToolsOpened = false;
+    std::string                             _url;
 };
 }
 
