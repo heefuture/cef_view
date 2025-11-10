@@ -39,7 +39,7 @@ set(TARGET_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
 #set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${TARGET_OUT_DIR})
 
 if(WIN32)
-    option(BUILD_WITH_MT "option for cef use sandbox" ON)
+    option(BUILD_WITH_MT "option for mt" ON)
     add_definitions(-DUNICODE)
     option(WEBVIEW_BUILD_STATIC "option for static lib" ON)
     if(WEBVIEW_BUILD_STATIC)
