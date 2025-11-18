@@ -5,6 +5,12 @@
 **Status**: Draft  
 **Input**: User description: "我要创建一个基于Windows原生窗口的CefWebView控件, 相关接口在CefWebView.h里面声明。窗口支持离屏渲染和非离屏渲染两种模式，浏览器的交互和拖拽事件需要支持。已有的一些代码需要你完善和修改，保持代码和文件的命名规范和正确性。app的子文件里面需要实现一个测试demo，一个windows原生窗体里面加载多个CefWebView, 顶部和底部分开显示，底部是多个CefWebView叠加显示，只有一个显示在最上层"
 
+## Clarifications
+
+### Session 2025-11-18
+
+- Q: 离屏渲染模式下，渲染缓冲区应该如何绘制到父窗口？ → A: 使用D3D11的接口，采用硬件加速共享纹理的方式将cef的网页内容渲染到窗口上面
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - 基本浏览器控件创建与URL加载 (Priority: P1)
@@ -117,7 +123,7 @@
 - 当CefWebView尚未初始化完成时调用loadUrl等操作方法，如何处理？（需要任务队列延迟执行）
 - 当网页加载失败（404、网络错误、证书错误）时，如何通知应用程序？（通过onLoadError回调）
 - 当父窗口被销毁时，如何确保CefWebView正确清理资源？（在析构函数和destroy方法中处理）
-- 当在离屏渲染模式下，如何处理窗口重绘事件？（需要将渲染缓冲区绘制到目标DC）
+- 当在离屏渲染模式下，如何处理窗口重绘事件？（使用Direct3D 11共享纹理，CEF渲染到D3D纹理后通过Present呈现到窗口）
 - 当同时存在窗口模式和离屏模式的CefWebView时，如何管理渲染性能？（CEF内部优化）
 - 当快速切换底部叠加视图的Z顺序时，如何避免闪烁？（使用双缓冲和正确的窗口更新顺序）
 - 当拖拽操作跨越多个CefWebView控件边界时，如何正确处理拖拽目标？（需要实现拖拽事件路由）
@@ -143,7 +149,7 @@
 - **FR-009**: CefWebView控件MUST提供setRect方法用于设置控件的位置（left, top）和尺寸（width, height）
 - **FR-010**: CefWebView控件MUST提供setVisible方法用于控制控件的显示或隐藏状态
 - **FR-011**: CefWebView控件MUST在窗口渲染模式下创建Windows子窗口用于显示内容
-- **FR-012**: CefWebView控件MUST在离屏渲染模式下将渲染结果绘制到父窗口的指定区域
+- **FR-012**: CefWebView控件MUST在离屏渲染模式下使用Direct3D 11接口，通过硬件加速共享纹理方式将CEF渲染的网页内容高效传输并绘制到父窗口的指定区域
 - **FR-013**: CefWebView控件MUST支持高DPI显示环境，正确处理DPI缩放
 
 #### 交互事件支持
@@ -182,6 +188,7 @@
 - **FR-036**: CefWebView控件MUST在destroy方法中处理提前清理的情况
 - **FR-037**: CefWebView控件MUST使用CefRefPtr管理CEF对象的引用计数
 - **FR-038**: CefWebView控件MUST在浏览器实例创建前将操作加入任务队列，创建后执行
+- **FR-051**: CefWebView控件MUST在离屏渲染模式下正确管理Direct3D 11资源（设备、纹理、交换链）的生命周期，确保无资源泄漏
 
 #### 演示应用程序
 
@@ -203,7 +210,7 @@
 
 ### Key Entities
 
-- **CefWebView**: 主要的浏览器控件类，封装CEF浏览器实例，管理窗口、渲染、事件处理。关键属性包括：父窗口句柄、自身窗口句柄（窗口模式）、URL、渲染模式、CEF客户端对象、委托对象、任务队列。
+- **CefWebView**: 主要的浏览器控件类，封装CEF浏览器实例，管理窗口、渲染、事件处理。关键属性包括：父窗口句柄、自身窗口句柄（窗口模式）、URL、渲染模式、CEF客户端对象、委托对象、任务队列。在离屏渲染模式下额外管理D3D11设备、共享纹理和交换链资源。
 
 - **CefWebViewSetting**: 控件配置对象，定义CefWebView的创建参数。关键属性包括：渲染模式（窗口/离屏）、是否启用JavaScript、是否启用本地存储、初始尺寸、背景颜色、是否启用GPU加速。
 
@@ -221,7 +228,7 @@
 
 - **SC-002**: CefWebView控件能够在窗口渲染模式下以60 FPS的帧率流畅播放网页动画和视频内容
 
-- **SC-003**: CefWebView控件能够在离屏渲染模式下正确渲染复杂网页（如包含Canvas、WebGL的页面）且性能损失不超过20%
+- **SC-003**: CefWebView控件能够在离屏渲染模式下（使用D3D11硬件加速）正确渲染复杂网页（如包含Canvas、WebGL的页面）且性能损失不超过20%，帧率保持在50 FPS以上
 
 - **SC-004**: 用户在CefWebView控件中执行鼠标点击、拖拽、滚动等操作时，响应延迟小于50毫秒，与原生浏览器体验一致
 
@@ -249,3 +256,5 @@
 8. **默认加载URL**: 顶部视图加载"https://www.baidu.com"，底部三个视图分别加载"https://www.google.com", "https://github.com", "https://www.bing.com"
 9. **Z顺序管理**: 使用Windows API的SetWindowPos/BringWindowToTop管理窗口模式Z顺序，离屏模式通过绘制顺序控制
 10. **事件处理模型**: 假设应用程序使用Windows标准消息循环，不涉及多线程UI更新
+11. **Direct3D 11支持**: 假设目标系统支持Direct3D 11功能级别（Feature Level 11.0或更高），用于离屏渲染的硬件加速纹理共享
+12. **GPU驱动**: 假设系统安装了支持D3D11的现代GPU驱动程序，CEF的GPU进程能够正常工作

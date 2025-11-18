@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.14)
 
 set(BROWSER_TARGET "browser")
 
-message("this is browser project")
+message("this is browser_subprocess project")
 
 set(CEFVIEWDIR ${CMAKE_CURRENT_SOURCE_DIR}/../cefview)
 

@@ -12,10 +12,15 @@
 #define CEFWEBVIEW_H
 #pragma once
 
-
 #include <memory>
 #include <string>
 #include <windows.h>
+
+#include "CefWebViewSetting.h"
+
+#pragma region cef_headers
+#include <include/cef_base.h>
+#pragma endregion // cef_headers
 namespace cefview {
 
 class CefViewClientDelegate;

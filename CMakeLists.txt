@@ -1,16 +1,11 @@
 cmake_minimum_required(VERSION 3.14)
 
-#project(cefApp VERSION 0.0.0.0)
-
-project(cefApp)
+project(CefView)
 
 # C++ 标准设置
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-
-# 构建类型设置
-set(CMAKE_CONFIGURATION_TYPES Debug Release)
 
 message(STATUS "Current build type: ${CMAKE_BUILD_TYPE}")
 
@@ -33,10 +28,22 @@ if (USE_SANDBOX)
 endif()
 
 set(TARGET_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
+message(STATUS "Target output dir : ${TARGET_OUT_DIR}")
 
 #set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${TARGET_OUT_DIR})
 #set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${TARGET_OUT_DIR})
 #set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${TARGET_OUT_DIR})
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    list(APPEND CEFVIEW_COMPILE_OPTIONS -Werror -Wall -Wextra -Weffc++ -Wconversion -pedantic -Werror=return-type -Wno-unused-command-line-argument)
+endif ()
+
+if (MSVC)
+    list(APPEND CEFVIEW_COMPILE_OPTIONS "/utf-8")
+    list(APPEND CEFVIEW_COMPILE_OPTIONS /w44251 /w44275)
+    list(APPEND CEFVIEW_COMPILE_OPTIONS /W4)
+    list(APPEND CEFVIEW_DEFINES NOMINMAX _USE_MATH_DEFINES)
+endif (MSVC)
 
 if(WIN32)
     option(BUILD_WITH_MT "option for mt" ON)
@@ -58,7 +65,7 @@ if(WIN32)
             else()
                 string(REPLACE "/MT" "/MD" ${CompilerFlag} "${${CompilerFlag}}")
             endif()
-            message("main cef ${CompilerFlag}:" ${${CompilerFlag}})
+            message("CefView CEF ${CompilerFlag}:" ${${CompilerFlag}})
         endforeach()
 
         set(CompilerFlags
@@ -77,7 +84,7 @@ if(WIN32)
             else()
                 string(REPLACE "/MT" "/MD" ${CompilerFlag} "${${CompilerFlag}}")
             endif()
-            message("main ${CompilerFlag}:" ${${CompilerFlag}})
+            message("CefView ${CompilerFlag}:" ${${CompilerFlag}})
         endforeach()
 
         #generate pdb file for release or debug

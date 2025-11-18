@@ -3,6 +3,18 @@ cmake_minimum_required(VERSION 3.14)
 
 set(APP_TARGET "cefapp")
 
+if(GEN_NINJA OR GEN_MAKEFILES)
+    # By default Ninja and Make builds don't create a subdirectory named after
+    # the configuration.
+    set(APP_TARGET_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
+
+    # Output binaries (executables, libraries) to the correct directory.
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${APP_TARGET_OUT_DIR})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${APP_TARGET_OUT_DIR})
+else()
+    set(APP_TARGET_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIGURATION>")
+endif()
+
 #message(STATUS "Output dir : ${TARGET_OUT_DIR}")
 # Logical target used to link the libcef library.
 ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
@@ -10,7 +22,6 @@ ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
 # 主应用程序源文件
 file(GLOB APP_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.*)
 
-source_group(app FILES ${CEF_APP_SRCS})
 
 set(CEFVIEWDIR ${CMAKE_CURRENT_SOURCE_DIR}/../cefview)
 

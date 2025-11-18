@@ -1,5 +1,5 @@
 /**
-* @file        export.h
+* @file        Export.h
 * @brief       Header file for export functionality in the webview module.
 * @version     1.0
 * @author      heefuture
@@ -11,7 +11,7 @@
 #pragma once
 
 #ifdef WEBVIEW_BUILD_STATIC
-#define WEBVIEW_EXPORTS 
+#define WEBVIEW_EXPORTS
 #else
 #ifdef WEBVIEW_EXPORTS
 #define WEBVIEW_EXPORTS __declspec(dllexport)

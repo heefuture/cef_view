@@ -1,5 +1,5 @@
 #include "CefWebView.h"
-#include <utils/util_win.h>
+#include <utils/WinUtil.h>
 #include "include/cef_browser.h"
 #include "include/cef_frame.h"
 
@@ -284,7 +284,7 @@ void CefWebView::setZoomLevel(float zoom_level)
     }
 }
 
-CefWindowHandle CefWebView::getWindowHandle() const
+HWND CefWebView::getWindowHandle() const
 {
     if (auto auto browser = _cefViewCLient->GetBrowser()) {
         return browser->GetHost()->GetWindowHandle();

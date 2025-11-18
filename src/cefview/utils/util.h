@@ -1,24 +1,27 @@
-// Copyright (c) 2011 The Chromium Embedded Framework Authors. All rights
-// reserved. Use of this source code is governed by a BSD-style license that
-// can be found in the LICENSE file.
-
-#ifndef CEF_CEFCLIENT_UTIL_H_
-#define CEF_CEFCLIENT_UTIL_H_
+/**
+* @file        util.h
+* @brief       Utility functions and macros for CEF client.
+* @version     1.0
+* @author      heefuture
+* @date        2025.11.18
+* @copyright
+*/
+#ifndef UTIL_H_
+#define UTIL_H_
 #pragma once
 
 #include "include/cef_task.h"
 
-#if defined(OS_WIN)
+#ifdef _WIN32
 
-#include <windows.h>  // NOLINT(build/include_order)
-
+#include <windows.h>
 #ifndef NDEBUG
 #define ASSERT(condition) if (!(condition)) { DebugBreak(); }
 #else
 #define ASSERT(condition) ((void)0)
 #endif
 
-#else  // !OS_WIN
+#else  // !_WIN32
 
 #include <assert.h>  // NOLINT(build/include_order)
 
@@ -28,10 +31,10 @@
 #define ASSERT(condition) ((void)0)
 #endif
 
-#endif  // !OS_WIN
+#endif  // !_WIN32
 
 #define REQUIRE_UI_THREAD()   ASSERT(CefCurrentlyOn(TID_UI));
 #define REQUIRE_IO_THREAD()   ASSERT(CefCurrentlyOn(TID_IO));
 #define REQUIRE_FILE_THREAD() ASSERT(CefCurrentlyOn(TID_FILE));
 
-#endif  // CEF_CEFCLIENT_UTIL_H_
+#endif  // UTIL_H_

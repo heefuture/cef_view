@@ -1,46 +1,21 @@
-// Copyright 2016 The Chromium Embedded Framework Authors. Portions copyright
-// 2012 The Chromium Authors. All rights reserved. Use of this source code is
-// governed by a BSD-style license that can be found in the LICENSE file.
 
-#include "tests/shared/browser/file_util.h"
+#include "FileUtil.h"
 
 #include <algorithm>
 #include <cstdio>
 #include <memory>
 
-#include "include/base/cef_build.h"
-#include "include/cef_task.h"
+namespace cefview::util {
 
-namespace client::file_util {
 
-namespace {
-
-bool AllowFileIO() {
-  if (CefCurrentlyOn(TID_UI) || CefCurrentlyOn(TID_IO)) {
-    NOTREACHED() << "file IO is not allowed on the current thread";
-    return false;
-  }
-  return true;
-}
-
-}  // namespace
-
-#if defined(OS_WIN)
+#ifdef _WIN32
 const char kPathSep = '\\';
 #else
 const char kPathSep = '/';
 #endif
 
-bool ReadFileToString(const std::string& path,
-                      std::string* contents,
-                      size_t max_size) {
-  if (!AllowFileIO()) {
-    return false;
-  }
-
-  if (contents) {
-    contents->clear();
-  }
+std::string readFileToString(const std::string& path, size_t max_size = std::numeric_limits<size_t>::max()) {
+  std::string contents;
   FILE* file = fopen(path.c_str(), "rb");
   if (!file) {
     return false;
@@ -55,10 +30,7 @@ bool ReadFileToString(const std::string& path,
   // Many files supplied in |path| have incorrect size (proc files etc).
   // Hence, the file is read sequentially as opposed to a one-shot read.
   while ((len = fread(buf.get(), 1, kBufferSize, file)) > 0) {
-    if (contents) {
-      contents->append(buf.get(), std::min(len, max_size - size));
-    }
-
+    contents.append(buf.get(), std::min(len, max_size - size));
     if ((max_size - size) < len) {
       read_status = false;
       break;
@@ -69,14 +41,10 @@ bool ReadFileToString(const std::string& path,
   read_status = read_status && !ferror(file);
   fclose(file);
 
-  return read_status;
+  return contents;
 }
 
-int WriteFile(const std::string& path, const char* data, int size) {
-  if (!AllowFileIO()) {
-    return -1;
-  }
-
+int writeFile(const std::string& path, const char* data, int size) {
   FILE* file = fopen(path.c_str(), "wb");
   if (!file) {
     return -1;
@@ -97,7 +65,7 @@ int WriteFile(const std::string& path, const char* data, int size) {
   return written;
 }
 
-std::string JoinPath(const std::string& path1, const std::string& path2) {
+std::string joinPath(const std::string& path1, const std::string& path2) {
   if (path1.empty() && path2.empty()) {
     return std::string();
   }
@@ -120,7 +88,7 @@ std::string JoinPath(const std::string& path1, const std::string& path2) {
   return result;
 }
 
-std::string GetFileExtension(const std::string& path) {
+std::string getFileExtension(const std::string& path) {
   size_t sep = path.find_last_of(".");
   if (sep != std::string::npos) {
     return path.substr(sep + 1);
@@ -128,4 +96,4 @@ std::string GetFileExtension(const std::string& path) {
   return std::string();
 }
 
-}  // namespace client::file_util
+}  // namespace cefview::util
