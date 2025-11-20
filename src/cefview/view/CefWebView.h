@@ -12,6 +12,8 @@
 #define CEFWEBVIEW_H
 #pragma once
 
+#include <atlcomcli.h>
+#include <functional>
 #include <memory>
 #include <string>
 #include <windows.h>
@@ -20,15 +22,30 @@
 
 #pragma region cef_headers
 #include <include/cef_base.h>
+#include <include/cef_browser.h>
+#include <include/cef_client.h>
 #pragma endregion // cef_headers
+
 namespace cefview {
 
+
 class CefViewClientDelegate;
+class CefViewClient;
+class OsrRendererD3D11;
+class OsrDragEvents;
+class OsrDropTargetWin;
+class OsrImeHandlerWin;
 class CefWebView : public std::enable_shared_from_this<CefWebView>
 {
 public:
     CefWebView(const std::string& url, const CefWebViewSetting& settings, HWND parentHwnd);
     ~CefWebView();
+
+    // 禁用拷贝和移动
+    CefWebView(const CefWebView&) = delete;
+    CefWebView& operator=(const CefWebView&) = delete;
+    CefWebView(CefWebView&&) = delete;
+    CefWebView& operator=(CefWebView&&) = delete;
 
     void init();
     /**
@@ -63,6 +80,28 @@ public:
      * @brief 停止加载
      */
     void stopLoad();
+
+    /**
+     * @brief 后退
+     */
+    void goBack();
+
+    /**
+     * @brief 前进
+     */
+    void goForward();
+
+    /**
+     * @brief 能否后退
+     * @return 返回 true 表示可以后退，否则为 false
+     */
+    bool canGoBack();
+
+    /**
+     * @brief 能否前进
+     * @return 返回 true 表示可以前进，否则为 false
+     */
+    bool canGoForward();
 
     /**
      * @brief 是否加载中
@@ -117,35 +156,136 @@ public:
      */
     virtual void evaluateJavaScript(const std::string& script);
 
+    /**
+     * @brief 设置设备缩放因子
+     * @param[in] device_scale_factor 设备缩放因子
+     */
+    void setDeviceScaleFactor(float device_scale_factor);
 public:
-    void onTitleChange(int browserId, const std::string& title);
-    void onUrlChange(int browserId, const std::string& oldUrl, const std::string& url);
+#pragma region RenderHandler
+    bool getRootScreenRect(CefRect& rect);
+    bool getViewRect(CefRect& rect);
+    bool getScreenPoint(int viewX, int viewY, int& screenX, int& screenY);
+    bool getScreenInfo(CefScreenInfo& screenInfo);
+    /**
+     * @brief Handle CEF OnPaint callback for CPU-based software rendering
+     */
+    void onPaint(CefRenderHandler::PaintElementType type,
+                 const CefRenderHandler::RectList& dirtyRects,
+                 const void* buffer,
+                 int width,
+                 int height);
 
+    /**
+     * @brief Handle CEF OnAcceleratedPaint callback for GPU hardware-accelerated rendering
+     */
+    void onAcceleratedPaint(CefRenderHandler::PaintElementType type,
+                            const CefRenderHandler::RectList& dirtyRects,
+                            const CefAcceleratedPaintInfo& info);
+
+    // void onPopupShow(bool show);
+
+    // void onPopupSize(const CefRect &rect);
+
+    bool startDragging(CefRefPtr<CefDragData> dragdata, CefRenderHandler::DragOperationsMask allowedops, int x, int y);
+
+    void updateDragCursor(CefRenderHandler::DragOperation operation);
+
+    void onImeCompositionRangeChanged(const CefRange& selectionRange, const CefRenderHandler::RectList& characterBounds);
+#pragma endregion // RenderHandler
+
+#pragma region CefDisplayHandler
+     void onTitleChange(int browserId, const std::string& title);
+     void onUrlChange(int browserId, const std::string& oldUrl, const std::string& url);
+#pragma endregion // CefDisplayHandler
+
+#pragma region LoadHandler
     void onLoadingStateChange(int browserId, bool isLoading, bool canGoBack, bool canGoForward);
     void onLoadStart(const std::string& url);
     void onLoadEnd(const std::string& url);
     void onLoadError(int browserId, const std::string& errorText, const std::string& failedUrl);
+#pragma endregion // LoadHandler
 
+#pragma region LifeSpanHandler
     void onAfterCreated(int browserId);
     void onBeforeClose(int browserId);
+#pragma endregion // LifeSpanHandler
+
 
     void onProcessMessageReceived(int browserId, const std::string& messageName, const std::string& jsonArgs);
+
+
+#pragma region dragEvents
+    // OsrDragEvents methods.
+    CefBrowserHost::DragOperationsMask onDragEnter(CefRefPtr<CefDragData> dragData, CefMouseEvent ev, CefBrowserHost::DragOperationsMask effect);
+    CefBrowserHost::DragOperationsMask onDragOver(CefMouseEvent ev, CefBrowserHost::DragOperationsMask effect);
+    void onDragLeave();
+    CefBrowserHost::DragOperationsMask onDrop(CefMouseEvent ev, CefBrowserHost::DragOperationsMask effect);
+#pragma endregion // dragEvents
+
 protected:
+    static LRESULT CALLBACK windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
     HWND createSubWindow(HWND parentHwnd, int x, int y,int width, int height, bool showWindow = true);
 
     void createCefBrowser(const std::string& url, const CefWebViewSetting& settings);
 
     void destroy();
+
+    CefRefPtr<CefBrowser> getBrowser() const;
+
+    // WndProc message handlers.
+    void onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam);
+    void onSize();
+    void onFocus(bool setFocus);
+    void onCaptureLost();
+    void onKeyEvent(UINT message, WPARAM wParam, LPARAM lParam);
+    void onPaint();
+    bool onTouchEvent(UINT message, WPARAM wParam, LPARAM lParam);
+
+    void onIMESetContext(UINT message, WPARAM wParam, LPARAM lParam);
+    void onIMEStartComposition();
+    void onIMEComposition(UINT message, WPARAM wParam, LPARAM lParam);
+    void onIMECancelCompositionEvent();
 private:
-    HWND _parentHwnd; // Native window handle for the CefWebView
-    HWND _hwnd; // Native window handle for the CefWebView
-    std::string _className; // Class name for the CefWebView window
+    // Window Hwnd
+    HWND _parentHwnd = nullptr;
+    HWND _hwnd = nullptr;
+    std::string _className;
+
+    CefRefPtr<CefBrowser> _browser;
     CefRefPtr<CefViewClient> _client;
     std::shared_ptr<CefViewClientDelegate> _clientDelegate;
-    typedef std::function<void(void)>       StdClosure;
-    std::vector<StdClosure>                 _taskListAfterCreated;
+
+    std::unique_ptr<OsrRendererD3D11> _osrRenderer;
+
+    typedef std::function<void(void)> StdClosure;
+    std::vector<StdClosure> _taskListAfterCreated; // 浏览器创建后的任务队列
     bool _isDevToolsOpened = false;
-    std::string                             _url;
+
+    CefWebViewSetting _settings;
+    RECT _clientRect;
+    float _deviceScaleFactor = 0.f;
+
+    // Mouse state tracking.
+    POINT _lastMousePos;
+    POINT _currentMousePos;
+    bool _mouseRotation = false;
+    bool _mouseTracking = false;
+    int _lastClickX = 0;
+    int _lastClickY = 0;
+    CefBrowserHost::MouseButtonType _lastClickButton = MBT_LEFT;
+    int _lastClickCount = 1;
+    double _lastClickTime = 0;
+
+    // drag
+    std::shared_ptr<OsrDragEvents> _dragEvents;
+    CComPtr<OsrDropTargetWin> _dropTarget;
+    CefRenderHandler::DragOperation _currentDragOp;
+
+    // ime
+    // Class that encapsulates IMM32 APIs and controls IMEs attached to a window.
+    std::unique_ptr<OsrImeHandlerWin> _imeHandler;
 };
 }
 

@@ -35,7 +35,7 @@ private:
 class ClientAppExtensionHandler : public CefV8Handler
 {
 public:
-    explicit ClientAppExtensionHandler(CefRefPtr<CefViewAppDelegateBase> renderDelegate)
+    explicit ClientAppExtensionHandler(const std::shared_ptr<CefViewAppDelegateInterface>& renderDelegate)
         : _renderDelegate(renderDelegate)
     {
     }
@@ -47,7 +47,7 @@ public:
                          CefString& exception) override;
 
 private:
-    CefRefPtr<CefViewAppDelegateBase> _renderDelegate;
+    std::weak_ptr<CefViewAppDelegateInterface> _renderDelegate;
 
     IMPLEMENT_REFCOUNTING(ClientAppExtensionHandler);
 };

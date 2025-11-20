@@ -14,7 +14,7 @@ const char kPathSep = '\\';
 const char kPathSep = '/';
 #endif
 
-std::string readFileToString(const std::string& path, size_t max_size = std::numeric_limits<size_t>::max()) {
+std::string readFileToString(const std::string& path, size_t max_size) {
   std::string contents;
   FILE* file = fopen(path.c_str(), "rb");
   if (!file) {

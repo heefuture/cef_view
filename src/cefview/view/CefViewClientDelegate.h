@@ -11,7 +11,7 @@
 #define CEFVIEWCLIENTDELEGATE_H
 #pragma once
 #include <client/CefViewClient.h>
-#include <client/CefViewClientDelegateBase.h>
+#include <client/CefViewClientDelegateInterface.h>
 // #include <view/ProcessMessageDelegateWrapper.h>
 
 #include "include/cef_base.h"
@@ -22,14 +22,13 @@
 namespace cefview {
 class CefWebView;
 
-class CefViewClientDelegate : public CefViewClientDelegateBase
+class CefViewClientDelegate : public CefViewClientDelegateInterface
 {
 public:
-    CefViewClientDelegate(const std::shared_ptr<CefWebView>& view);
-    virtual ~CefViewClientDelegate();
+    CefViewClientDelegate(CefWebView* view);
+    ~CefViewClientDelegate();
 
 public:
-
     // /**
     // * @brief 注册一个 ProcessMessageHandler 对象，主要用来处理js消息
     // * @param [in] handler ProcessMessageHandler 对象指针
@@ -45,7 +44,7 @@ private:
 #pragma region CefClient
     virtual bool onProcessMessageReceived(CefRefPtr<CefBrowser> browser,
                                           CefRefPtr<CefFrame> frame,
-                                          CefProcessId source_process,
+                                          CefProcessId sourceProcess,
                                           CefRefPtr<CefProcessMessage> message) override;
 #pragma endregion // CefClient
 
@@ -59,8 +58,8 @@ private:
     virtual bool onContextMenuCommand(CefRefPtr<CefBrowser> browser,
                                       CefRefPtr<CefFrame> frame,
                                       CefRefPtr<CefContextMenuParams> params,
-                                      int command_id,
-                                      CefContextMenuHandler::EventFlags event_flags) override;
+                                      int commandId,
+                                      CefContextMenuHandler::EventFlags eventFlags) override;
 #pragma endregion // CefContextMenuHandler
 
 #pragma region CefDisplayHandler
@@ -71,7 +70,7 @@ private:
     virtual bool onCursorChange(CefRefPtr<CefBrowser> browser,
                                 CefCursorHandle cursor,
                                 cef_cursor_type_t type,
-                                const CefCursorInfo &custom_cursor_info) override;
+                                const CefCursorInfo &customCursorInfo) override;
 
     virtual bool onConsoleMessage(CefRefPtr<CefBrowser> browser,
                                   cef_log_severity_t level,
@@ -82,41 +81,41 @@ private:
 
 #pragma region CefDownloadHandler
     virtual bool onBeforeDownload(CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefDownloadItem> download_item,
-        const CefString &suggested_name,
+        CefRefPtr<CefDownloadItem> downloadItem,
+        const CefString &suggestedName,
         CefRefPtr<CefBeforeDownloadCallback> callback) override;
 
     virtual void onDownloadUpdated(CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefDownloadItem> download_item,
+        CefRefPtr<CefDownloadItem> downloadItem,
         CefRefPtr<CefDownloadItemCallback> callback) override;
 #pragma endregion // CefDownloadHandler
 
 #pragma region CefDragHandler
     virtual bool onDragEnter(CefRefPtr<CefBrowser> browser,
-                             CefRefPtr<CefDragData> drag_data,
+                             CefRefPtr<CefDragData> dragData,
                              CefRenderHandler::DragOperationsMask mask) override;
 #pragma endregion // CefDragHandler
 
 #pragma region CefKeyboardHandler
-    virtual bool OnKeyEvent(CefRefPtr<CefBrowser> browser, const CefKeyEvent& event, CefEventHandle os_event) override;
+    virtual bool onKeyEvent(CefRefPtr<CefBrowser> browser, const CefKeyEvent& event, CefEventHandle osEvent) override;
 #pragma endregion // CefKeyboardHandler
 
 #pragma region CefLifeSpanHandler
     virtual bool onBeforePopup(CefRefPtr<CefBrowser> browser,
                                CefRefPtr<CefFrame> frame,
-                               int popup_id,
-                               const CefString &target_url,
-                               const CefString &target_frame_name,
-                               CefLifeSpanHandler::WindowOpenDisposition target_disposition,
-                               bool user_gesture,
+                               int popupId,
+                               const CefString &targetUrl,
+                               const CefString &targetFrameName,
+                               CefLifeSpanHandler::WindowOpenDisposition targetDisposition,
+                               bool userGesture,
                                const CefPopupFeatures &popupFeatures,
                                CefWindowInfo &windowInfo,
                                CefRefPtr<CefClient> &client,
                                CefBrowserSettings &settings,
-                               CefRefPtr<CefDictionaryValue> &extra_info,
-                               bool *no_javascript_access) override;
+                               CefRefPtr<CefDictionaryValue> &extraInfo,
+                               bool *noJavascriptAccess) override;
 
-    virtual bool onAfterCreated(CefRefPtr<CefBrowser> browser) override;
+    virtual void onAfterCreated(CefRefPtr<CefBrowser> browser) override;
 
     virtual void onBeforeClose(CefRefPtr<CefBrowser> browser) override;
 #pragma endregion // CefLifeSpanHandler
@@ -124,7 +123,7 @@ private:
 #pragma region CefLoadHandler
     virtual void onLoadingStateChange(CefRefPtr<CefBrowser> browser, bool isLoading, bool canGoBack, bool canGoForward) override;
 
-    virtual void onLoadStart(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefLoadHandler::TransitionType transition_type) override;
+    virtual void onLoadStart(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefLoadHandler::TransitionType transitionType) override;
 
     virtual void onLoadEnd(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int httpStatusCode) override;
 
@@ -161,21 +160,21 @@ private:
     virtual void onPopupSize(CefRefPtr<CefBrowser> browser, const CefRect &rect) override;
 
     virtual bool startDragging(CefRefPtr<CefBrowser> browser,
-        CefRefPtr<CefDragData> drag_data,
-        CefRenderHandler::DragOperationsMask allowed_ops,
+        CefRefPtr<CefDragData> dragData,
+        CefRenderHandler::DragOperationsMask allowedOps,
         int x, int y) override;
 
     virtual void updateDragCursor(CefRefPtr<CefBrowser> browser, CefRenderHandler::DragOperation operation) override;
 
     virtual void onImeCompositionRangeChanged(CefRefPtr<CefBrowser> browser,
-        const CefRange& selection_range,
-        const CefRenderHandler::RectList& character_bounds) override;
+        const CefRange& selectionRange,
+        const CefRenderHandler::RectList& characterBounds) override;
 #pragma endregion // CefRenderHandler
 
 #pragma region CefRequestHandler
-    virtual bool onBeforeBrowse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request, bool user_gesture, bool is_redirect) override;
+    virtual bool onBeforeBrowse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request, bool userGesture, bool isRedirect) override;
 
-    virtual void onRenderProcessTerminated(CefRefPtr<CefBrowser> browser, CefRequestHandler::TerminationStatus status, int error_code, const CefString& error_string) override;
+    virtual void onRenderProcessTerminated(CefRefPtr<CefBrowser> browser, CefRequestHandler::TerminationStatus status, int errorCode, const CefString& errorString) override;
 #pragma endregion // CefRequestHandler
 
     //// 封装一些 JS 与 C++ 交互的功能
@@ -185,9 +184,7 @@ private:
     //enum WebState { kNone, kCreating, kCreated };
     //WebState _webstate;
 protected:
-    HWND                                    _hwnd; // Native window handle for the CefWebView
-    std::weak_ptr<CefWebView>               _view;
-
+    CefWebView*                             _view{nullptr};
     // std::vector<CefRefPtr<ProcessMessageDelegateWrapper>> _delegates;
     //std::shared_ptr<CefJSBridge> js_bridge_;
     CefString                               _url;

@@ -1,5 +1,8 @@
 #include "utils/WinUtil.h"
 
+#include "GeometryUtil.h"
+
+#include <shellscalingapi.h>
 // #include "include/base/cef_logging.h"
 
 namespace cefview::util {
@@ -35,6 +38,29 @@ std::wstring getResourceString(UINT id) {
     TCHAR buff[MAX_LOADSTRING] = {0};
     LoadString(::GetModuleHandle(nullptr), id, buff, MAX_LOADSTRING);
     return buff;
+}
+
+// Helper funtion to check if it is Windows8 or greater.
+// https://msdn.microsoft.com/en-us/library/ms724833(v=vs.85).aspx
+bool isWindows8OrNewer() {
+    OSVERSIONINFOEX osvi = {0};
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+    osvi.dwMajorVersion = 6;
+    osvi.dwMinorVersion = 2;
+    DWORDLONG dwlConditionMask = 0;
+    VER_SET_CONDITION(dwlConditionMask, VER_MAJORVERSION, VER_GREATER_EQUAL);
+    VER_SET_CONDITION(dwlConditionMask, VER_MINORVERSION, VER_GREATER_EQUAL);
+    return ::VerifyVersionInfo(&osvi, VER_MAJORVERSION | VER_MINORVERSION,
+                               dwlConditionMask) == TRUE;
+}
+
+// Helper function to detect mouse messages coming from emulation of touch
+// events. These should be ignored.
+bool isMouseEventFromTouch(UINT message) {
+#define MOUSEEVENTF_FROMTOUCH 0xFF515700
+    return (message >= WM_MOUSEFIRST) && (message <= WM_MOUSELAST) &&
+           (::GetMessageExtraInfo() & MOUSEEVENTF_FROMTOUCH) ==
+               MOUSEEVENTF_FROMTOUCH;
 }
 
 int getCefMouseModifiers(WPARAM wparam) {
@@ -163,6 +189,47 @@ bool isKeyDown(WPARAM wparam) {
     return (::GetKeyState(wparam) & 0x8000) != 0;
 }
 
+// Returns true if the process is per monitor DPI aware.
+bool isProcessPerMonitorDpiAware() {
+    enum class PerMonitorDpiAware
+    {
+        UNKNOWN = 0,
+        PER_MONITOR_DPI_UNAWARE,
+        PER_MONITOR_DPI_AWARE,
+    };
+    static PerMonitorDpiAware per_monitor_dpi_aware = PerMonitorDpiAware::UNKNOWN;
+    if (per_monitor_dpi_aware == PerMonitorDpiAware::UNKNOWN) {
+        per_monitor_dpi_aware = PerMonitorDpiAware::PER_MONITOR_DPI_UNAWARE;
+        HMODULE shcore_dll = ::LoadLibrary(L"shcore.dll");
+        if (shcore_dll) {
+            typedef HRESULT(WINAPI * GetProcessDpiAwarenessPtr)(HANDLE, PROCESS_DPI_AWARENESS *);
+            GetProcessDpiAwarenessPtr func_ptr = reinterpret_cast<GetProcessDpiAwarenessPtr>(::GetProcAddress(shcore_dll, "GetProcessDpiAwareness"));
+            if (func_ptr) {
+                PROCESS_DPI_AWARENESS awareness;
+                if (SUCCEEDED(func_ptr(nullptr, &awareness)) && awareness == PROCESS_PER_MONITOR_DPI_AWARE) {
+                    per_monitor_dpi_aware = PerMonitorDpiAware::PER_MONITOR_DPI_AWARE;
+                }
+            }
+        }
+    }
+    return per_monitor_dpi_aware == PerMonitorDpiAware::PER_MONITOR_DPI_AWARE;
+}
+
+// DPI value for 1x scale factor.
+#define DPI_1X 96.0f
+float getWindowScaleFactor(HWND hwnd)
+{
+    if (hwnd && isProcessPerMonitorDpiAware()) {
+        typedef UINT(WINAPI * GetDpiForWindowPtr)(HWND);
+        static GetDpiForWindowPtr func_ptr = reinterpret_cast<GetDpiForWindowPtr>(::GetProcAddress(GetModuleHandle(L"user32.dll"), "GetDpiForWindow"));
+        if (func_ptr) {
+            return static_cast<float>(func_ptr(hwnd)) / DPI_1X;
+        }
+    }
+
+    return getDeviceScaleFactor();
+}
+
 float getDeviceScaleFactor() {
     static float scale_factor = 1.0;
     static bool initialized = false;
@@ -181,12 +248,27 @@ float getDeviceScaleFactor() {
     return scale_factor;
 }
 
-CefRect getWindowRect(HWND hwnd) {
-    RECT rect;
-    ::GetClientRect(hwnd, &rect);
-    ::ClientToScreen(hwnd, (LPPOINT)&rect.left);
-    ::ClientToScreen(hwnd, (LPPOINT)&rect.right);
-    return CefRect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+CefRect getWindowRect(HWND hwnd, float deviceScaleFactor) {
+    RECT clientRect;
+    ::GetClientRect(hwnd, &clientRect);
+
+    CefRect rect;
+    rect.x = rect.y = 0;
+
+    rect.width = deviceToLogical(clientRect.right - clientRect.left, deviceScaleFactor);
+    if (rect.width == 0) {
+        rect.width = 1;
+    }
+
+    rect.height = deviceToLogical(clientRect.bottom - clientRect.top, deviceScaleFactor);
+    if (rect.height == 0) {
+        rect.height = 1;
+    }
+
+    return rect;
+    // ::ClientToScreen(hwnd, (LPPOINT)&clientRect.left);
+    // ::ClientToScreen(hwnd, (LPPOINT)&clientRect.right);
+    // return CefRect(clientRect.left, clientRect.top, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
 }
 
 }  // namespace cefview::util

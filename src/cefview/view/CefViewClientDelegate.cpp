@@ -3,23 +3,19 @@
 #include "CefWebView.h"
 #include "CefViewClientDelegate.h"
 
-#include <utils/util_win.h>
+#include <utils/WinUtil.h>
 
 using namespace cefview;
 
-CefViewClientDelegate::CefViewClientDelegate(const std::shared_ptr<CefWebView>& view)
+CefViewClientDelegate::CefViewClientDelegate(CefWebView* view)
     : _view(view)
 {
-    if (view) {
-        _hwnd = view->getWindowHandle();
-    }
+    assert(_view);
 }
 
 CefViewClientDelegate::~CefViewClientDelegate()
 {
-    _taskListAfterCreated.clear();
 }
-
 
 // void CefViewClientDelegate::registerProcessMessageHandler(ProcessMessageHandler* handler)
 // {
@@ -32,7 +28,7 @@ CefViewClientDelegate::~CefViewClientDelegate()
 #pragma region CefClient
 bool CefViewClientDelegate::onProcessMessageReceived(CefRefPtr<CefBrowser> browser,
                                                      CefRefPtr<CefFrame> frame,
-                                                     CefProcessId source_process,
+                                                     CefProcessId sourceProcess,
                                                      CefRefPtr<CefProcessMessage> message)
 {
     if (message && browser) {
@@ -44,9 +40,8 @@ bool CefViewClientDelegate::onProcessMessageReceived(CefRefPtr<CefBrowser> brows
             jsonArgs = args->GetString(0).ToString();
         }
 
-        if (auto view = _view.lock()) {
-            view->onProcessMessageReceived(id, name, jsonArgs);
-        }
+
+        _view->onProcessMessageReceived(id, name, jsonArgs);
         return true;
     }
     return false;
@@ -67,8 +62,8 @@ void CefViewClientDelegate::onBeforeContextMenu(CefRefPtr<CefBrowser> browser,
 bool CefViewClientDelegate::onContextMenuCommand(CefRefPtr<CefBrowser> browser,
                                               CefRefPtr<CefFrame> frame,
                                               CefRefPtr<CefContextMenuParams> params,
-                                              int command_id,
-                                              CefContextMenuHandler::EventFlags event_flags)
+                                              int commandId,
+                                              CefContextMenuHandler::EventFlags eventFlags)
 {
     return false;
 }
@@ -83,23 +78,19 @@ void CefViewClientDelegate::onAddressChange(CefRefPtr<CefBrowser> browser, CefRe
         auto old_url = _url;
         _url = frame->GetURL();
 
-        if (auto view = _view.lock()) {
-            view->onUrlChange(id, old_url.ToString(), _url.ToString());
-        }
+        _view->onUrlChange(id, old_url.ToString(), _url.ToString());
     }
 }
 
 void CefViewClientDelegate::onTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title)
 {
-    if (auto view = _view.lock()) {
-        view->onTitleChange(browser->GetIdentifier(), title.ToString());
-    }
+    _view->onTitleChange(browser->GetIdentifier(), title.ToString());
 }
 
 bool CefViewClientDelegate::onCursorChange(CefRefPtr<CefBrowser> browser,
                                         CefCursorHandle cursor,
                                         cef_cursor_type_t type,
-                                        const CefCursorInfo &custom_cursor_info)
+                                        const CefCursorInfo &customCursorInfo)
 {
     return false;
 }
@@ -116,15 +107,15 @@ bool CefViewClientDelegate::onConsoleMessage(CefRefPtr<CefBrowser> browser,
 
 #pragma region CefDownloadHandler
 bool CefViewClientDelegate::onBeforeDownload(CefRefPtr<CefBrowser> browser,
-                                          CefRefPtr<CefDownloadItem> download_item,
-                                          const CefString &suggested_name,
+                                          CefRefPtr<CefDownloadItem> downloadItem,
+                                          const CefString &suggestedName,
                                           CefRefPtr<CefBeforeDownloadCallback> callback)
 {
     return false;
 }
 
 void CefViewClientDelegate::onDownloadUpdated(CefRefPtr<CefBrowser> browser,
-                                           CefRefPtr<CefDownloadItem> download_item,
+                                           CefRefPtr<CefDownloadItem> downloadItem,
                                            CefRefPtr<CefDownloadItemCallback> callback)
 {
 }
@@ -132,7 +123,7 @@ void CefViewClientDelegate::onDownloadUpdated(CefRefPtr<CefBrowser> browser,
 
 #pragma region CefDragHandler
 bool CefViewClientDelegate::onDragEnter(CefRefPtr<CefBrowser> browser,
-                                     CefRefPtr<CefDragData> drag_data,
+                                     CefRefPtr<CefDragData> dragData,
                                      CefRenderHandler::DragOperationsMask mask)
 {
     return false;
@@ -140,7 +131,7 @@ bool CefViewClientDelegate::onDragEnter(CefRefPtr<CefBrowser> browser,
 #pragma endregion // CefDragHandler
 
 #pragma region CefKeyboardHandler
-bool CefViewClientDelegate::OnKeyEvent(CefRefPtr<CefBrowser> browser, const CefKeyEvent& event, CefEventHandle os_event)
+bool CefViewClientDelegate::onKeyEvent(CefRefPtr<CefBrowser> browser, const CefKeyEvent& event, CefEventHandle osEvent)
 {
     return false;
 }
@@ -149,46 +140,29 @@ bool CefViewClientDelegate::OnKeyEvent(CefRefPtr<CefBrowser> browser, const CefK
 #pragma region CefLifeSpanHandler
 bool CefViewClientDelegate::onBeforePopup(CefRefPtr<CefBrowser> browser,
                                        CefRefPtr<CefFrame> frame,
-                                       int popup_id,
-                                       const CefString &target_url,
-                                       const CefString &target_frame_name,
-                                       CefLifeSpanHandler::WindowOpenDisposition target_disposition,
-                                       bool user_gesture,
+                                       int popupId,
+                                       const CefString &targetUrl,
+                                       const CefString &targetFrameName,
+                                       CefLifeSpanHandler::WindowOpenDisposition targetDisposition,
+                                       bool userGesture,
                                        const CefPopupFeatures &popupFeatures,
                                        CefWindowInfo &windowInfo,
                                        CefRefPtr<CefClient> &client,
                                        CefBrowserSettings &settings,
-                                       CefRefPtr<CefDictionaryValue> &extra_info,
-                                       bool *no_javascript_access)
+                                       CefRefPtr<CefDictionaryValue> &extraInfo,
+                                       bool *noJavascriptAccess)
 {
     return false;
 }
 
-bool CefViewClientDelegate::onAfterCreated(CefRefPtr<CefBrowser> browser)
+void CefViewClientDelegate::onAfterCreated(CefRefPtr<CefBrowser> browser)
 {
-    if (browser) {
-        if (auto view = _view.lock()) {
-            view->onAfterCreated(browser->GetIdentifier());
-        }
-
-        for (const auto &task : _taskListAfterCreated) {
-            if (task) {
-                task();
-            }
-        }
-        _taskListAfterCreated.clear();
-        return true;
-    }
-    return false;
+    _view->onAfterCreated(browser->GetIdentifier());
 }
 
 void CefViewClientDelegate::onBeforeClose(CefRefPtr<CefBrowser> browser)
 {
-    if (browser) {
-        if (auto view = _view.lock()) {
-            view->onBeforeClose(browser->GetIdentifier());
-        }
-    }
+    _view->onBeforeClose(browser->GetIdentifier());
 }
 #pragma endregion // CefLifeSpanHandler
 
@@ -196,33 +170,24 @@ void CefViewClientDelegate::onBeforeClose(CefRefPtr<CefBrowser> browser)
 void CefViewClientDelegate::onLoadingStateChange(CefRefPtr<CefBrowser> browser, bool isLoading, bool canGoBack, bool canGoForward)
 {
     auto id = browser->GetIdentifier();
-    if (auto view = _view.lock()) {
-        view->onLoadingStateChange(id, isLoading, canGoBack, canGoForward);
-    }
+    _view->onLoadingStateChange(id, isLoading, canGoBack, canGoForward);
 }
 
-void CefViewClientDelegate::onLoadStart(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefLoadHandler::TransitionType transition_type)
+void CefViewClientDelegate::onLoadStart(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefLoadHandler::TransitionType transitionType)
 {
     std::string url = frame->GetURL().ToString();
-    if (auto view = _view.lock()) {
-        view->onLoadStart(url);
-    }
+    _view->onLoadStart(url);
 }
 
 void CefViewClientDelegate::onLoadEnd(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, int httpStatusCode)
 {
     std::string url = frame->GetURL().ToString();
-    if (auto view = _view.lock()) {
-        view->onLoadEnd(url);
-    }
+    _view->onLoadEnd(url);
 }
 
 void CefViewClientDelegate::onLoadError(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefLoadHandler::ErrorCode errorCode, const CefString& errorText, const CefString& failedUrl)
 {
     int browserId = browser->GetIdentifier();
-    if (auto view = _view.lock()) {
-        view->onLoadError(browserId, errorText.ToString(), failedUrl.ToString());
-    }
 }
 #pragma endregion // CefLoadHandler
 
@@ -234,7 +199,7 @@ void CefViewClientDelegate::onPaint(CefRefPtr<CefBrowser> browser,
         int width,
         int height)
 {
-    return;
+    _view->onPaint(type, dirtyRects, buffer, width, height);
 }
 
 void CefViewClientDelegate::onAcceleratedPaint(CefRefPtr<CefBrowser> browser,
@@ -242,42 +207,23 @@ void CefViewClientDelegate::onAcceleratedPaint(CefRefPtr<CefBrowser> browser,
         const CefRenderHandler::RectList &dirtyRects,
         const CefAcceleratedPaintInfo &info)
 {
-    return;
+    _view->onAcceleratedPaint(type, dirtyRects, info);
 }
 
 bool CefViewClientDelegate::getRootScreenRect(CefRefPtr<CefBrowser> browser, CefRect &rect) {
-    RECT window_rect = { 0 };
-    HWND root_window = GetAncestor(_hwnd, GA_ROOT);
-    if (::GetWindowRect(root_window, &window_rect)) {
-        rect = CefRect(window_rect.left, window_rect.top,
-                       window_rect.right - window_rect.left, window_rect.bottom - window_rect.top);
-        return true;
-    }
-    return false;
+    return _view->getRootScreenRect(rect);
 }
 
 void CefViewClientDelegate::getViewRect(CefRefPtr<CefBrowser> browser, CefRect &rect) {
-    rect.x = rect.y = 0;
-    rect = getWindowRect(_hwnd);
-    if (rect.IsEmpty()) {
-        rect.width = 1;
-        rect.height = 1;
-    }
+    _view->getViewRect(rect);
 }
 
 bool CefViewClientDelegate::getScreenPoint(CefRefPtr<CefBrowser> browser, int viewX, int viewY, int &screenX, int &screenY) {
-    if (!::IsWindow(_hwnd)) return false;
-
-    // Convert the point from view coordinates to actual screen coordinates.
-    POINT screen_pt = { viewX, viewY };
-    ::ClientToScreen(_hwnd, &screen_pt);
-    screenX = screen_pt.x;
-    screenY = screen_pt.y;
-    return true;
+    return _view->getScreenPoint(viewX, viewY, screenX, screenY);
 }
 
 bool CefViewClientDelegate::getScreenInfo(CefRefPtr<CefBrowser> browser, CefScreenInfo &screenInfo) {
-    return false;
+    return _view->getScreenInfo(screenInfo);
 }
 
 void CefViewClientDelegate::onPopupShow(CefRefPtr<CefBrowser> browser, bool show)
@@ -291,33 +237,33 @@ void CefViewClientDelegate::onPopupSize(CefRefPtr<CefBrowser> browser, const Cef
 }
 
 bool CefViewClientDelegate::startDragging(CefRefPtr<CefBrowser> browser,
-    CefRefPtr<CefDragData> drag_data,
-    CefRenderHandler::DragOperationsMask allowed_ops,
+    CefRefPtr<CefDragData> dragData,
+    CefRenderHandler::DragOperationsMask allowedOps,
     int x, int y)
 {
-    return false;
+    return _view->startDragging(dragData, allowedOps, x, y);
 }
 
 void CefViewClientDelegate::updateDragCursor(CefRefPtr<CefBrowser> browser, CefRenderHandler::DragOperation operation)
 {
-    return;
+    _view->updateDragCursor(operation);
 }
 
 void CefViewClientDelegate::onImeCompositionRangeChanged(CefRefPtr<CefBrowser> browser,
-    const CefRange& selection_range,
-    const CefRenderHandler::RectList& character_bounds)
+    const CefRange& selectionRange,
+    const CefRenderHandler::RectList& characterBounds)
 {
-    return;
+    _view->onImeCompositionRangeChanged(selectionRange, characterBounds);
 }
 #pragma endregion // CefRenderHandler
 
 #pragma region CefRequestHandler
-bool CefViewClientDelegate::onBeforeBrowse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request, bool user_gesture, bool is_redirect)
+bool CefViewClientDelegate::onBeforeBrowse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request, bool userGesture, bool isRedirect)
 {
     return false;
 }
 
-void CefViewClientDelegate::onRenderProcessTerminated(CefRefPtr<CefBrowser> browser, CefRequestHandler::TerminationStatus status, int error_code, const CefString& error_string)
+void CefViewClientDelegate::onRenderProcessTerminated(CefRefPtr<CefBrowser> browser, CefRequestHandler::TerminationStatus status, int errorCode, const CefString& errorString)
 {
     return;
 }

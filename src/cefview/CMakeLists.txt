@@ -7,7 +7,7 @@ message(STATUS "Output dir : ${TARGET_OUT_DIR}")
 # Logical target used to link the libcef library.
 ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
 
-file(GLOB_RECURSE UTIL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/util/*.*)
+file(GLOB_RECURSE UTIL_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/utils/*.*)
 list(APPEND SRC_FILES ${UTIL_SRCS})
 source_group(utils FILES ${UTIL_SRCS})
 
@@ -15,17 +15,21 @@ file(GLOB_RECURSE CLIENT_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/client/*.*)
 list(APPEND SRC_FILES ${CLIENT_SRCS})
 source_group(client FILES ${CLIENT_SRCS})
 
-file(GLOB_RECURSE HANDLER_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/handler/*.*)
+file(GLOB_RECURSE HANDLER_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/bridge/*.*)
 list(APPEND SRC_FILES ${HANDLER_SRCS})
-source_group(handler FILES ${HANDLER_SRCS})
+source_group(bridge FILES ${HANDLER_SRCS})
 
 file(GLOB_RECURSE VIEW_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/view/*.*)
 list(APPEND SRC_FILES ${VIEW_SRCS})
 source_group(view FILES ${VIEW_SRCS})
 
-file(GLOB_RECURSE MGR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/manager/*.*)
+file(GLOB_RECURSE MGR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/global/*.*)
 list(APPEND SRC_FILES ${MGR_SRCS})
-source_group(manager FILES ${MGR_SRCS})
+source_group(global FILES ${MGR_SRCS})
+
+file(GLOB_RECURSE OSR_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/osr/*.*)
+list(APPEND SRC_FILES ${OSR_SRCS})
+source_group(osr FILES ${OSR_SRCS})
 
 
 if(WEBVIEW_BUILD_STATIC)
@@ -49,4 +53,20 @@ endif ()
 # )
 
 target_link_libraries(${CEFVIEW_TARGET} libcef_lib libcef_dll_wrapper)
+
+# Link D3D11 libraries for off-screen rendering (OSR) support
+if(WIN32)
+    if(USE_ATL)
+        # Required by VS2013 to link accessibility API functions.
+        target_link_libraries(${CEFVIEW_TARGET} oleacc.lib)
+    endif()
+
+    #  glu32.lib opengl32.lib
+    target_link_libraries(${CEFVIEW_TARGET} d3d11.lib dxgi.lib d3dcompiler.lib imm32.lib)
+
+    if (MSVC)
+        target_compile_definitions(${CEFVIEW_TARGET} PRIVATE ${CEFVIEW_DEFINES})
+        target_compile_options(${CEFVIEW_TARGET} PRIVATE ${CEFVIEW_COMPILE_OPTIONS})
+    endif ()
+endif()
 

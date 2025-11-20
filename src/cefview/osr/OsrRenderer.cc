@@ -2,7 +2,7 @@
 // reserved. Use of this source code is governed by a BSD-style license
 // that can be found in the LICENSE file.
 
-#include "osr_renderer.h"
+#include "OsrRenderer.h"
 
 #if defined(__clang__)
 // Begin disable NSOpenGL deprecation warnings.

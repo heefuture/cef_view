@@ -10,27 +10,29 @@
 
 #include "CefSwitches.h"
 
-using namespace cefview;
+namespace cefview{
 
 int CefViewClient::sBrowserCount = 0;
 
-CefViewClient::CefViewClient(CefViewClientDelegateBase::WeakPtr delegate)
+CefViewClient::CefViewClient(CefViewClientDelegateInterface::RefPtr delegate)
     : _clientDelegate(delegate)
 {
 }
 
-void CefViewClient::NotifyRectUpdated()
+CefViewClient::~CefViewClient()
 {
-    if (!CefCurrentlyOn(TID_UI)) {
-        // 把操作跳转到Cef线程执行
-        CefPostTask(TID_UI, base::BindOnce(&CefViewClient::NotifyRectUpdated, this));
-        return;
-    }
-
-    // 调用WasResized接口，调用后，BrowserHandler会调用GetViewRect接口来获取浏览器对象新的位置
-    if (_browser.get() && _browser->GetHost().get())
-        _browser->GetHost()->WasResized();
 }
+// void CefViewClient::NotifyRectUpdated()
+// {
+//     if (!CefCurrentlyOn(TID_UI)) {
+//         CefPostTask(TID_UI, base::BindOnce(&CefViewClient::NotifyRectUpdated, this));
+//         return;
+//     }
+
+//     // 调用WasResized接口，调用后，BrowserHandler会调用GetViewRect接口来获取浏览器对象新的位置
+//     if (_browser.get() && _browser->GetHost().get())
+//         _browser->GetHost()->WasResized();
+// }
 
 CefRefPtr<CefBrowserHost> CefViewClient::GetBrowserHost()
 {
@@ -135,7 +137,6 @@ bool CefViewClient::OnContextMenuCommand(CefRefPtr<CefBrowser> browser, CefRefPt
 void CefViewClient::OnAddressChange(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, const CefString& url)
 {
     if (!CefCurrentlyOn(TID_UI)) {
-        // 把操作跳转到Cef线程执行
         CefPostTask(TID_UI, base::BindOnce(&CefViewClient::OnAddressChange, this, browser, frame, url));
         return;
     }
@@ -150,7 +151,6 @@ void CefViewClient::OnAddressChange(CefRefPtr<CefBrowser> browser, CefRefPtr<Cef
 void CefViewClient::OnTitleChange(CefRefPtr<CefBrowser> browser, const CefString& title)
 {
     if (!CefCurrentlyOn(TID_UI)) {
-        // 把操作跳转到Cef线程执行
         CefPostTask(TID_UI, base::BindOnce(&CefViewClient::OnTitleChange, this, browser, title));
         return;
     }
@@ -476,8 +476,9 @@ bool CefViewClient::StartDragging(CefRefPtr<CefBrowser> browser,
 {
     REQUIRE_UI_THREAD();
     if (auto clientDelegate = _clientDelegate.lock()) {
-        clientDelegate->startDragging(browser, drag_data, allowed_ops, x, y);
+        return clientDelegate->startDragging(browser, drag_data, allowed_ops, x, y);
     }
+    return false;
 }
 
 void CefViewClient::UpdateDragCursor(CefRefPtr<CefBrowser> browser,
@@ -524,3 +525,5 @@ void CefViewClient::OnRenderProcessTerminated(CefRefPtr<CefBrowser> browser, Cef
     }
 }
 #pragma endregion // CefRequestHandler
+
+} // namespace cefview

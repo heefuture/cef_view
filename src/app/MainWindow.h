@@ -14,8 +14,13 @@
 #include <string>
 #include <memory>
 #include <list>
+#include <vector>
 
+namespace cefview {
 class CefWebView;
+}
+
+using cefview::CefWebView;
 // Windows implementation of a top-level native window in the browser process.
 // The methods of this class must be called on the main thread unless otherwise
 // indicated.
@@ -73,9 +78,17 @@ public:
     HWND getWindowHandle() const;
 
     // CefRefPtr<CefBrowser> getBrowser() const;
+
+    // T078-T086: 多视图管理（Phase 6）
+    void createTopView();
+    void createBottomViews();
+    void setActiveBottomView(int index);
+    void updateLayout();
+
 private:
     // void createBrowserWindow(const std::string& startup_url);
     void createRootWindow(bool initiallyHidden);
+    void createCefViews();
 
     // Register the root window class.
     static void RegisterRootClass(HINSTANCE hInstance,
@@ -127,7 +140,20 @@ private:
     float _deviceScaleFactor = 1.0f;
     RECT _initialBounds;
     ShowMode _initialShowMode = ShowMode::NORMAL;
-    std::list<std::shared_ptr<CefWebView>> _cefViewList;
+
+    // T078: 顶部视图（独立浏览器）
+    std::shared_ptr<CefWebView> _topView;
+
+    // T078: 底部视图列表（叠加显示的多个浏览器）
+    std::vector<std::shared_ptr<CefWebView>> _bottomViews;
+
+    // T079: 当前激活的底部视图索引
+    int _activeBottomViewIndex = 0;
+
+    // T085: 切换按钮句柄
+    HWND _btnSwitch1 = nullptr;
+    HWND _btnSwitch2 = nullptr;
+    HWND _btnSwitch3 = nullptr;
 
     // Main window.
     HWND _hwnd = nullptr;
@@ -136,6 +162,7 @@ private:
     HRGN _draggableRegion = nullptr;
 
     bool _windowDestroyed = false;
+    bool _windowCreated = false;
 
     bool _calledEnableNonClientDpiScaling = false;
 };

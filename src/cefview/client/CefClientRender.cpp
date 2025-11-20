@@ -39,7 +39,7 @@ std::shared_ptr<std::ofstream> getLogFileStream() {
 }
 //////////////////////////////////////////////////////////////////////////////////////////
 // CefRenderProcessHandler methods.
-class ClientRenderDelegate : public CefViewAppDelegateBase {
+class ClientRenderDelegate : public CefViewAppDelegateInterface {
 public:
     ClientRenderDelegate()
       : _lastNodeIsEditable(false) {
@@ -52,7 +52,7 @@ public:
         // std::cout << "ClientApp::OnWebKitInitialized (Process id " << pid << "), (Thread id " << tid << ")" << std::endl;
 
         // Register the client_app extension.
-        CefRefPtr<ClientAppExtensionHandler> appHandler(new ClientAppExtensionHandler(this));
+        CefRefPtr<ClientAppExtensionHandler> appHandler; //new ClientAppExtensionHandler(this)
         std::string appCode =
             "var app;"
             "if (!app)"
@@ -111,7 +111,7 @@ public:
         CefRegisterExtension("v8/extern", extensionCode, handler);
     }
 
-    virtual void onBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extra_info)
+    virtual void onBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extraInfo)
     {
         if (!_renderJsBridge.get())
             _renderJsBridge.reset(new CefJsBridgeRender);
@@ -163,9 +163,9 @@ public:
         }
     }
 
-    virtual bool onProcessMessageReceived(CefRefPtr<CefBrowser> browser, CefProcessId source_process, CefRefPtr<CefProcessMessage> message) override
+    virtual bool onProcessMessageReceived(CefRefPtr<CefBrowser> browser, CefProcessId sourceProcess, CefRefPtr<CefProcessMessage> message) override
     {
-        assert(source_process == PID_BROWSER);
+        assert(sourceProcess == PID_BROWSER);
         // 收到 browser 的消息回复
         const CefString& messageName = message->GetName();
         if (messageName == kExecuteJsCallbackMessage)

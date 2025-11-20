@@ -3,6 +3,8 @@
 #pragma once
 
 #include "include/cef_app.h"
+
+#include <global/CefConfig.h>
 #include <utils/export.h>
 
 namespace cefview {
@@ -11,14 +13,11 @@ class WEBVIEW_EXPORTS CefManager
 {
 public:
     static CefManager* getInstance();
+
     // Initialize CEF.
-    int initCef(CefSettings& settings, bool logging);
+    int initCef(const CefConfig& config);
     // quit CEF.
     void quitCef();
-    // Returns the application working directory.
-    CefString getAppWorkingDirectory();
-    // Returns the temp directory.
-    CefString getAppTempDirectory();
     // doMessageLoopWork
     void doCefMessageLoopWork();
     // runCefMessageLoop
@@ -26,7 +25,11 @@ public:
     // quit the application message loop.
     void quitCefMessageLoop();
 private:
-    void initCefSettings(CefSettings& settings);
+    CefSettings initCefSettings(const CefConfig& config);
+    // Returns the application working directory.
+    CefString getAppWorkingDirectory();
+    // Returns the temp directory.
+    CefString getAppTempDirectory();
 private:
     CefManager() = default;
     CefManager(const CefManager&) = delete;

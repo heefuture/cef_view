@@ -1,14 +1,30 @@
 #include "MainWindow.h"
-
-#include <utils/geometry_util.h>
+#include <view/CefWebView.h>
+#include <view/CefWebViewSetting.h>
+#include <utils/WinUtil.h>
 
 #include <optional>
 #include <shellscalingapi.h>
 
+using namespace cefview;
+using namespace cefview::util;
+
 #define MAX_URL_LENGTH 255
 
 #define BUTTON_WIDTH 72
+#define BUTTON_HEIGHT 30
 #define URLBAR_HEIGHT 24
+#define ID_BTN_SWITCH1 101
+#define ID_BTN_SWITCH2 102
+#define ID_BTN_SWITCH3 103
+
+// 资源ID定义
+#define IDS_APP_TITLE      103
+#define IDR_MAINFRAME      128
+#define IDI_SMALL          108
+#define IDM_ABOUT          104
+#define IDM_EXIT           105
+#define IDD_ABOUTBOX       103
 
 namespace
 {
@@ -31,60 +47,14 @@ INT_PTR CALLBACK AboutWndProc(HWND hDlg,
     return FALSE;
 }
 
-// Returns true if the process is per monitor DPI aware.
-bool IsProcessPerMonitorDpiAware()
-{
-    enum class PerMonitorDpiAware {
-        UNKNOWN = 0,
-        PER_MONITOR_DPI_UNAWARE,
-        PER_MONITOR_DPI_AWARE,
-    };
-    static PerMonitorDpiAware perMonitorDpiAware = PerMonitorDpiAware::UNKNOWN;
-    if (perMonitorDpiAware == PerMonitorDpiAware::UNKNOWN) {
-        perMonitorDpiAware = PerMonitorDpiAware::PER_MONITOR_DPI_UNAWARE;
-        HMODULE shcoreDll = ::LoadLibrary(L"shcore.dll");
-        if (shcoreDll) {
-            typedef HRESULT(WINAPI * GetProcessDpiAwarenessPtr)(HANDLE, PROCESS_DPI_AWARENESS *);
-            GetProcessDpiAwarenessPtr funcPtr =
-                reinterpret_cast<GetProcessDpiAwarenessPtr>(
-                    ::GetProcAddress(shcoreDll, "GetProcessDpiAwareness"));
-            if (funcPtr) {
-                PROCESS_DPI_AWARENESS awareness;
-                if (SUCCEEDED(funcPtr(nullptr, &awareness)) &&
-                    awareness == PROCESS_PER_MONITOR_DPI_AWARE) {
-                    perMonitorDpiAware = PerMonitorDpiAware::PER_MONITOR_DPI_AWARE;
-                }
-            }
-        }
-    }
-    return perMonitorDpiAware == PerMonitorDpiAware::PER_MONITOR_DPI_AWARE;
-}
-
-// DPI value for 1x scale factor.
-#define DPI_1X 96.0f
-
-float GetWindowScaleFactor(HWND hwnd)
-{
-    if (hwnd && IsProcessPerMonitorDpiAware()) {
-        typedef UINT(WINAPI * GetDpiForWindowPtr)(HWND);
-        static GetDpiForWindowPtr funcPtr = reinterpret_cast<GetDpiForWindowPtr>(
-            GetProcAddress(GetModuleHandle(L"user32.dll"), "GetDpiForWindow"));
-        if (funcPtr) {
-            return static_cast<float>(funcPtr(hwnd)) / DPI_1X;
-        }
-    }
-
-    return client::GetDeviceScaleFactor();
-}
-
 int GetButtonWidth(HWND hwnd)
 {
-    return client::LogicalToDevice(BUTTON_WIDTH, GetWindowScaleFactor(hwnd));
+    return static_cast<int>(BUTTON_WIDTH * getWindowScaleFactor(hwnd));
 }
 
 int GetURLBarHeight(HWND hwnd)
 {
-    return client::LogicalToDevice(URLBAR_HEIGHT, GetWindowScaleFactor(hwnd));
+    return static_cast<int>(URLBAR_HEIGHT * getWindowScaleFactor(hwnd));
 }
 
 } // namespace
@@ -113,6 +83,10 @@ void MainWindow::init(std::unique_ptr<Config> config)
     _initialShowMode = config->showMode;
 
     createRootWindow(config->initiallyHidden);
+
+    createCefViews();
+    updateLayout();
+
     _initialized = true;
 }
 
@@ -136,16 +110,16 @@ void MainWindow::show(ShowMode mode)
         break;
     }
 
-    showWindow(_hwnd, nCmdShow);
+    ShowWindow(_hwnd, nCmdShow);
     if (mode != ShowMode::MINIMIZED) {
-        updateWindow(_hwnd);
+        UpdateWindow(_hwnd);
     }
 }
 
 void MainWindow::hide()
 {
     if (_hwnd){
-        showWindow(_hwnd, SW_HIDE);
+        ShowWindow(_hwnd, SW_HIDE);
     }
 }
 
@@ -170,9 +144,10 @@ void MainWindow::close(bool force)
 
 void MainWindow::setDeviceScaleFactor(float deviceScaleFactor)
 {
-    // for (const auto& cefView : _cefViewList) {
-    //     cefView->SetDeviceScaleFactor(deviceScaleFactor);
-    // }
+     for (const auto& cefView : _bottomViews) {
+         cefView->setDeviceScaleFactor(deviceScaleFactor);
+     }
+     _topView->setDeviceScaleFactor(deviceScaleFactor);
     _deviceScaleFactor = deviceScaleFactor;
 }
 
@@ -200,13 +175,10 @@ void MainWindow::createRootWindow(bool initiallyHidden)
 
     HINSTANCE hInstance = GetModuleHandle(nullptr);
 
-    // Load strings from the resource file.
-    // const std::wstring &windowTitle = GetResourceString(IDS_APP_TITLE);
-    // const std::wstring &windowClass = GetResourceString(IDR_MAINFRAME);
-    const std::wstring &windowTitle = GetResourceString(IDS_APP_TITLE);
-    const std::wstring &windowClass = GetResourceString(IDR_MAINFRAME);
+    // 窗口标题和类名
+    const std::wstring windowTitle = L"CEF View Demo Application";
+    const std::wstring windowClass = L"CefViewMainWindow";
 
-    // const HBRUSH backgroundBrush = CreateSolidBrush(RGB(255, 255, 255);
     const HBRUSH backgroundBrush = nullptr;
 
     // Register the window class.
@@ -240,10 +212,10 @@ void MainWindow::createRootWindow(bool initiallyHidden)
     }
 
     // Create the main window initially hidden.
-    _hwnd = CreateWindowEx(dwExStyle, window_class.c_str(), window_title.c_str(), dwStyle,
+    _hwnd = CreateWindowEx(dwExStyle, windowClass.c_str(), windowTitle.c_str(), dwStyle,
                            x, y, width, height, nullptr, nullptr, hInstance, this);
 
-    if (!_calledEnableNonClientDpiScaling && IsProcessPerMonitorDpiAware()) {
+    if (!_calledEnableNonClientDpiScaling && isProcessPerMonitorDpiAware()) {
         // This call gets Windows to scale the non-client area when WM_DPICHANGED
         // is fired on Windows versions < 10.0.14393.0.
         // Derived signature; not available in headers.
@@ -258,7 +230,7 @@ void MainWindow::createRootWindow(bool initiallyHidden)
 
     if (!initiallyHidden) {
         // Show this window.
-        Show(_initialShowMode);
+        show(_initialShowMode);
     }
 }
 
@@ -284,12 +256,12 @@ void MainWindow::RegisterRootClass(HINSTANCE hInstance,
     wcex.cbClsExtra = 0;
     wcex.cbWndExtra = 0;
     wcex.hInstance = hInstance;
-    wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDR_MAINFRAME));
+    wcex.hIcon = nullptr;  // LoadIcon(hInstance, MAKEINTRESOURCE(IDR_MAINFRAME));
     wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground = backgroundBrush;
-    wcex.lpszMenuName = MAKEINTRESOURCE(IDR_MAINFRAME);
+    wcex.lpszMenuName = nullptr;  // MAKEINTRESOURCE(IDR_MAINFRAME);
     wcex.lpszClassName = windowClass.c_str();
-    wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+    wcex.hIconSm = nullptr;  // LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
     RegisterClassEx(&wcex);
 }
@@ -304,7 +276,7 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
     MainWindow *self = nullptr;
     if (message != WM_NCCREATE)
     {
-        self = GetUserDataPtr<MainWindow *>(hWnd);
+        self = getUserDataPtr<MainWindow *>(hWnd);
         if (!self) {
             return DefWindowProc(hWnd, message, wParam, lParam);
         }
@@ -318,11 +290,11 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
             return 0;
         } break;
     case WM_PAINT:
-        self->onPaint(); return 0;
+        self->onPaint(); break;
     case WM_ACTIVATE:
         self->onActivate(LOWORD(wParam) != WA_INACTIVE); break;
     case WM_SETFOCUS:
-        self->onFocus(); return 0;
+        self->onFocus(); break;
     case WM_ENABLE:
         if (wParam == TRUE) {
             // Give focus to the browser after EnableWindow enables this window
@@ -376,7 +348,7 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
             POINTS points = MAKEPOINTS(lParam);
             POINT point = {points.x, points.y};
             ::ScreenToClient(hWnd, &point);
-            if (::PtInRegion(self->draggable_region_, point.x, point.y))
+            if (::PtInRegion(self->_draggableRegion, point.x, point.y))
             {
                 // If cursor is inside a draggable region return HTCAPTION to allow
                 // dragging.
@@ -390,7 +362,7 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
         self = reinterpret_cast<MainWindow *>(cs->lpCreateParams);
         assert(self);
         // Associate |self| with the main window.
-        SetUserDataPtr(hWnd, self);
+        setUserDataPtr(hWnd, self);
         self->_hwnd = hWnd;
 
         self->onNCCreate(cs);
@@ -401,7 +373,7 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
 
     case WM_NCDESTROY:
         // Clear the reference to |self|.
-        SetUserDataPtr(hWnd, nullptr);
+        setUserDataPtr(hWnd, nullptr);
         self->_hwnd = nullptr;
         self->onDestroyed();
         break;
@@ -419,10 +391,10 @@ void MainWindow::onPaint()
 
 void MainWindow::onFocus()
 {
-    // if (browser_window_ && ::IsWindowEnabled(_hwnd))
-    // {
-    //     browser_window_->SetFocus(true);
-    // }
+    //// T115: 给顶部视图焦点
+    //if (_topView && ::IsWindowEnabled(_hwnd)) {
+    //    ::SetFocus(_topView->getWindowHandle());
+    //}
 }
 
 void MainWindow::onActivate(bool active)
@@ -431,64 +403,64 @@ void MainWindow::onActivate(bool active)
 
 void MainWindow::onSize(bool minimized)
 {
-    // if (minimized)
-    // {
-    //     // Notify the browser window that it was hidden and do nothing further.
-    //     if (browser_window_)
-    //     {
-    //         browser_window_->Hide();
-    //     }
-    //     return;
-    // }
+    if (minimized) {
+        // 最小化时隐藏所有视图
+        if (_topView) {
+            _topView->setVisible(false);
+        }
+        for (auto& view : _bottomViews) {
+            view->setVisible(false);
+        }
+        return;
+    }
 
-    // if (browser_window_)
-    // {
-    //     browser_window_->Show();
-    // }
+    // T113: 窗口大小变化时更新布局
+    updateLayout();
 
-    // RECT rect;
-    // GetClientRect(hwnd_, &rect);
-
-    //     // Size the browser window to the whole client area.
-    //     browser_window_->SetBounds(0, 0, rect.right, rect.bottom);
+    // 恢复可见性
+    if (_topView) {
+        _topView->setVisible(true);
+    }
+    if (_activeBottomViewIndex >= 0 && _activeBottomViewIndex < static_cast<int>(_bottomViews.size())) {
+        _bottomViews[_activeBottomViewIndex]->setVisible(true);
+    }
 }
 
 void MainWindow::onMove()
 {
-    //  RECT rect;
-    // GetClientRect(hwnd_, &rect);
+    //// 通知所有浏览器窗口移动（用于弹出窗口正确定位）
+    //if (_topView) {
+    //    auto browser = _topView->getBrowser();
+    //    if (browser) {
+    //        browser->GetHost()->NotifyMoveOrResizeStarted();
+    //    }
+    //}
 
-    //     // Size the browser window to the whole client area.
-    //     browser_window_->SetBounds(0, 0, rect.right, rect.bottom);
-    // // Notify the browser of move events so that popup windows are displayed
-    // // in the correct location and dismissed when the window moves.
-    // CefRefPtr<CefBrowser> browser = GetBrowser();
-    // if (browser)
-    // {
-    //     browser->GetHost()->NotifyMoveOrResizeStarted();
-    // }
+    //for (auto& view : _bottomViews) {
+    //    auto browser = view->getBrowser();
+    //    if (browser) {
+    //        browser->GetHost()->NotifyMoveOrResizeStarted();
+    //    }
+    //}
 }
+
+// DPI value for 1x scale factor.
+#define DPI_1X 96.0f
 
 void MainWindow::onDpiChanged(WPARAM wParam, LPARAM lParam)
 {
-    if (LOWORD(wParam) != HIWORD(wParam))
-    {
-        NOTIMPLEMENTED() << "Received non-square scaling factors";
+    if (LOWORD(wParam) != HIWORD(wParam)) {
+        // NOTIMPLEMENTED() << "Received non-square scaling factors";
         return;
     }
 
-    // if (browser_window_ && with_osr_)
-    // {
-    //     // Scale factor for the new display.
-    //     const float display_scale_factor =
-    //         static_cast<float>(LOWORD(wParam)) / DPI_1X;
-    //     browser_window_->SetDeviceScaleFactor(display_scale_factor);
-    // }
+    // T118-T119: 更新设备缩放因子并通知所有CefWebView
+    const float displayScaleFactor = static_cast<float>(LOWORD(wParam)) / DPI_1X;
+    setDeviceScaleFactor(displayScaleFactor);
 
-    // // Suggested size and position of the current window scaled for the new DPI.
-    // const RECT *rect = reinterpret_cast<RECT *>(lParam);
-    // SetBounds(rect->left, rect->top, rect->right - rect->left,
-    //           rect->bottom - rect->top);
+    // T119: 调整窗口大小和位置
+    const RECT* rect = reinterpret_cast<RECT*>(lParam);
+    setBounds(rect->left, rect->top, rect->right - rect->left, rect->bottom - rect->top);
 }
 
 bool MainWindow::onEraseBkgnd()
@@ -500,20 +472,24 @@ bool MainWindow::onEraseBkgnd()
 
 bool MainWindow::onCommand(UINT id)
 {
-    // if (id >= ID_TESTS_FIRST && id <= ID_TESTS_LAST)
-    // {
-    //     delegate_->OnTest(this, id);
-    //     return true;
-    // }
-
-    // switch (id)
-    // {
-    // case IDM_ABOUT:
-    //     onAbout();
-    //     return true;
-    // case IDM_EXIT:
-    //     delegate_->onExit(this);
-    //     return true;
+    // T115: 处理按钮点击消息切换底部视图
+    switch (id) {
+    case ID_BTN_SWITCH1:
+        setActiveBottomView(0);
+        return true;
+    case ID_BTN_SWITCH2:
+        setActiveBottomView(1);
+        return true;
+    case ID_BTN_SWITCH3:
+        setActiveBottomView(2);
+        return true;
+    case IDM_ABOUT:
+        onAbout();
+        return true;
+    case IDM_EXIT:
+        close(false);
+        return true;
+    }
 
     return false;
 }
@@ -522,13 +498,12 @@ bool MainWindow::onCommand(UINT id)
 void MainWindow::onAbout()
 {
     // Show the about box.
-    DialogBox(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDD_ABOUTBOX), _hwnd,
-              AboutWndProc);
+    MessageBox(_hwnd, L"CEF View Demo Application Version 1.0", L"About", MB_OK);
 }
 
 void MainWindow::onNCCreate(LPCREATESTRUCT lpCreateStruct)
 {
-    if (IsProcessPerMonitorDpiAware())
+    if (isProcessPerMonitorDpiAware())
     {
         // This call gets Windows to scale the non-client area when WM_DPICHANGED
         // is fired on Windows versions >= 10.0.14393.0.
@@ -540,13 +515,214 @@ void MainWindow::onNCCreate(LPCREATESTRUCT lpCreateStruct)
     }
 }
 
-void MainWindow::OnCreate(LPCREATESTRUCT lpCreateStruct)
+void MainWindow::onCreate(LPCREATESTRUCT lpCreateStruct)
 {
-    // _windowCreated = true;
+    _windowCreated = true;
+}
+
+// ============================================================================
+// T105: 实现createCefViews()创建顶部和底部视图
+// ============================================================================
+
+void MainWindow::createCefViews()
+{
+    createTopView();
+    createBottomViews();
+}
+
+// ============================================================================
+// T106-T108: 实现createTopView()创建窗口模式CefWebView
+// ============================================================================
+
+void MainWindow::createTopView()
+{
+    if (!_hwnd) return;
+
+    // Calculate correct initial size based on current window size
+    RECT clientRect;
+    GetClientRect(_hwnd, &clientRect);
+    int clientWidth = clientRect.right - clientRect.left;
+    int clientHeight = clientRect.bottom - clientRect.top;
+
+    int buttonAreaHeight = BUTTON_HEIGHT + 20;
+    int availableHeight = clientHeight - buttonAreaHeight;
+    int topHeight = availableHeight / 2;
+
+    CefWebViewSetting settings;
+    //settings.offScreenRenderingEnabled = true;
+    settings.x = 0;
+    settings.y = 0;
+    settings.width = clientWidth;
+    settings.height = topHeight;
+
+    // T107: Load default URL
+    _topView = std::make_shared<CefWebView>("https://www.baidu.com", settings, _hwnd);
+    _topView->init();
+}
+
+// ============================================================================
+// T080-T081: 实现createBottomViews()创建3个离屏模式CefWebView
+// ============================================================================
+
+void MainWindow::createBottomViews()
+{
+    if (!_hwnd) return;
+
+    // Calculate correct initial size based on current window size
+    RECT clientRect;
+    GetClientRect(_hwnd, &clientRect);
+    int clientWidth = clientRect.right - clientRect.left;
+    int clientHeight = clientRect.bottom - clientRect.top;
+
+    int buttonAreaHeight = BUTTON_HEIGHT + 20;
+    int availableHeight = clientHeight - buttonAreaHeight;
+    int topHeight = availableHeight / 2;
+    int bottomHeight = availableHeight - topHeight;
+
+    // T080: Create 3 bottom views
+    const char* urls[] = {
+        "https://www.bing.com",
+        "https://www.google.com",
+        "https://github.com"
+    };
+
+    for (int i = 0; i < 3; ++i) {
+        CefWebViewSetting settings;
+        settings.x = 0;
+        settings.y = topHeight;
+        settings.width = clientWidth;
+        settings.height = bottomHeight;
+
+        auto view = std::make_shared<CefWebView>(urls[i], settings, _hwnd);
+        view->init();
+
+        if (i > 0) {
+            view->setVisible(false);
+        }
+
+        _bottomViews.push_back(view);
+    }
+
+    _activeBottomViewIndex = 0;
+
+    // T085-T086: 创建切换按钮
+    int buttonY = clientRect.bottom - BUTTON_HEIGHT - 10;
+    int buttonSpacing = 10;
+
+    _btnSwitch1 = CreateWindow(
+        L"BUTTON", L"View 1",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+        10, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT,
+        _hwnd, (HMENU)ID_BTN_SWITCH1, GetModuleHandle(nullptr), nullptr);
+
+    _btnSwitch2 = CreateWindow(
+        L"BUTTON", L"View 2",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
+        10 + BUTTON_WIDTH + buttonSpacing, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT,
+        _hwnd, (HMENU)ID_BTN_SWITCH2, GetModuleHandle(nullptr), nullptr);
+
+    _btnSwitch3 = CreateWindow(
+        L"BUTTON", L"View 3",
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
+        10 + (BUTTON_WIDTH + buttonSpacing) * 2, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT,
+        _hwnd, (HMENU)ID_BTN_SWITCH3, GetModuleHandle(nullptr), nullptr);
+}
+
+// ============================================================================
+// T082-T084: 实现setActiveBottomView()切换底部视图
+// ============================================================================
+
+void MainWindow::setActiveBottomView(int index)
+{
+    if (index < 0 || index >= static_cast<int>(_bottomViews.size())) {
+        return;
+    }
+
+    if (index == _activeBottomViewIndex) {
+        return;  // 已经是激活状态
+    }
+
+    // 隐藏当前激活的视图
+    if (_activeBottomViewIndex >= 0 && _activeBottomViewIndex < static_cast<int>(_bottomViews.size())) {
+        _bottomViews[_activeBottomViewIndex]->setVisible(false);
+    }
+
+    // T083: 显示新选中的视图
+    _activeBottomViewIndex = index;
+    _bottomViews[_activeBottomViewIndex]->setVisible(true);
+
+    // T084: 触发重绘
+    InvalidateRect(_hwnd, nullptr, TRUE);
+    UpdateWindow(_hwnd);
+}
+
+// ============================================================================
+// T109-T113: 实现updateLayout()布局管理
+// ============================================================================
+
+void MainWindow::updateLayout()
+{
+    if (!_hwnd) return;
+
+    RECT clientRect;
+    GetClientRect(_hwnd, &clientRect);
+
+    int clientWidth = clientRect.right - clientRect.left;
+    int clientHeight = clientRect.bottom - clientRect.top;
+
+    // T110: 计算顶部/底部区域矩形（各占50%高度，底部留出按钮空间）
+    int buttonAreaHeight = BUTTON_HEIGHT + 20;  // 按钮高度 + 边距
+    int availableHeight = clientHeight - buttonAreaHeight;
+    int topHeight = availableHeight / 2;
+    int bottomHeight = availableHeight - topHeight;
+
+    // T111: 更新顶部视图布局
+    if (_topView) {
+        _topView->setRect(0, 0, clientWidth, topHeight);
+    }
+
+    // T112: 更新所有底部视图布局（叠加在同一区域）
+    for (auto& view : _bottomViews) {
+        view->setRect(0, topHeight, clientWidth, bottomHeight);
+    }
+
+    // 更新按钮位置
+    int buttonY = clientHeight - BUTTON_HEIGHT - 10;
+    int buttonSpacing = 10;
+
+    if (_btnSwitch1) {
+        SetWindowPos(_btnSwitch1, nullptr,
+                     10, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT,
+                     SWP_NOZORDER);
+    }
+    if (_btnSwitch2) {
+        SetWindowPos(_btnSwitch2, nullptr,
+                     10 + BUTTON_WIDTH + buttonSpacing, buttonY,
+                     BUTTON_WIDTH, BUTTON_HEIGHT,
+                     SWP_NOZORDER);
+    }
+    if (_btnSwitch3) {
+        SetWindowPos(_btnSwitch3, nullptr,
+                     10 + (BUTTON_WIDTH + buttonSpacing) * 2, buttonY,
+                     BUTTON_WIDTH, BUTTON_HEIGHT,
+                     SWP_NOZORDER);
+    }
+
+    InvalidateRect(_hwnd, nullptr, TRUE);
+    UpdateWindow(_hwnd);
 }
 
 bool MainWindow::onClose()
 {
+    // T125: 确保所有CefWebView正确销毁
+    if (_topView) {
+        _topView.reset();
+    }
+
+    for (auto& view : _bottomViews) {
+        view.reset();
+    }
+    _bottomViews.clear();
 
     // Allow the close.
     return false;

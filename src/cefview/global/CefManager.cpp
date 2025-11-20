@@ -15,38 +15,52 @@ CefManager* CefManager::getInstance() {
     return &typeInstance;
 }
 
-// Initialize the CEF settings.
-void CefManager::initCefSettings(CefSettings& settings) {
-
-    // 调试的时候开启开启单进程模式
-    // settings.single_process = false;
-    // Make browser process message loop run in a separate thread.
-    // Macos is not supported, so we need to run messageloop
-    settings.multi_threaded_message_loop = true;
-
-    std::string list_str("http,https");
-    CefString(&settings.cookieable_schemes_list) = list_str;
+CefSettings CefManager::initCefSettings(const CefConfig& config) {
+    CefSettings settings;
+    settings.multi_threaded_message_loop = config.multiThreadedMessageLoop;
+    CefString(&settings.cookieable_schemes_list) = config.cookieableSchemesList;
 
     // Store cache data will on disk.
-    std::string cache_path = getAppWorkingDirectory().ToString() + "/cache";
-    CefString(&settings.cache_path) = CefString(cache_path);
+    if (config.cachePath.empty()) {
+        std::string cachePath = getAppWorkingDirectory().ToString() + "/cache";
+        CefString(&settings.cache_path) = CefString(cachePath);
+    } else {
+        CefString(&settings.cache_path) = CefString(config.cachePath);
+    }
 
     // Completely disable logging.
-    settings.log_severity = LOGSEVERITY_DISABLE;
-    // 设置debug log文件位置
-    //std::string log_path = getAppWorkingDirectory().ToString() + "/cef.log";
-    //CefString(&settings.log_file) = CefString(log_path);
+    // settings.log_severity = LOGSEVERITY_DISABLE
+    if (config.logFilePath.empty()) {
+        // 设置debug log文件位置
+        std::string log_path = getAppWorkingDirectory().ToString() + "/cef.log";
+        CefString(&settings.log_file) = CefString(log_path);
+    } else {
+        CefString(&settings.log_file) = CefString(config.logFilePath);
+    }
+    // settings.log_severity = config.logSeverity;
+
     // The resources(cef.pak and/or devtools_resources.pak) directory.
-    CefString(&settings.resources_dir_path) = CefString();
+    if (config.resourcesDirPath.empty()) {
+        CefString(&settings.resources_dir_path) = CefString();
+    } else {
+        CefString(&settings.resources_dir_path) = CefString(config.resourcesDirPath);
+    }
+
     // The locales directory.
-    CefString(&settings.locales_dir_path) = CefString();
+    if (config.localesDirPath.empty()) {
+        CefString(&settings.locales_dir_path) = CefString();
+    } else {
+        CefString(&settings.locales_dir_path) = CefString(config.localesDirPath);
+    }
+
     // Enable remote debugging on the specified port.
-    settings.remote_debugging_port = 18432;
+    settings.remote_debugging_port = config.remoteDebuggingPort;
     // pack_loading_disabled
     // settings.pack_loading_disabled=true;
     // Ignore errors related to invalid SSL certificates.
     // settings.ignore_certificate_errors = true;
-    settings.no_sandbox = true;
+    settings.no_sandbox = config.noSandbox;
+
 #ifndef SUB_PROCESS_DISABLED
     std::string sub_process_path = getAppWorkingDirectory().ToString() + "/browser.exe";
     CefString(&settings.browser_subprocess_path) = CefString(sub_process_path);
@@ -55,51 +69,32 @@ void CefManager::initCefSettings(CefSettings& settings) {
 
     //g_command_line->AppendSwitch(cefclient::kOffScreenRenderingEnabled);
     //settings.windowless_rendering_enabled = true;
+    return settings;
 }
 
-int CefManager::initCef(CefSettings &settings, bool logging)
+int CefManager::initCef(const CefConfig& config)
 {
-    int init_code = 0;
-    // if (logging)
-    // {
-    //     OPEN_LOG = true;
-    //     TCHAR tempPath[MAX_PATH];
-    //     DWORD hr = GetTempPath(MAX_PATH, tempPath);
-    //     if (hr != 0)
-    //     {
-    //         CefString tp(tempPath);
-    //         auto nowt = time(NULL);
-    //         tm nowtm;
-    //         localtime_s(&nowtm, &nowt);
-    //         wchar_t buf[16];
-    //         wcsftime(buf, sizeof(buf), L"%Y-%m-%d", &nowtm);
-    //         std::wstring logfile = tp.ToWString().append(L"CEF_").append(buf).append(L".log");
-    //         std::string logfile_ascii = unicode_to_ascii(logfile.c_str());
-    //         setOutputFileName(logfile_ascii.c_str());
-    //     }
-    // }
+    int initCode = 0;
 #if defined(OS_WIN)
     HINSTANCE hInstance = (HINSTANCE)GetModuleHandle(NULL);
     CefMainArgs main_args(hInstance);
 #elif defined(OS_MACOSX)
     CefMainArgs main_args();
 #endif
-    CefRefPtr<ClientApp> app(new ClientApp);
+    CefRefPtr<CefViewApp> app(new CefViewApp);
 
 #ifdef SUB_PROCESS_DISABLED
     // Execute the secondary process, if any.
-    int exit_code = CefExecuteProcess(main_args, app.get(), NULL);
-    if (exit_code >= 0)
-        return init_code;
+    int exitCode = CefExecuteProcess(main_args, app.get(), NULL);
+    if (exitCode >= 0)
+        return initCode;
 #endif
 
-    // CefSettings settings;
-    initCefSettings(settings);
-
+    CefSettings settings = initCefSettings(config);
     void *sandbox_info = NULL;
     // Initialize CEF.
-    init_code = CefInitialize(main_args, settings, app.get(), sandbox_info);
-    return init_code;
+    initCode = CefInitialize(main_args, settings, app.get(), sandbox_info);
+    return initCode;
 }
 
 CefString CefManager::getAppWorkingDirectory() {

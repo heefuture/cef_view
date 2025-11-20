@@ -199,8 +199,9 @@ bool ClientAppExtensionHandler::Execute(
                 if (browser.get())
                 {
                     int browser_id = context->GetBrowser()->GetIdentifier();
-                    _renderDelegate->setMessageCallback(msgName, browser_id, context,
-                                                    arguments[1]);
+                    if (auto renderDelegate = _renderDelegate.lock()) {
+                        renderDelegate->setMessageCallback(msgName, browser_id, context, arguments[1]);
+                    }
                     handled = true;
                 }
             }
@@ -219,7 +220,10 @@ bool ClientAppExtensionHandler::Execute(
                 if (browser.get())
                 {
                     int browser_id = browser->GetIdentifier();
-                    bool removed = _renderDelegate->removeMessageCallback(msgName, browser_id);
+                    bool removed = false;
+                    if (auto renderDelegate = _renderDelegate.lock()) {
+                        removed = renderDelegate->removeMessageCallback(msgName, browser_id);
+                    }
                     retval = CefV8Value::CreateBool(removed);
                     handled = true;
                 }

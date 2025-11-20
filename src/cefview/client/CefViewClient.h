@@ -15,7 +15,7 @@
 #include <include/cef_client.h>
 #include <include/cef_browser.h>
 
-#include "CefViewClientDelegateBase.h"
+#include <client/CefViewClientDelegateInterface.h>
 
 namespace cefview {
 // CefViewClient implements CefClient and a number of other interfaces.
@@ -28,17 +28,16 @@ class CefViewClient : public CefClient,
                       public CefLifeSpanHandler,
                       public CefLoadHandler,
                       public CefRenderHandler,
-                      public CefRequestHandler,
-
+                      public CefRequestHandler
 {
     // Include the default reference counting implementation.
     IMPLEMENT_REFCOUNTING(CefViewClient);
 public:
-    CefViewClient(CefViewClientDelegateBase::RefPtr delegate);
+    CefViewClient(CefViewClientDelegateInterface::RefPtr delegate);
     ~CefViewClient();
 
-    // 设置Cef渲染内容的大小
-    void NotifyRectUpdated();
+    // // 设置Cef渲染内容的大小
+    // void NotifyRectUpdated();
 
     // 当前Web页面中获取焦点的元素是否可编辑
     bool IsCurFieldEditable(){ return _isFocusOnEditableField; }
@@ -217,9 +216,7 @@ protected:
     CefRefPtr<CefBrowser>                       _browser;
     bool                                        _isFocusOnEditableField{false};
     bool                                        _isClosing{false};
-    CefViewClientDelegateBase::WeakPtr          _clientDelegate;
-    //client::DropTargetHandle _dropTargetHandle;
-    //CefRenderHandler::DragOperation _currentDragOp;
+    CefViewClientDelegateInterface::WeakPtr     _clientDelegate;
 };
 }
 

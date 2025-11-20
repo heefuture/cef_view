@@ -12,10 +12,8 @@ ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
 
 # 主应用程序源文件
 set(APP_SRCS
-    ${CEFVIEWDIR}/client/CefClient.cpp
-    ${CEFVIEWDIR}/client/CefClientRender.cpp
-    ${CEFVIEWDIR}/client/CefSwitches.cpp
-
+    # ${CEFVIEWDIR}/client/CefViewApp.cpp
+    # ${CEFVIEWDIR}/client/CefSwitches.cpp
     main_process.cpp
 )
 

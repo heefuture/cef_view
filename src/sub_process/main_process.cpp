@@ -1,11 +1,9 @@
 #include "include/cef_base.h"
 #include "include/cef_app.h"
-#include "cefclient/client_app.h"
+#include <client/CefViewApp.h>
 
 #define STRINGIFY(x) #x
 #define SVN_REVISION_STR(x) STRINGIFY(x)
-
-using namespace std;
 
 //void crash()
 //{
@@ -20,16 +18,12 @@ int APIENTRY wWinMain(HINSTANCE hInstance,
   UNREFERENCED_PARAMETER(hPrevInstance);
   UNREFERENCED_PARAMETER(lpCmdLine);
 
-  // Enable High-DPI support on Windows 7 or newer.
-  CefEnableHighDPISupport();
-
-
   // Structure for passing command-line arguments.
   // The definition of this structure is platform-specific.
   CefMainArgs main_args(hInstance);
 
   // Optional implementation of the CefApp interface.
-  CefRefPtr<ClientApp> app(new ClientApp);
+  CefRefPtr<cefview::CefViewApp> app(new cefview::CefViewApp);
 
   // Execute the sub-process logic. This will block until the sub-process should exit.
   return CefExecuteProcess(main_args, app.get(), nullptr);

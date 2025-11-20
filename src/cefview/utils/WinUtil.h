@@ -33,18 +33,27 @@ T getUserDataPtr(HWND hWnd) {
 // Set the window's window procedure pointer and return the old value.
 WNDPROC setWndProcPtr(HWND hWnd, WNDPROC wndProc);
 
+bool isWindows8OrNewer();
+
 // Return the resource string with the specified id.
 std::wstring getResourceString(UINT id);
 
+bool isMouseEventFromTouch(UINT message);
+
 int getCefMouseModifiers(WPARAM wparam);
+
 int getCefKeyboardModifiers(WPARAM wparam, LPARAM lparam);
+
 bool isKeyDown(WPARAM wparam);
 
+bool isProcessPerMonitorDpiAware();
+
+float getWindowScaleFactor(HWND hwnd);
 // Returns the device scale factor. For example, 200% display scaling will
 // return 2.0.
 float getDeviceScaleFactor();
 
-CefRect getWindowRect(HWND hwnd);
+CefRect getWindowRect(HWND hwnd, float deviceScaleFactor);
 }  // namespace cefview::util
 
 #endif  // WINUTIL_H

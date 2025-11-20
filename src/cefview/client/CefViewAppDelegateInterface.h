@@ -1,13 +1,13 @@
 /**
-* @file        CefViewAppDelegateBase.h
-* @brief       CefViewAppDelegateBase class declaration
-* @version     1.0
-* @author      heefuture
-* @date        2025.09.04
-* @copyright
-*/
-#ifndef CEFVIEWAPPDELEGATEBASE_H
-#define CEFVIEWAPPDELEGATEBASE_H
+ * @file        CefViewAppDelegateInterface.h
+ * @brief       CefViewAppDelegateInterface class declaration
+ * @version     1.0
+ * @author      heefuture
+ * @date        2025.09.04
+ * @copyright
+ */
+#ifndef CEFVIEWAPPDELEGATEINTERFACE_H
+#define CEFVIEWAPPDELEGATEINTERFACE_H
 #pragma once
 #include <memory>
 #include <include/cef_app.h>
@@ -17,24 +17,23 @@ namespace cefview {
 // Interface for browser delegates. All BrowserDelegates must be returned via
 // CreateBrowserDelegates. Do not perform work in the BrowserDelegate
 // constructor. See CefBrowserProcessHandler for documentation.
-class CefViewAppDelegateBase {
+class CefViewAppDelegateInterface {
 public:
-    typedef std::shared_ptr<CefViewAppDelegateBase> RefPtr;
-    typedef std::weak_ptr<CefViewAppDelegateBase> WeakPtr;
-    virtual ~CefViewAppDelegateBase() {}
+    typedef std::shared_ptr<CefViewAppDelegateInterface> RefPtr;
+    typedef std::weak_ptr<CefViewAppDelegateInterface> WeakPtr;
+    virtual ~CefViewAppDelegateInterface() {}
 #pragma region CefBrowserProcessHandler
     /////////////////////////////////////// CefBrowserProcessHandler methods: /////////////////////////////////////
     virtual void onContextInitialized() {}
 
-    virtual void onBeforeChildProcessLaunch(CefRefPtr<CefCommandLine> command_line) {}
+    virtual void onBeforeChildProcessLaunch(CefRefPtr<CefCommandLine> commandLine) {}
 
     virtual void onWebKitInitialized() {}
 #pragma endregion // CefBrowserProcessHandler
 
 #pragma region CefRenderProcessHandler
     /////////////////////////////////////// CefRenderProcessHandler methods: /////////////////////////////////////
-    virtual void onBrowserCreated(CefRefPtr<CefBrowser> browser,
-                                  CefRefPtr<CefDictionaryValue> extra_info) {}
+    virtual void onBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extraInfo) {}
 
     virtual void onBrowserDestroyed(CefRefPtr<CefBrowser> browser) {}
 
@@ -62,26 +61,26 @@ public:
     // should check for unique message names to avoid interfering with each
     // other.
     virtual bool onProcessMessageReceived(CefRefPtr<CefBrowser> browser,
-                                          CefProcessId source_process,
+                                          CefProcessId sourceProcess,
                                           CefRefPtr<CefProcessMessage> message) { return false; }
 
-    // Set a JavaScript callback for the specified |message_name| and |browser_id|
+    // Set a JavaScript callback for the specified |messageName| and |browserId|
     // combination. Will automatically be removed when the associated context is
     // released. Callbacks can also be set in JavaScript using the
     // app.setMessageCallback function.
-    virtual void setMessageCallback(const std::string &message_name,
-                                    int browser_id,
+    virtual void setMessageCallback(const std::string& messageName,
+                                    int browserId,
                                     CefRefPtr<CefV8Context> context,
                                     CefRefPtr<CefV8Value> function) {}
 
-    // Removes the JavaScript callback for the specified |message_name| and
-    // |browser_id| combination. Returns true if a callback was removed. Callbacks
+    // Removes the JavaScript callback for the specified |messageName| and
+    // |browserId| combination. Returns true if a callback was removed. Callbacks
     // can also be removed in JavaScript using the app.removeMessageCallback
     // function.
-    virtual bool removeMessageCallback(const std::string &message_name, int browser_id) { return false; }
+    virtual bool removeMessageCallback(const std::string& messageName, int browserId) { return false; }
 #pragma endregion // CefRenderProcessHandler
 };
 
 }  // namespace cefview
 
-#endif //!CEFVIEWAPPDELEGATEBASE_H
+#endif //!CEFVIEWAPPDELEGATEINTERFACE_H

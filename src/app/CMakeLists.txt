@@ -35,9 +35,13 @@ include_directories(${CEFVIEWDIR})
 # 链接库
 target_link_libraries(${APP_TARGET} libcef_lib libcef_dll_wrapper ${CEF_STANDARD_LIBS} cefview)
 
-if(USE_ATL)
-    # Required by VS2013 to link accessibility API functions.
-    target_link_libraries(${APP_TARGET} oleacc.lib)
+if (WIN32)
+    if(USE_ATL)
+        # add_definitions(-D_CEF_USE_ATL)
+        # Required by VS2013 to link accessibility API functions.
+        target_link_libraries(${APP_TARGET} oleacc.lib)
+    endif()
+    target_link_libraries(${APP_TARGET} d3d11.lib dxgi.lib d3dcompiler.lib)
 endif()
 
 if(USE_SANDBOX)

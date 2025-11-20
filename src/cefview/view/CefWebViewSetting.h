@@ -10,12 +10,16 @@
 #define CEFWEBVIEWSETTING_H
 #pragma once
 
+#include <string>
+
 namespace cefview {
+
 
 struct CefWebViewSetting
 {
-    // 离屏模式
-    bool offScreenRenderingEnabled = false;
+    std::string url;
+    // 离屏模式相关配置(仅当renderMode=kOffScreenD3D11时有效)
+    bool offScreenRenderingEnabled = false;  // 向后兼容字段,已弃用,请使用renderMode
     int windowlessFrameRate = 60;
 
     // size and position

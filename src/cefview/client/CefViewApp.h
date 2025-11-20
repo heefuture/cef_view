@@ -17,7 +17,7 @@
 #include "include/cef_app.h"
 #include "include/cef_base.h"
 
-#include "CefViewAppDelegateBase.h"
+#include "CefViewAppDelegateInterface.h"
 
 namespace cefview
 {
@@ -28,7 +28,7 @@ class CefViewApp : public CefApp,
 {
 public:
 
-    typedef std::set<CefViewAppDelegateBase::WeakPtr> ViewAppDelegateSet;
+    typedef std::set<CefViewAppDelegateInterface::WeakPtr> ViewAppDelegateSet;
 
 public:
     CefViewApp();

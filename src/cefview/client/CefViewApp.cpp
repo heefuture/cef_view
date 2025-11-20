@@ -7,7 +7,6 @@
 #include <include/cef_v8.h>
 
 #include <utils/util.h>
-#include <manager/cefManager.h>
 #include <client/CefSwitches.h>
 #include <client/CefClientRender.h>
 #include <client/CefClientBrowser.h>
@@ -89,7 +88,7 @@ void CefViewApp::OnBrowserDestroyed(CefRefPtr<CefBrowser> browser)
     }
 }
 
-void CefViewApp::OnContextCreated(CefRefPtr<CefBrowser> browser,	CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context)
+void CefViewApp::OnContextCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context)
 {
     for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
@@ -98,7 +97,7 @@ void CefViewApp::OnContextCreated(CefRefPtr<CefBrowser> browser,	CefRefPtr<CefFr
     }
 }
 
-void CefViewApp::OnContextReleased(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame,	CefRefPtr<CefV8Context> context)
+void CefViewApp::OnContextReleased(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context)
 {
     for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
