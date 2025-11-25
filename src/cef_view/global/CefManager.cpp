@@ -83,6 +83,15 @@ int CefManager::initCef(const CefConfig& config)
 #endif
     CefRefPtr<CefViewApp> app(new CefViewApp);
 
+    CefRefPtr<CefCommandLine> commandLine = CefCommandLine::CreateCommandLine();
+#if defined(OS_WIN)
+    commandLine->InitFromString(::GetCommandLine());
+#else
+    // commandLine->InitFromArgv(argc, argv);
+#endif
+
+
+
 #ifdef SUB_PROCESS_DISABLED
     // Execute the secondary process, if any.
     int exitCode = CefExecuteProcess(main_args, app.get(), NULL);

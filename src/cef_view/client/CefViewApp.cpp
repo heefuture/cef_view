@@ -18,9 +18,30 @@ CefViewApp::CefViewApp()
 {
 }
 
+CefViewApp::CefViewApp(CefViewAppDelegateInterface::RefPtr delegate)
+{
+    if (delegate) {
+        _viewAppDelegates.insert(delegate);
+    }
+}
+
 CefViewApp::~CefViewApp()
 {
     _viewAppDelegates.clear();
+}
+
+void CefViewApp::RegisterDelegate(CefViewAppDelegateInterface::RefPtr delegate)
+{
+    if (delegate) {
+        _viewAppDelegates.insert(delegate);
+    }
+}
+
+void CefViewApp::UnregisterDelegate(CefViewAppDelegateInterface::RefPtr delegate)
+{
+    if (delegate) {
+        _viewAppDelegates.erase(delegate);
+    }
 }
 //////////////////////////////////////////////////////////////////////////////////////////
 // CefApp methods.

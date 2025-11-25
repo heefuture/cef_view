@@ -32,7 +32,15 @@ public:
 
 public:
     CefViewApp();
+    explicit CefViewApp(CefViewAppDelegateInterface::RefPtr delegate);
     ~CefViewApp();
+
+    // Register a delegate to handle app-level callbacks
+    void RegisterDelegate(CefViewAppDelegateInterface::RefPtr delegate);
+
+    // Unregister a delegate
+    void UnregisterDelegate(CefViewAppDelegateInterface::RefPtr delegate);
+
 private:
 #pragma region CefApp
     /////////////////////////////////////// CefApp methods: /////////////////////////////////////

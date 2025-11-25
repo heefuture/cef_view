@@ -4,6 +4,30 @@ set(CEFVIEW_TARGET "cefview")
 
 message(STATUS "Output dir : ${TARGET_OUT_DIR}")
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    list(APPEND CEFVIEW_COMPILE_OPTIONS -Werror -Wall -Wextra -Weffc++ -Wconversion -pedantic -Werror=return-type -Wno-unused-command-line-argument)
+endif ()
+
+option(WEBVIEW_BUILD_STATIC "option for static lib" ON)
+if(WEBVIEW_BUILD_STATIC)
+    add_definitions(-DWEBVIEW_BUILD_STATIC)
+endif()
+
+if (MSVC)
+    list(APPEND CEFVIEW_COMPILE_OPTIONS "/utf-8")
+    list(APPEND CEFVIEW_COMPILE_OPTIONS /we4251 /we4275 /we4715 /we4700)
+    list(APPEND CEFVIEW_COMPILE_OPTIONS /W4)
+
+    list(APPEND CEFVIEW_DEFINES NOMINMAX _USE_MATH_DEFINES)
+    list(APPEND CEFVIEW_DEFINES UNICODE _UNICODE)
+
+    # set(CEFVIEW_RUNTIME_LIBRARY_FLAG "/MT" CACHE STRING "Optional flag specifying which runtime to use")
+    # if (CEFVIEW_RUNTIME_LIBRARY_FLAG)
+    #     list(APPEND CEFVIEW_COMPILER_FLAGS_DEBUG ${CEFVIEW_RUNTIME_LIBRARY_FLAG}d)
+    #     list(APPEND CEFVIEW_COMPILER_FLAGS_RELEASE ${CEFVIEW_RUNTIME_LIBRARY_FLAG})
+    # endif()
+endif (MSVC)
+
 # Logical target used to link the libcef library.
 ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
 
@@ -67,6 +91,8 @@ if(WIN32)
     if (MSVC)
         target_compile_definitions(${CEFVIEW_TARGET} PRIVATE ${CEFVIEW_DEFINES})
         target_compile_options(${CEFVIEW_TARGET} PRIVATE ${CEFVIEW_COMPILE_OPTIONS})
+        target_compile_options(${CEFVIEW_TARGET} PRIVATE $<$<CONFIG:Debug>:${CEFVIEW_COMPILER_FLAGS_DEBUG}>)
+        target_compile_options(${CEFVIEW_TARGET} PRIVATE $<$<CONFIG:Release>:${CEFVIEW_COMPILER_FLAGS_RELEASE}>)
     endif ()
 endif()
 
