@@ -1,11 +1,12 @@
 /**
-* @file        CefViewClient.h
-* @brief       CefClient的实现类，处理Cef浏览器对象发出的各个事件和消息，并与上层控件进行数据交互
-* @version     1.0
-* @author      heefuture
-* @date        2025.06.26
-* @copyright
-*/
+ * @file        CefViewClient.h
+ * @brief       Implementation of CefClient that handles events and messages from CEF browser
+ *              and interacts with upper-level controls
+ * @version     1.0
+ * @author      heefuture
+ * @date        2025.06.26
+ * @copyright
+ */
 #ifndef CEFVIEWCLIENT_H
 #define CEFVIEWCLIENT_H
 #pragma once
@@ -36,10 +37,10 @@ public:
     CefViewClient(CefViewClientDelegateInterface::RefPtr delegate);
     ~CefViewClient();
 
-    // // 设置Cef渲染内容的大小
+    // // Set the size of CEF rendering content
     // void NotifyRectUpdated();
 
-    // 当前Web页面中获取焦点的元素是否可编辑
+    // Check if the currently focused element in the web page is editable
     bool IsCurFieldEditable(){ return _isFocusOnEditableField; }
 
     CefRefPtr<CefBrowser> GetBrowser(){ return _browser; }

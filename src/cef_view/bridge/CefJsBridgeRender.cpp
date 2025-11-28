@@ -25,7 +25,7 @@ bool CefJsBridgeRender::callCppFunction(const CefString& functionName, const Cef
 
        _renderCallback.emplace(_jsCallbackId++, std::make_pair(context, callback));
 
-       // 发送消息到 browser 进程
+       // Send message to browser process
        CefRefPtr<CefBrowser> browser = context->GetBrowser();
        browser->GetMainFrame()->SendProcessMessage(PID_BROWSER, message);
 
@@ -62,17 +62,17 @@ bool CefJsBridgeRender::executeJSCallbackFunc(int jsCallbackId, bool hasError, c
            context->Enter();
 
            CefV8ValueList arguments;
-           // 第一个参数标记函数执行结果是否成功
+           // First parameter indicates whether function execution succeeded
            arguments.push_back(CefV8Value::CreateBool(hasError));
 
-           // 第二个参数携带函数执行后返回的数据
+           // Second parameter carries data returned after function execution
            CefV8ValueList jsonParseArgs;
            jsonParseArgs.push_back(CefV8Value::CreateString(jsonString));
            CefRefPtr<CefV8Value> jsonParse = context->GetGlobal()->GetValue("JSON")->GetValue("parse");
            CefRefPtr<CefV8Value> jsonObject = jsonParse->ExecuteFunction(nullptr, jsonParseArgs);
            arguments.push_back(jsonObject);
 
-           // 执行 JS 方法
+           // Execute JS method
            CefRefPtr<CefV8Value> retval = callback->ExecuteFunction(nullptr, arguments);
            if (retval.get())
            {
@@ -84,7 +84,7 @@ bool CefJsBridgeRender::executeJSCallbackFunc(int jsCallbackId, bool hasError, c
 
            context->Exit();
 
-           // 从列表中移除 callback 缓存
+           // Remove callback from cache
            _renderCallback.erase(jsCallbackId);
 
            return true;
@@ -127,7 +127,7 @@ void CefJsBridgeRender::unRegisterJSFunc(const CefString& functionName, CefRefPt
 
 void CefJsBridgeRender::unRegisterJSFuncWithFrame(CefRefPtr<CefFrame> frame)
 {
-   // 所以这里获取的 browser 都是全局唯一的，可以根据这个 browser 获取所有 frame 和 context
+   // Browser is globally unique here, can get all frames and contexts based on this browser
    auto browser = frame->GetBrowser();
    if (!_renderRegisteredFunction.empty()) {
        for (auto it = _renderRegisteredFunction.begin(); it != _renderRegisteredFunction.end();) {
@@ -154,7 +154,7 @@ bool CefJsBridgeRender::executeJSFunc(const CefString& functionName, const CefSt
            context->Enter();
 
            CefV8ValueList arguments;
-           // 将 C++ 传递过来的 JSON 转换成 Object
+           // Convert JSON passed from C++ to Object
            CefV8ValueList jsonParseArgs;
            jsonParseArgs.push_back(CefV8Value::CreateString(jsonParams));
            CefRefPtr<CefV8Value> jsonObject = context->GetGlobal()->GetValue("JSON");
@@ -163,10 +163,10 @@ bool CefJsBridgeRender::executeJSFunc(const CefString& functionName, const CefSt
            CefRefPtr<CefV8Value> jsonObjectArgs = jsonParse->ExecuteFunction(nullptr, jsonParseArgs);
            arguments.push_back(jsonObjectArgs);
 
-           // 执行回调函数
+           // Execute callback function
            CefRefPtr<CefV8Value> retval = function->ExecuteFunction(nullptr, arguments);
            if (retval.get() && retval->IsObject()) {
-               // 回复调用 JS 后的返回值
+               // Reply with return value after calling JS
                CefV8ValueList jsonStringifyArgs;
                jsonStringifyArgs.push_back(retval);
                CefRefPtr<CefV8Value> jsonString = jsonStringify->ExecuteFunction(nullptr, jsonStringifyArgs);

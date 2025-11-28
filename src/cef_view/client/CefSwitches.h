@@ -36,11 +36,11 @@ extern const char kDisable[];
 
 } // namespace log_severity
 
-extern const char kFocusedNodeChangedMessage[];  // web页面中获取焦点的元素改变
-extern const char kExecuteCppCallbackMessage[];  // 执行 C++ 的消息回调函数
-extern const char kCallCppFunctionMessage[];     // web调用C++接口接口的通知
-extern const char kExecuteJsCallbackMessage[];   // web调用C++接口接口的通知
-extern const char kCallJsFunctionMessage[];      // C++ 调用 JavaScript 通知
+extern const char kFocusedNodeChangedMessage[];  // Focused element changed in web page
+extern const char kExecuteCppCallbackMessage[];  // Execute C++ message callback function
+extern const char kCallCppFunctionMessage[];     // Notification for web calling C++ interface
+extern const char kExecuteJsCallbackMessage[];   // Notification for web calling C++ interface
+extern const char kCallJsFunctionMessage[];      // Notification for C++ calling JavaScript
 
 }  // namespace cefview
 

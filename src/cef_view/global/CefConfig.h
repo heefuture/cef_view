@@ -26,10 +26,10 @@ struct CefConfig
     std::string cachePath;
     std::string resourcesDirPath;
     std::string localesDirPath;
-    // log
+    // Log configuration
     int logSeverity = 0; // LOGSEVERITY_DEFAULT
     std::string logFilePath;
-    // subprocess path，仅windows有效
+    // Subprocess path, only valid on Windows
     std::string subProcessPath;
 };
 

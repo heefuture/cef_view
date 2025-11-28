@@ -18,68 +18,68 @@ public:
    ~CefJsBridgeRender();
 
    /**
-    * 执行已经注册好的 C++ 方法
-    * param[in] functionName  要调用的函数名称
-    * param[in] params         调用该函数传递的 json 格式参数
-    * param[in] callback       执行完成后的结果回调函数
-    * return 返回 true 表示发起执行请求成功（并不代表一定执行成功，具体看回调），返回 false 可能是注册的回调函数 ID 已经存在
+    * Execute a registered C++ method
+    * @param[in] functionName  Function name to call
+    * @param[in] params        JSON format parameters
+    * @param[in] callback      Result callback function after execution
+    * @return true if request initiated successfully (doesn't guarantee execution success, check callback), false if callback ID already exists
     */
    bool callCppFunction(const CefString& functionName, const CefString& params, CefRefPtr<CefV8Value> callback);
 
    /**
-    * 通过判断上下文环境移除指定回调函数（页面刷新会触发该方法）
-    * param[in] frame          当前运行框架
+    * Remove specified callback functions by context (triggered on page refresh)
+    * @param[in] frame  Current running frame
     */
    void removeCallbackFuncWithFrame(CefRefPtr<CefFrame> frame);
 
    /**
-    * 根据 ID 执行指定回调函数
-    * param[in] jsCallbackId 回调函数的 ID
-    * param[in] hasError      是否有错误，对应回调函数第一个参数
-    * param[in] jsonString    如果没有错误则返回指定的 json string 格式的数据，对应回调函数第二个参数
-    * return 返回 true 表示成功执行了回调函数，返回 false 有可能回调函数不存在或者回调函数所需的执行上下文环境已经不存在
+    * Execute callback function by ID
+    * @param[in] jsCallbackId  Callback function ID
+    * @param[in] hasError      Whether there's an error (first parameter of callback)
+    * @param[in] jsonString    JSON string data if no error (second parameter of callback)
+    * @return true if callback executed successfully, false if callback doesn't exist or execution context is invalid
     */
    bool executeJSCallbackFunc(int jsCallbackId, bool hasError, const CefString& jsonString);
 
    /**
-    * 注册一个持久的 JS 函数提供 C++ 调用
-    * param[in] functionName  函数名称，字符串形式提供 C++ 直接调用，名称不能重复
-    * param[in] context        函数的执行上下文环境
-    * param[in] function       函数体
-    * param[in] replace        若已经存在该名称的函数是否替换，默认否
-    * return replace 为 true 的情况下，返回 true 是替换成功，返回 false 为不可预见行为。replace 为 false 的情况下返回 true 表示注册成功，返回 false 是同名函数已经注册过了。
+    * Register a persistent JS function for C++ to call
+    * @param[in] functionName  Function name, provided as string for C++ to call directly, must be unique
+    * @param[in] context       Function execution context
+    * @param[in] function      Function body
+    * @param[in] replace       Whether to replace if same name exists, default false
+    * @return When replace is true, returns true for successful replacement, false for unpredictable behavior. When replace is false, returns true for successful registration, false if name already registered
     */
    bool registerJSFunc(const CefString& functionName, CefRefPtr<CefV8Value> function, bool replace = false);
 
    /**
-    * 反注册一个持久的 JS 函数
-    * param[in] functionName  函数名称
-    * param[in] frame          要取消注册哪个框架下的相关函数
+    * Unregister a persistent JS function
+    * @param[in] functionName  Function name
+    * @param[in] frame         Frame to unregister function from
     */
    void unRegisterJSFunc(const CefString& functionName, CefRefPtr<CefFrame> frame);
 
    /**
-   * 根据执行上下文反注册一个或多个持久的 JS 函数
-   * param[in] frame           当前运行所属框架
+   * Unregister one or more persistent JS functions by execution context
+   * @param[in] frame  Current running frame
    */
    void unRegisterJSFuncWithFrame(CefRefPtr<CefFrame> frame);
 
    /**
-    * 根据名称执行某个具体的 JS 函数
-    * param[in] functionName      函数名称
-    * param[in] jsonParams        要传递的 json 格式的参数
-    * param[in] frame              执行哪个框架下的 JS 函数
-    * param[in] cppCallbackId    执行完成后要回调的 C++ 回调函数 ID
-    * return 返回 true 表示成功执行某个 JS 函数，返回 false 有可能要执行的函数不存在或者该函数的运行上下文已经无效
+    * Execute a specific JS function by name
+    * @param[in] functionName      Function name
+    * @param[in] jsonParams        JSON format parameters to pass
+    * @param[in] frame             Frame to execute JS function in
+    * @param[in] cppCallbackId     C++ callback function ID to call after execution
+    * @return true if JS function executed successfully, false if function doesn't exist or execution context is invalid
     */
    bool executeJSFunc(const CefString& functionName, const CefString& jsonParams, CefRefPtr<CefFrame> frame, int cppCallbackId);
 
 private:
-   uint32_t                      _jsCallbackId{0};            // JS 端回调函数的索引计数
-   uint32_t                      _cppCallbackId{0};           // C++ 端回调函数的索引计数
+   uint32_t                      _jsCallbackId{0};            // JS callback function index counter
+   uint32_t                      _cppCallbackId{0};           // C++ callback function index counter
 
-   RenderCallbackMap             _renderCallback;               // JS 端回调函数的对应列表
-   RenderRegisteredFunction      _renderRegisteredFunction;    // 保存 JS 端已经注册好的持久函数列表
+   RenderCallbackMap             _renderCallback;               // JS callback function mapping list
+   RenderRegisteredFunction      _renderRegisteredFunction;    // List of registered persistent JS functions
 };
 
 }

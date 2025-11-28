@@ -295,7 +295,7 @@ void CefWebView::createCefBrowser(const std::string& url, const CefWebViewSettin
     // CefBrowserHost::CreateBrowserSync(windowInfo, _client, CefString(url), browserSettings, nullptr, nullptr);
 }
 
-void CefWebView::setRect(int left, int top, int width, int height)
+void CefWebView::setBounds(int left, int top, int width, int height)
 {
     if (width <= 0 || height <= 0) {
         return;
@@ -651,14 +651,31 @@ void CefWebView::onImeCompositionRangeChanged(const CefRange& selectionRange, co
 
 #pragma endregion // RenderHandler
 
- void CefWebView::onTitleChange(int browserId, const std::string& title)
- {
- }
+#pragma region CefDisplayHandler
+bool CefWebView::onCursorChange(CefRefPtr<CefBrowser> browser,
+                                CefCursorHandle cursor,
+                                cef_cursor_type_t type,
+                                const CefCursorInfo &custom_cursor_info)
+{
+    if (!::IsWindow(_hwnd)) {
+        return true;
+    }
 
- void CefWebView::onUrlChange(int browserId, const std::string& oldUrl, const std::string& url)
- {
-     _settings.url = url;
- }
+    // Change the window's cursor.
+    SetClassLongPtr(_hwnd, GCLP_HCURSOR, static_cast<LONG>(reinterpret_cast<LONG_PTR>(cursor)));
+    SetCursor(cursor);
+
+    return true;
+}
+
+void CefWebView::onTitleChange(int browserId, const std::string& title)
+{
+}
+
+void CefWebView::onUrlChange(int browserId, const std::string& oldUrl, const std::string& url)
+{
+    _settings.url = url;
+}
 
 #pragma region LoadHandler
 void CefWebView::onLoadingStateChange(int browserId, bool isLoading, bool canGoBack, bool canGoForward)

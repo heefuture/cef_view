@@ -29,7 +29,7 @@ CefViewClient::~CefViewClient()
 //         return;
 //     }
 
-//     // 调用WasResized接口，调用后，BrowserHandler会调用GetViewRect接口来获取浏览器对象新的位置
+//     // Call WasResized interface, after which BrowserHandler will call GetViewRect to get browser's new position
 //     if (_browser.get() && _browser->GetHost().get())
 //         _browser->GetHost()->WasResized();
 // }
@@ -114,7 +114,7 @@ CefRefPtr<CefMenuModel> model)
         // Customize the context menu...
         if ((params->GetTypeFlags() & (CM_TYPEFLAG_PAGE | CM_TYPEFLAG_FRAME)) != 0) {
             if (model->GetCount() > 0) {
-                // 禁止右键菜单
+                // Disable context menu
                 model->Clear();
             }
         }
@@ -246,7 +246,7 @@ bool CefViewClient::OnBeforePopup(CefRefPtr<CefBrowser> browser,
     bool bRet = false;
     auto clientDelegate = _clientDelegate.lock();
     if (_browser && !target_url.empty() && clientDelegate) {
-        // 返回true则继续在控件内打开新链接，false则弹窗打开
+        // Return true to continue opening link in current control, false to open in popup window
         bRet = clientDelegate->onBeforePopup(_browser, frame, popup_id, target_url, target_frame_name, target_disposition, user_gesture, popupFeatures, windowInfo, client, settings, extra_info, no_javascript_access);
         if (bRet) {
             _browser->GetMainFrame()->LoadURL(target_url);
@@ -254,25 +254,25 @@ bool CefViewClient::OnBeforePopup(CefRefPtr<CefBrowser> browser,
     }
 
     if (!bRet) {
-        // 获取当前主窗口的尺寸
+        // Get current main window dimensions
         CefRect rect;
         GetViewRect(browser, rect);
 
-        // 如果获取到的 ViewRect 不合理，使用默认尺寸
+        // If ViewRect is unreasonable, use default dimensions
         if (rect.width <= 100 || rect.height <= 100) {
             rect.width = 100;
             rect.height = 100;
         }
 
-        // 只设置窗口尺寸，不改变其他属性
+        // Only set window dimensions, don't change other properties
         windowInfo.bounds.width = rect.width;
         windowInfo.bounds.height = rect.height;
 
-        // 使用相同的客户端处理器
+        // Use the same client handler
         client = this;
     }
 
-    return bRet; // 返回true则不创建新窗口，false则创建新窗口
+    return bRet; // Return true to not create new window, false to create new window
 }
 
 void CefViewClient::OnAfterCreated(CefRefPtr<CefBrowser> browser)
@@ -515,7 +515,7 @@ bool CefViewClient::OnBeforeBrowse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefF
 void CefViewClient::OnRenderProcessTerminated(CefRefPtr<CefBrowser> browser, CefRequestHandler::TerminationStatus status, int error_code, const CefString& error_string)
 {
     if (!CefCurrentlyOn(TID_UI)) {
-        // 把操作跳转到Cef线程执行
+        // Switch operation to CEF thread for execution
         CefPostTask(TID_UI, base::BindOnce(&CefViewClient::OnRenderProcessTerminated, this, browser, status, error_code, error_string));
         return;
     }

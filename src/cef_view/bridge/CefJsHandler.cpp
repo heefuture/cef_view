@@ -95,8 +95,8 @@ void SetList(CefRefPtr<CefListValue> source, CefRefPtr<CefV8Value> target) {
 
 bool CefJSHandler::Execute(const CefString& name, CefRefPtr<CefV8Value> object, const CefV8ValueList& arguments, CefRefPtr<CefV8Value>& retval, CefString& exception)
 {
-   // 当Web中调用了"CallFunction"函数后，会触发到这里，然后把参数保存，转发到Broswer进程
-   // Broswer进程的BrowserHandler类在OnProcessMessageReceived接口中处理kJsCallbackMessage消息，就可以收到这个消息
+   // When "CallFunction" is called from web, it triggers here, then saves parameters and forwards to Browser process
+   // BrowserHandler class in Browser process handles kJsCallbackMessage in OnProcessMessageReceived interface to receive this message
    if (arguments.size() < 2) {
        exception = "Invalid arguments.";
        return false;
@@ -110,8 +110,8 @@ bool CefJSHandler::Execute(const CefString& name, CefRefPtr<CefV8Value> object, 
    CefString frameId = frame->GetIdentifier();
 
    if (name == "call") {
-       // 允许没有参数列表的调用，第二个参数为回调
-       // 如果传递了参数列表，那么回调是第三个参数
+       // Allow calls without parameter list, second parameter is callback
+       // If parameter list is provided, callback is the third parameter
        CefString function_name = arguments[0]->GetStringValue();
        CefString params = "{}";
        CefRefPtr<CefV8Value> callback;
@@ -127,7 +127,7 @@ bool CefJSHandler::Execute(const CefString& name, CefRefPtr<CefV8Value> object, 
            return false;
        }
 
-       // 执行 C++ 方法
+       // Execute C++ method
        if (!_jsBridge->callCppFunction(function_name, params, callback)) {
            std::string functionNameStr = "Failed to call function " + function_name.ToString() + ".";
            exception = functionNameStr.c_str();

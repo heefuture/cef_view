@@ -1,7 +1,7 @@
 // /**
 // * @file        ProcessMessageDelegate.h
-// * @brief       ProcessMessageDelegate 类的定义
-// *              用于处理进程消息的委托类
+// * @brief       Definition of ProcessMessageDelegate class
+// *              Delegate class for handling process messages
 // * @version     1.0
 // * @author      heefuture
 // * @date        2025.07.02

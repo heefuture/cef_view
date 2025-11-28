@@ -1,5 +1,6 @@
 #include "CefManager.h"
 #include <client/CefViewApp.h>
+#include <utils/PathUtil.h>
 #include <string>
 
 //#include "cefclient/client_switches.h"
@@ -31,7 +32,7 @@ CefSettings CefManager::initCefSettings(const CefConfig& config) {
     // Completely disable logging.
     // settings.log_severity = LOGSEVERITY_DISABLE
     if (config.logFilePath.empty()) {
-        // 设置debug log文件位置
+        // Set debug log file path
         std::string log_path = getAppWorkingDirectory().ToString() + "/cef.log";
         CefString(&settings.log_file) = CefString(log_path);
     } else {
@@ -124,19 +125,8 @@ CefString CefManager::getAppWorkingDirectory() {
 
 CefString CefManager::getAppTempDirectory()
 {
-#if defined(OS_WIN)
-    std::unique_ptr<TCHAR[]> buffer(new TCHAR[MAX_PATH + 1]);
-    if (!::GetTempPath(MAX_PATH, buffer.get()))
-        return CefString();
-    else
-        return CefString(buffer.get());
-#elif defined(OS_MACOSX)
-    return CefString();
-#elif defined(USE_QT)
-  return CefString(reinterpret_cast<const WCHAR*>(QDir::tempPath().utf16()));
-#else
-    return CefString();
-#endif
+    std::string tempDir = cefview::util::PathUtil::getAppTempDirectory();
+    return CefString(tempDir);
 }
 
 

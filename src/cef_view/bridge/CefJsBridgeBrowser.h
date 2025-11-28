@@ -20,7 +20,7 @@
 //    ~CefJsBridgeBrowser();
 //
 //    /**
-//     * 执行已经注册好的 JS 方法
+//     * Execute a registered JS method
 //     * param[in] jsFunctionName 要调用的 JS 函数名称
 //     * param[in] params         调用 JS 方法传递的 json 格式参数
 //     * param[in] frame          调用哪个框架下的 JS 代码
@@ -30,7 +30,7 @@
 //    bool callJSFunction(const CefString& jsFunctionName, const CefString& params, CefRefPtr<CefFrame> frame, CallJsFunctionCallback callback);
 //
 //    /**
-//     * 根据 ID 执行指定回调函数
+//     * Execute callback function by ID
 //     * param[in] cppCallbackId callback 函数的 id
 //     * param[in] jsonString	返回的 json 格式数据
 //     * return 返回 true 执行成功，false 为执行失败，可能回调不存在
@@ -38,7 +38,7 @@
 //    bool executeCppCallbackFunc(int cppCallbackId, const CefString& jsonString);
 //
 //    /**
-//     * 注册一个持久的 C++ 函数提供 JS 端调用
+//     * Register a persistent C++ function for JS to call
 //     * param[in] functionName  要提供 JS 调用的函数名字
 //     * param[in] function       函数体
 //     * param[in] replace        是否替换相同名称的函数体，默认不替换
@@ -47,13 +47,13 @@
 //    bool registerCppFunc(const CefString& functionName, CppFunction function, CefRefPtr<CefBrowser> browser, bool  replace = false);
 //
 //    /**
-//     * 反注册一个持久的 C++ 函数
+//     * Unregister a persistent C++ function
 //     * param[in] function_name  要反注册的函数名称
 //     */
 //    void unRegisterCppFunc(const CefString& functionName, CefRefPtr<CefBrowser> browser);
 //
 //    /**
-//     * 执行一个已经注册好的 C++ 方法（接受到 JS 端执行请求时被调用）
+//     * Execute a registered C++ method (called when JS execution request is received)
 //     * param[in] functionName  要执行的函数名称
 //     * param[in] param          携带的参数
 //     * param[in] jsCallbackId 回调 JS 端所需的回调函数 ID
@@ -63,12 +63,12 @@
 //    bool executeCppFunc(const CefString& functionName, const CefString& params, int js_jsCallbackIdcallback_id, CefRefPtr<CefBrowser> browser);
 //
 //private:
-//    uint32_t                    _jsCallbackId{0};             // JS 端回调函数的索引计数
-//    uint32_t                    _cppCallbackId{0};            // C++ 端回调函数的索引计数
+//    uint32_t                    _jsCallbackId{0};             // JS callback function index counter
+//    uint32_t                    _cppCallbackId{0};            // C++ callback function index counter
 //
 //
-//    BrowserCallbackMap          _browserCallback;              // C++ 端回调函数的对应列表
-//    BrowserRegisteredFunction   _browserRegisteredFunction;   // 保存 C++ 端已经注册好的持久函数列表
+//    BrowserCallbackMap          _browserCallback;              // C++ callback function mapping list
+//    BrowserRegisteredFunction   _browserRegisteredFunction;   // List of registered persistent C++ functions
 //};
 //
 //}

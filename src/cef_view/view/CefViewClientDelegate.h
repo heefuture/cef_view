@@ -1,12 +1,12 @@
 /**
-* @file        CefViewClientDelegate.h
-* @brief       CefViewClientDelegate 类的定义
-*              用于处理 CefHandler 浏览器的基本操作和事件
-* @version     1.0
-* @author      heefuture
-* @date        2025.07.08
-* @copyright
-*/
+ * @file        CefViewClientDelegate.h
+ * @brief       Definition of CefViewClientDelegate class
+ *              Handles basic operations and events for CefHandler browser
+ * @version     1.0
+ * @author      heefuture
+ * @date        2025.07.08
+ * @copyright
+ */
 #ifndef CEFVIEWCLIENTDELEGATE_H
 #define CEFVIEWCLIENTDELEGATE_H
 #pragma once
@@ -30,9 +30,9 @@ public:
 
 public:
     // /**
-    // * @brief 注册一个 ProcessMessageHandler 对象，主要用来处理js消息
-    // * @param [in] handler ProcessMessageHandler 对象指针
-    // */
+    //  * @brief Register a ProcessMessageHandler for handling JS messages
+    //  * @param[in] handler ProcessMessageHandler object pointer
+    //  */
     // virtual void registerProcessMessageHandler(ProcessMessageHandler* handler);
 
 
@@ -54,7 +54,7 @@ private:
                                      CefRefPtr<CefContextMenuParams> params,
                                      CefRefPtr<CefMenuModel> model) override;
 
-    // 在非UI线程中被调用
+    // Called in non-UI thread
     virtual bool onContextMenuCommand(CefRefPtr<CefBrowser> browser,
                                       CefRefPtr<CefFrame> frame,
                                       CefRefPtr<CefContextMenuParams> params,
@@ -177,7 +177,7 @@ private:
     virtual void onRenderProcessTerminated(CefRefPtr<CefBrowser> browser, CefRequestHandler::TerminationStatus status, int errorCode, const CefString& errorString) override;
 #pragma endregion // CefRequestHandler
 
-    //// 封装一些 JS 与 C++ 交互的功能
+    //// Wrapper for JS and C++ interaction functionality
     //virtual bool onExecuteCppFunc(const CefString &function_name, const CefString &params, int js_callback_id, CefRefPtr<CefBrowser> browser) override;
 
     //virtual bool onExecuteCppCallbackFunc(int cpp_callback_id, const CefString &json_string) override;
@@ -185,11 +185,8 @@ private:
     //WebState _webstate;
 protected:
     CefWebView*                             _view{nullptr};
-    // std::vector<CefRefPtr<ProcessMessageDelegateWrapper>> _delegates;
-    //std::shared_ptr<CefJSBridge> js_bridge_;
     CefString                               _url;
     bool                                    _isDevtoolsOpened{false};
-    //int                         js_callback_thread_id_ = -1; // 保存接收到 JS 调用 CPP 函数的代码所属线程，以后触发 JS 回调时把回调转到那个线程
 };
 }
 

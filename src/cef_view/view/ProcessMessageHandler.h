@@ -1,8 +1,8 @@
 
 // /**
 // * @file        ProcessMessageHandler.h
-// * @brief       ProcessMessageHandler 类的定义
-// *              用于处理进程消息的委托接口
+// * @brief       Definition of ProcessMessageHandler class
+// *              Delegate interface for handling process messages
 // * @version     1.0
 // * @author      heefuture
 // * @date        2025.07.03

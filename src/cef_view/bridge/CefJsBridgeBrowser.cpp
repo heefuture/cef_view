@@ -24,7 +24,7 @@
 //    if (it == _browserCallback.cend())
 //    {
 //        _browserCallback.emplace(_cppCallbackId, callback);
-//        // 发送消息给 render 要求执行一个 js function
+//        // Send message to render to execute a js function
 //        CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kCallJsFunctionMessage);
 //        CefRefPtr<CefListValue> args = message->GetArgumentList();
 //        args->SetString(0, jsFunctionName);
@@ -49,7 +49,7 @@
 //            callback(jsonString);
 //        }
 //
-//        // 执行完成后从缓存中移除
+//        // Remove from cache after execution
 //        _browserCallback.erase(cppCallbackId);
 //    }
 //

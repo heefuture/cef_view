@@ -92,7 +92,7 @@ bool CefViewClientDelegate::onCursorChange(CefRefPtr<CefBrowser> browser,
                                         cef_cursor_type_t type,
                                         const CefCursorInfo &customCursorInfo)
 {
-    return false;
+    return _view->onCursorChange(browser, cursor, type, customCursorInfo);
 }
 
 bool CefViewClientDelegate::onConsoleMessage(CefRefPtr<CefBrowser> browser,

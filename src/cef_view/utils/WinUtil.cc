@@ -271,34 +271,4 @@ CefRect getWindowRect(HWND hwnd, float deviceScaleFactor) {
     // return CefRect(clientRect.left, clientRect.top, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
 }
 
-// std::string getAppTempDirectory()
-// {
-// #if defined(OS_WIN)
-// CefString AppGetTempDirectory() {
-//  std::unique_ptr<TCHAR[]> buffer(new TCHAR[MAX_PATH + 1]);
-//  if (!::GetTempPath(MAX_PATH, buffer.get())) return CefString();
-//  else return CefString(buffer.get());
-// }
-// #elif defined(OS_MACOSX)
-// CefString AppGetTempDirectory() {
-//  return CefString();
-// }
-// }
-// #define UNCAUGHT_EXCEPTION_LOG_FILE_NAME "browser_uncaught_exception_"
-// CefString AppGetUncaughtExceptionLogFileName() {
-//    CefString tmpPath = AppGetTempDirectory();
-//    auto nowt = time(NULL);
-//    tm nowtm;
-//    ::localtime_s(&nowtm, &nowt);
-//    std::array<char, 16> buffer;
-//    ::strftime(buffer.data(), buffer.size(), "%Y-%m-%d", &nowtm);
-//    return tmpPath.ToString().append(UNCAUGHT_EXCEPTION_LOG_FILE_NAME).append(buffer.data()).append(".log");
-// }
-
-// std::shared_ptr<std::ofstream> getLogFileStream() {
-//  static std::shared_ptr<std::ofstream> logFileStream(
-//        new std::ofstream(AppGetUncaughtExceptionLogFileName().ToString(), std::ios::app),
-//        [](std::ofstream *ptr) { ptr->close(); delete ptr; });
-//  return logFileStream;
-// }
 }  // namespace cefview::util

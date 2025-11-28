@@ -55,7 +55,6 @@ float getDeviceScaleFactor();
 
 CefRect getWindowRect(HWND hwnd, float deviceScaleFactor);
 
-// std::string getAppTempDirectory();
 }  // namespace cefview::util
 
 #endif  // WINUTIL_H
