@@ -18,7 +18,7 @@ namespace cefview {
 struct CefWebViewSetting
 {
     std::string url;
-    
+
     // Off-screen rendering configuration (only valid when renderMode=kOffScreenD3D11)
     bool offScreenRenderingEnabled = false;  // Deprecated, use renderMode instead
     int windowlessFrameRate = 60;

@@ -40,7 +40,7 @@ public:
 
     // virtual bool onExecuteCppCallbackFunc(int cpp_callback_id, const CefString& json_string) override;
 
-private:
+protected:
 #pragma region CefClient
     virtual bool onProcessMessageReceived(CefRefPtr<CefBrowser> browser,
                                           CefRefPtr<CefFrame> frame,

@@ -8,8 +8,6 @@
 
 #include <utils/util.h>
 #include <client/CefSwitches.h>
-#include <client/CefClientRender.h>
-#include <client/CefClientBrowser.h>
 
 namespace cefview
 {
