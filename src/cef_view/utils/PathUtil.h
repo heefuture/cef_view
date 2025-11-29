@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace cefview::util {
+namespace cefview {
 
 /**
  * Utility class for managing application resources and paths
@@ -16,29 +16,34 @@ namespace cefview::util {
 class PathUtil {
 public:
     /**
+     * Platform-specific path separator
+     */
+    static const std::string sPathSep;
+
+    /**
      * Get the directory where the application executable is located
      * @return Full path to the application directory
      */
-    static std::string getAppDirectory();
+    static std::string GetAppDirectory();
 
     /**
      * Get the directory where resources are stored
      * @return Full path to the resources directory
      */
-    static std::string getAppResourcePath();
+    static std::string GetAppResourcePath();
 
     /**
      * Get the full path to a specific resource file
      * @param resourceName Name of the resource file (e.g., "StatusIcon.png")
      * @return Full path to the resource file, or empty string if not found
      */
-    static std::string getResourcePath(const std::string& resourceName);
+    static std::string GetResourcePath(const std::string& resourceName);
 
     /**
      * Get the system temporary directory path
      * @return Full path to the temp directory
      */
-    static std::string getAppTempDirectory();
+    static std::string GetAppTempDirectory();
 
 private:
     PathUtil() = delete;
@@ -47,4 +52,4 @@ private:
     PathUtil& operator=(const PathUtil&) = delete;
 };
 
-}  // namespace cefview::util
+}  // namespace cefview

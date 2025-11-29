@@ -1,48 +1,48 @@
 #include "utils/WinUtil.h"
 
-#include "GeometryUtil.h"
+#include "ScreenUtil.h"
 
 #include <shellscalingapi.h>
-// #include "include/base/cef_logging.h"
 
-namespace cefview::util {
+namespace cefview {
 
-LARGE_INTEGER qi_freq_ = {};
+namespace {
+LARGE_INTEGER g_qiFreq = {};
+}
 
-uint64_t getTimeNow() {
-    if (!qi_freq_.HighPart && !qi_freq_.LowPart) {
-        ::QueryPerformanceFrequency(&qi_freq_);
+uint64_t WinUtil::GetTimeNow() {
+    if (!g_qiFreq.HighPart && !g_qiFreq.LowPart) {
+        ::QueryPerformanceFrequency(&g_qiFreq);
     }
     LARGE_INTEGER t = {};
     ::QueryPerformanceCounter(&t);
-    return static_cast<uint64_t>((t.QuadPart / double(qi_freq_.QuadPart)) * 1000000);
+    return static_cast<uint64_t>((t.QuadPart / double(g_qiFreq.QuadPart)) * 1000000);
 }
 
-void setUserDataPtr(HWND hWnd, void* ptr) {
+void WinUtil::SetUserDataPtr(HWND hwnd, void* ptr) {
     ::SetLastError(ERROR_SUCCESS);
-    LONG_PTR result = ::SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(ptr));
+    LONG_PTR result = ::SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(ptr));
     // CHECK(result != 0 || ::GetLastError() == ERROR_SUCCESS);
-
 }
 
-WNDPROC setWndProcPtr(HWND hWnd, WNDPROC wndProc) {
-    WNDPROC old = reinterpret_cast<WNDPROC>(::GetWindowLongPtr(hWnd, GWLP_WNDPROC));
+WNDPROC WinUtil::SetWndProcPtr(HWND hwnd, WNDPROC wndProc) {
+    WNDPROC old = reinterpret_cast<WNDPROC>(::GetWindowLongPtr(hwnd, GWLP_WNDPROC));
     // CHECK(old != nullptr);
-    LONG_PTR result = ::SetWindowLongPtr(hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(wndProc));
+    LONG_PTR result = ::SetWindowLongPtr(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(wndProc));
     // CHECK(result != 0 || ::GetLastError() == ERROR_SUCCESS);
     return old;
 }
 
-std::wstring getResourceString(UINT id) {
+std::wstring WinUtil::GetResourceString(UINT id) {
 #define MAX_LOADSTRING 100
     TCHAR buff[MAX_LOADSTRING] = {0};
     LoadString(::GetModuleHandle(nullptr), id, buff, MAX_LOADSTRING);
     return buff;
 }
 
-// Helper funtion to check if it is Windows8 or greater.
+// Helper function to check if it is Windows8 or greater.
 // https://msdn.microsoft.com/en-us/library/ms724833(v=vs.85).aspx
-bool isWindows8OrNewer() {
+bool WinUtil::IsWindows8OrNewer() {
     OSVERSIONINFOEX osvi = {0};
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
     osvi.dwMajorVersion = 6;
@@ -56,14 +56,14 @@ bool isWindows8OrNewer() {
 
 // Helper function to detect mouse messages coming from emulation of touch
 // events. These should be ignored.
-bool isMouseEventFromTouch(UINT message) {
+bool WinUtil::IsMouseEventFromTouch(UINT message) {
 #define MOUSEEVENTF_FROMTOUCH 0xFF515700
     return (message >= WM_MOUSEFIRST) && (message <= WM_MOUSELAST) &&
            (::GetMessageExtraInfo() & MOUSEEVENTF_FROMTOUCH) ==
                MOUSEEVENTF_FROMTOUCH;
 }
 
-int getCefMouseModifiers(WPARAM wparam) {
+int WinUtil::GetCefMouseModifiers(WPARAM wparam) {
     int modifiers = 0;
     if (wparam & MK_CONTROL) {
         modifiers |= EVENTFLAG_CONTROL_DOWN;
@@ -71,7 +71,7 @@ int getCefMouseModifiers(WPARAM wparam) {
     if (wparam & MK_SHIFT) {
         modifiers |= EVENTFLAG_SHIFT_DOWN;
     }
-    if (isKeyDown(VK_MENU)) {
+    if (IsKeyDown(VK_MENU)) {
         modifiers |= EVENTFLAG_ALT_DOWN;
     }
     if (wparam & MK_LBUTTON) {
@@ -94,15 +94,15 @@ int getCefMouseModifiers(WPARAM wparam) {
     return modifiers;
 }
 
-int getCefKeyboardModifiers(WPARAM wparam, LPARAM lparam) {
+int WinUtil::GetCefKeyboardModifiers(WPARAM wparam, LPARAM lparam) {
     int modifiers = 0;
-    if (isKeyDown(VK_SHIFT)) {
+    if (IsKeyDown(VK_SHIFT)) {
         modifiers |= EVENTFLAG_SHIFT_DOWN;
     }
-    if (isKeyDown(VK_CONTROL)) {
+    if (IsKeyDown(VK_CONTROL)) {
         modifiers |= EVENTFLAG_CONTROL_DOWN;
     }
-    if (isKeyDown(VK_MENU)) {
+    if (IsKeyDown(VK_MENU)) {
         modifiers |= EVENTFLAG_ALT_DOWN;
     }
 
@@ -152,26 +152,26 @@ int getCefKeyboardModifiers(WPARAM wparam, LPARAM lparam) {
         modifiers |= EVENTFLAG_IS_KEY_PAD;
         break;
     case VK_SHIFT:
-        if (isKeyDown(VK_LSHIFT)) {
+        if (IsKeyDown(VK_LSHIFT)) {
             modifiers |= EVENTFLAG_IS_LEFT;
         }
-        else if (isKeyDown(VK_RSHIFT)) {
+        else if (IsKeyDown(VK_RSHIFT)) {
             modifiers |= EVENTFLAG_IS_RIGHT;
         }
         break;
     case VK_CONTROL:
-        if (isKeyDown(VK_LCONTROL)) {
+        if (IsKeyDown(VK_LCONTROL)) {
             modifiers |= EVENTFLAG_IS_LEFT;
         }
-        else if (isKeyDown(VK_RCONTROL)) {
+        else if (IsKeyDown(VK_RCONTROL)) {
             modifiers |= EVENTFLAG_IS_RIGHT;
         }
         break;
     case VK_MENU:
-        if (isKeyDown(VK_LMENU)) {
+        if (IsKeyDown(VK_LMENU)) {
             modifiers |= EVENTFLAG_IS_LEFT;
         }
-        else if (isKeyDown(VK_RMENU)) {
+        else if (IsKeyDown(VK_RMENU)) {
             modifiers |= EVENTFLAG_IS_RIGHT;
         }
         break;
@@ -185,82 +185,84 @@ int getCefKeyboardModifiers(WPARAM wparam, LPARAM lparam) {
     return modifiers;
 }
 
-bool isKeyDown(WPARAM wparam) {
+bool WinUtil::IsKeyDown(WPARAM wparam) {
     return (::GetKeyState(wparam) & 0x8000) != 0;
 }
 
 // Returns true if the process is per monitor DPI aware.
-bool isProcessPerMonitorDpiAware() {
-    enum class PerMonitorDpiAware
-    {
+bool WinUtil::IsProcessPerMonitorDpiAware() {
+    enum class PerMonitorDpiAware {
         UNKNOWN = 0,
         PER_MONITOR_DPI_UNAWARE,
         PER_MONITOR_DPI_AWARE,
     };
-    static PerMonitorDpiAware per_monitor_dpi_aware = PerMonitorDpiAware::UNKNOWN;
-    if (per_monitor_dpi_aware == PerMonitorDpiAware::UNKNOWN) {
-        per_monitor_dpi_aware = PerMonitorDpiAware::PER_MONITOR_DPI_UNAWARE;
-        HMODULE shcore_dll = ::LoadLibrary(L"shcore.dll");
-        if (shcore_dll) {
-            typedef HRESULT(WINAPI * GetProcessDpiAwarenessPtr)(HANDLE, PROCESS_DPI_AWARENESS *);
-            GetProcessDpiAwarenessPtr func_ptr = reinterpret_cast<GetProcessDpiAwarenessPtr>(::GetProcAddress(shcore_dll, "GetProcessDpiAwareness"));
-            if (func_ptr) {
+    static PerMonitorDpiAware perMonitorDpiAware = PerMonitorDpiAware::UNKNOWN;
+    if (perMonitorDpiAware == PerMonitorDpiAware::UNKNOWN) {
+        perMonitorDpiAware = PerMonitorDpiAware::PER_MONITOR_DPI_UNAWARE;
+        HMODULE shcoreDll = ::LoadLibrary(L"shcore.dll");
+        if (shcoreDll) {
+            typedef HRESULT(WINAPI * GetProcessDpiAwarenessPtr)(HANDLE, PROCESS_DPI_AWARENESS*);
+            GetProcessDpiAwarenessPtr funcPtr = reinterpret_cast<GetProcessDpiAwarenessPtr>(
+                ::GetProcAddress(shcoreDll, "GetProcessDpiAwareness"));
+            if (funcPtr) {
                 PROCESS_DPI_AWARENESS awareness;
-                if (SUCCEEDED(func_ptr(nullptr, &awareness)) && awareness == PROCESS_PER_MONITOR_DPI_AWARE) {
-                    per_monitor_dpi_aware = PerMonitorDpiAware::PER_MONITOR_DPI_AWARE;
+                if (SUCCEEDED(funcPtr(nullptr, &awareness)) &&
+                    awareness == PROCESS_PER_MONITOR_DPI_AWARE) {
+                    perMonitorDpiAware = PerMonitorDpiAware::PER_MONITOR_DPI_AWARE;
                 }
             }
         }
     }
-    return per_monitor_dpi_aware == PerMonitorDpiAware::PER_MONITOR_DPI_AWARE;
+    return perMonitorDpiAware == PerMonitorDpiAware::PER_MONITOR_DPI_AWARE;
 }
 
 // DPI value for 1x scale factor.
 #define DPI_1X 96.0f
-float getWindowScaleFactor(HWND hwnd)
-{
-    if (hwnd && isProcessPerMonitorDpiAware()) {
+
+float WinUtil::GetWindowScaleFactor(HWND hwnd) {
+    if (hwnd && IsProcessPerMonitorDpiAware()) {
         typedef UINT(WINAPI * GetDpiForWindowPtr)(HWND);
-        static GetDpiForWindowPtr func_ptr = reinterpret_cast<GetDpiForWindowPtr>(::GetProcAddress(GetModuleHandle(L"user32.dll"), "GetDpiForWindow"));
-        if (func_ptr) {
-            return static_cast<float>(func_ptr(hwnd)) / DPI_1X;
+        static GetDpiForWindowPtr funcPtr = reinterpret_cast<GetDpiForWindowPtr>(
+            ::GetProcAddress(GetModuleHandle(L"user32.dll"), "GetDpiForWindow"));
+        if (funcPtr) {
+            return static_cast<float>(funcPtr(hwnd)) / DPI_1X;
         }
     }
 
-    return getDeviceScaleFactor();
+    return GetDeviceScaleFactor();
 }
 
-float getDeviceScaleFactor() {
-    static float scale_factor = 1.0;
+float WinUtil::GetDeviceScaleFactor() {
+    static float scaleFactor = 1.0;
     static bool initialized = false;
 
     if (!initialized) {
         // This value is safe to cache for the life time of the app since the user
         // must logout to change the DPI setting. This value also applies to all
         // screens.
-        HDC screen_dc = ::GetDC(nullptr);
-        int dpi_x = ::GetDeviceCaps(screen_dc, LOGPIXELSX);
-        scale_factor = static_cast<float>(dpi_x) / 96.0f;
-        ::ReleaseDC(nullptr, screen_dc);
+        HDC screenDc = ::GetDC(nullptr);
+        int dpiX = ::GetDeviceCaps(screenDc, LOGPIXELSX);
+        scaleFactor = static_cast<float>(dpiX) / 96.0f;
+        ::ReleaseDC(nullptr, screenDc);
         initialized = true;
     }
 
-    return scale_factor;
+    return scaleFactor;
 }
 
-CefRect getWindowRect(HWND hwnd, float deviceScaleFactor) {
+CefRect WinUtil::GetWindowRect(HWND hwnd, float deviceScaleFactor) {
     RECT clientRect;
     ::GetClientRect(hwnd, &clientRect);
 
     CefRect rect;
     rect.x = rect.y = 0;
 
-    rect.width = deviceToLogical(clientRect.right - clientRect.left, deviceScaleFactor);
+    rect.width = ScreenUtil::DeviceToLogical(clientRect.right - clientRect.left, deviceScaleFactor);
     if (rect.width == 0) {
         rect.width = 1;
     }
 
-    rect.height = deviceToLogical(clientRect.bottom - clientRect.top, deviceScaleFactor);
+    rect.height = ScreenUtil::DeviceToLogical(clientRect.bottom - clientRect.top, deviceScaleFactor);
     if (rect.height == 0) {
         rect.height = 1;
     }
@@ -271,4 +273,4 @@ CefRect getWindowRect(HWND hwnd, float deviceScaleFactor) {
     // return CefRect(clientRect.left, clientRect.top, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
 }
 
-}  // namespace cefview::util
+}  // namespace cefview

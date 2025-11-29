@@ -5,7 +5,7 @@
 
 #include <utils/Util.h>
 #include <utils/WinUtil.h>
-#include <utils/GeometryUtil.h>
+#include <utils/ScreenUtil.h>
 
 #include <osr/OsrDragdropEvents.h>
 #include <osr/OsrDragdropWin.h>
@@ -30,8 +30,8 @@ public:
     OsrDragEventsImpl(CefWebView* webview) : _webview(webview) {}
     ~OsrDragEventsImpl() { _webview = nullptr; }
 
-    CefBrowserHost::DragOperationsMask onDragEnter(CefRefPtr<CefDragData> drag_data, CefMouseEvent ev, CefBrowserHost::DragOperationsMask effect) override {
-        return _webview->onDragEnter(drag_data, ev, effect);
+    CefBrowserHost::DragOperationsMask onDragEnter(CefRefPtr<CefDragData> dragData, CefMouseEvent ev, CefBrowserHost::DragOperationsMask effect) override {
+        return _webview->onDragEnter(dragData, ev, effect);
     }
 
     CefBrowserHost::DragOperationsMask onDragOver(CefMouseEvent ev, CefBrowserHost::DragOperationsMask effect) override {
@@ -53,7 +53,7 @@ private:
 // static
 LRESULT CALLBACK CefWebView::windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    CefWebView *webView = util::getUserDataPtr<CefWebView *>(hwnd);
+    CefWebView *webView = WinUtil::GetUserDataPtr<CefWebView *>(hwnd);
     if (!webView){
         return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
@@ -117,7 +117,7 @@ LRESULT CALLBACK CefWebView::windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
 
     case WM_NCDESTROY:
         // Clear the reference to view.
-        util::setUserDataPtr(hwnd, nullptr);
+        WinUtil::SetUserDataPtr(hwnd, nullptr);
         webView->_hwnd = nullptr;
         break;
     }
@@ -133,7 +133,7 @@ CefWebView::CefWebView(const std::string& url, const CefWebViewSetting& settings
         return;
     }
 
-    _deviceScaleFactor = util::getWindowScaleFactor(parentHwnd);
+    _deviceScaleFactor = WinUtil::GetWindowScaleFactor(parentHwnd);
 
     if (settings.width <= 0 || settings.height <= 0) {
         ::GetWindowRect(parentHwnd, &_clientRect);
@@ -257,7 +257,7 @@ HWND CefWebView::createSubWindow(HWND parentHwnd, int x, int y,int width, int he
                         nullptr,
                         nullptr);
 
-    util::setUserDataPtr(ret, this);
+    WinUtil::SetUserDataPtr(ret, this);
     //if (showWindow)
     //    ::ShowWindow(ret, SW_SHOW);
     return ret;
@@ -434,10 +434,10 @@ void CefWebView::startDownload(const std::string& url)
     }
 }
 
-void CefWebView::setZoomLevel(float zoom_level)
+void CefWebView::setZoomLevel(float zoomLevel)
 {
     if (_browser && _browser.get()) {
-        _browser->GetHost()->SetZoomLevel(zoom_level);
+        _browser->GetHost()->SetZoomLevel(zoomLevel);
     }
 }
 
@@ -528,7 +528,7 @@ bool CefWebView::getRootScreenRect(CefRect& rect) {
         return false;
     }
     HWND rootWindow = GetAncestor(_hwnd, GA_ROOT);
-    rect = util::getWindowRect(rootWindow, _deviceScaleFactor);
+    rect = WinUtil::GetWindowRect(rootWindow, _deviceScaleFactor);
     return true;
 }
 
@@ -538,8 +538,8 @@ bool CefWebView::getScreenPoint(int viewX, int viewY, int& screenX, int& screenY
     return false;
   }
   // Convert from view DIP coordinates to screen device (pixel) coordinates.
-  POINT screenPt = { util::logicalToDevice(viewX, _deviceScaleFactor),
-                     util::logicalToDevice(viewY, _deviceScaleFactor)};
+  POINT screenPt = { ScreenUtil::LogicalToDevice(viewX, _deviceScaleFactor),
+                     ScreenUtil::LogicalToDevice(viewY, _deviceScaleFactor)};
   ClientToScreen(_hwnd, &screenPt);
   screenX = screenPt.x;
   screenY = screenPt.y;
@@ -569,12 +569,12 @@ bool CefWebView::getViewRect(CefRect& rect){
 
     rect.x = rect.y = 0;
 
-    rect.width = util::deviceToLogical(_clientRect.right - _clientRect.left, _deviceScaleFactor);
+    rect.width = ScreenUtil::DeviceToLogical(_clientRect.right - _clientRect.left, _deviceScaleFactor);
     if (rect.width == 0) {
         rect.width = 1;
     }
 
-    rect.height = util::deviceToLogical(_clientRect.bottom - _clientRect.top, _deviceScaleFactor);
+    rect.height = ScreenUtil::DeviceToLogical(_clientRect.bottom - _clientRect.top, _deviceScaleFactor);
     if (rect.height == 0) {
         rect.height = 1;
     }
@@ -623,8 +623,8 @@ bool CefWebView::startDragging(CefRefPtr<CefDragData> dragData, CefRenderHandler
     ::ScreenToClient(_hwnd, &pt);
 
     _browser->GetHost()->DragSourceEndedAt(
-        util::deviceToLogical(pt.x, _deviceScaleFactor),
-        util::deviceToLogical(pt.y, _deviceScaleFactor), result);
+        ScreenUtil::DeviceToLogical(pt.x, _deviceScaleFactor),
+        ScreenUtil::DeviceToLogical(pt.y, _deviceScaleFactor), result);
     _browser->GetHost()->DragSourceSystemDragEnded();
     return true;
 }
@@ -643,7 +643,7 @@ void CefWebView::onImeCompositionRangeChanged(const CefRange& selectionRange, co
     CefRenderHandler::RectList deviceBounds;
     CefRenderHandler::RectList::const_iterator it = characterBounds.begin();
     for (; it != characterBounds.end(); ++it) {
-        deviceBounds.push_back(util::logicalToDevice(*it, _deviceScaleFactor));
+        deviceBounds.push_back(ScreenUtil::LogicalToDevice(*it, _deviceScaleFactor));
     }
 
     _imeHandler->changeCompositionRange(selectionRange, deviceBounds);
@@ -655,7 +655,7 @@ void CefWebView::onImeCompositionRangeChanged(const CefRange& selectionRange, co
 bool CefWebView::onCursorChange(CefRefPtr<CefBrowser> browser,
                                 CefCursorHandle cursor,
                                 cef_cursor_type_t type,
-                                const CefCursorInfo &custom_cursor_info)
+                                const CefCursorInfo& customCursorInfo)
 {
     if (!::IsWindow(_hwnd)) {
         return true;
@@ -723,7 +723,7 @@ void CefWebView::onProcessMessageReceived(int browserId, const std::string& mess
 
 #pragma region windowProchandler
 void CefWebView::onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam) {
-    if (!_settings.offScreenRenderingEnabled || util::isMouseEventFromTouch(message)) return;
+    if (!_settings.offScreenRenderingEnabled || WinUtil::IsMouseEventFromTouch(message)) return;
 
     CefRefPtr<CefBrowserHost> browserHost;
     if (_browser) {
@@ -783,8 +783,8 @@ void CefWebView::onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam) {
                 CefMouseEvent mouseEvent;
                 mouseEvent.x = x;
                 mouseEvent.y = y;
-                util::deviceToLogical(mouseEvent, _deviceScaleFactor);
-                mouseEvent.modifiers = util::getCefMouseModifiers(wParam);
+                ScreenUtil::DeviceToLogical(mouseEvent, _deviceScaleFactor);
+                mouseEvent.modifiers = WinUtil::GetCefMouseModifiers(wParam);
                 browserHost->SendMouseClickEvent(mouseEvent, btnType, false,
                                                  _lastClickCount);
             }
@@ -811,8 +811,8 @@ void CefWebView::onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam) {
                 CefMouseEvent mouseEvent;
                 mouseEvent.x = x;
                 mouseEvent.y = y;
-                util::deviceToLogical(mouseEvent, _deviceScaleFactor);
-                mouseEvent.modifiers = util::getCefMouseModifiers(wParam);
+                ScreenUtil::DeviceToLogical(mouseEvent, _deviceScaleFactor);
+                mouseEvent.modifiers = WinUtil::GetCefMouseModifiers(wParam);
                 browserHost->SendMouseClickEvent(mouseEvent, btnType, true,
                                                  _lastClickCount);
             }
@@ -848,8 +848,8 @@ void CefWebView::onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam) {
                 CefMouseEvent mouseEvent;
                 mouseEvent.x = x;
                 mouseEvent.y = y;
-                util::deviceToLogical(mouseEvent, _deviceScaleFactor);
-                mouseEvent.modifiers = util::getCefMouseModifiers(wParam);
+                ScreenUtil::DeviceToLogical(mouseEvent, _deviceScaleFactor);
+                mouseEvent.modifiers = WinUtil::GetCefMouseModifiers(wParam);
                 browserHost->SendMouseMoveEvent(mouseEvent, false);
             }
         }
@@ -876,8 +876,8 @@ void CefWebView::onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam) {
             CefMouseEvent mouseEvent;
             mouseEvent.x = p.x;
             mouseEvent.y = p.y;
-            util::deviceToLogical(mouseEvent, _deviceScaleFactor);
-            mouseEvent.modifiers = util::getCefMouseModifiers(wParam);
+            ScreenUtil::DeviceToLogical(mouseEvent, _deviceScaleFactor);
+            mouseEvent.modifiers = WinUtil::GetCefMouseModifiers(wParam);
             browserHost->SendMouseMoveEvent(mouseEvent, true);
         }
     }
@@ -893,17 +893,17 @@ void CefWebView::onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam) {
 
             ::ScreenToClient(_hwnd, &screenPoint);
             int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-            int deltaX = util::isKeyDown(VK_SHIFT) ? delta : 0;
-            int deltaY = !util::isKeyDown(VK_SHIFT) ? delta : 0;
+            int deltaX = WinUtil::IsKeyDown(VK_SHIFT) ? delta : 0;
+            int deltaY = !WinUtil::IsKeyDown(VK_SHIFT) ? delta : 0;
 
             CefMouseEvent mouseEvent;
             mouseEvent.x = screenPoint.x;
             mouseEvent.y = screenPoint.y;
-            util::deviceToLogical(mouseEvent, _deviceScaleFactor);
-            mouseEvent.modifiers = util::getCefMouseModifiers(wParam);
+            ScreenUtil::DeviceToLogical(mouseEvent, _deviceScaleFactor);
+            mouseEvent.modifiers = WinUtil::GetCefMouseModifiers(wParam);
 
-            UINT sys_info_lines;
-            if (SystemParametersInfo(SPI_GETWHEELSCROLLLINES, 0, &sys_info_lines, 0) && sys_info_lines == WHEEL_PAGESCROLL) {
+            UINT sysInfoLines;
+            if (SystemParametersInfo(SPI_GETWHEELSCROLLLINES, 0, &sysInfoLines, 0) && sysInfoLines == WHEEL_PAGESCROLL) {
                 mouseEvent.modifiers |= EVENTFLAG_SCROLL_BY_PAGE;
                 deltaX = 0;
                 deltaY = (delta > 0) ? 1 : -1;
@@ -974,14 +974,14 @@ void CefWebView::onKeyEvent(UINT message, WPARAM wParam, LPARAM lParam) {
     else {
         event.type = KEYEVENT_CHAR;
     }
-    event.modifiers = util::getCefKeyboardModifiers(wParam, lParam);
+    event.modifiers = WinUtil::GetCefKeyboardModifiers(wParam, lParam);
 
     // mimic alt-gr check behaviour from
     // src/ui/events/win/events_win_utils.cc: GetModifiersFromKeyState
-    if ((event.type == KEYEVENT_CHAR) && util::isKeyDown(VK_RMENU)) {
+    if ((event.type == KEYEVENT_CHAR) && WinUtil::IsKeyDown(VK_RMENU)) {
         // reverse AltGr detection taken from PlatformKeyMap::UsesAltGraph
         // instead of checking all combination for ctrl-alt, just check current char
-        HKL current_layout = ::GetKeyboardLayout(0);
+        HKL currentLayout = ::GetKeyboardLayout(0);
 
         // https://docs.microsoft.com/en-gb/windows/win32/api/winuser/nf-winuser-vkkeyscanexw
         // ... high-order byte contains the shift state,
@@ -989,9 +989,9 @@ void CefWebView::onKeyEvent(UINT message, WPARAM wParam, LPARAM lParam) {
         // 1 Either SHIFT key is pressed.
         // 2 Either CTRL key is pressed.
         // 4 Either ALT key is pressed.
-        SHORT scan_res = ::VkKeyScanExW(wParam, current_layout);
+        SHORT scanRes = ::VkKeyScanExW(wParam, currentLayout);
         constexpr auto ctrlAlt = (2 | 4);
-        if (((scan_res >> 8) & ctrlAlt) == ctrlAlt)  {
+        if (((scanRes >> 8) & ctrlAlt) == ctrlAlt)  {
             // ctrl-alt pressed
             event.modifiers &= ~(EVENTFLAG_CONTROL_DOWN | EVENTFLAG_ALT_DOWN);
             event.modifiers |= EVENTFLAG_ALTGR_DOWN;
@@ -1016,55 +1016,55 @@ bool CefWebView::onTouchEvent(UINT message, WPARAM wParam, LPARAM lParam) {
     if (!_settings.offScreenRenderingEnabled) return false;
 
     // Handle touch events on Windows.
-    int num_points = LOWORD(wParam);
+    int numPoints = LOWORD(wParam);
     // Chromium only supports upto 16 touch points.
-    if (num_points < 0 || num_points > 16) {
+    if (numPoints < 0 || numPoints > 16) {
         return false;
     }
-    std::unique_ptr<TOUCHINPUT[]> input(new TOUCHINPUT[num_points]);
-    if (GetTouchInputInfo(reinterpret_cast<HTOUCHINPUT>(lParam), num_points, input.get(), sizeof(TOUCHINPUT))) {
-        CefTouchEvent touch_event;
-        for (int i = 0; i < num_points; ++i) {
+    std::unique_ptr<TOUCHINPUT[]> input(new TOUCHINPUT[numPoints]);
+    if (GetTouchInputInfo(reinterpret_cast<HTOUCHINPUT>(lParam), numPoints, input.get(), sizeof(TOUCHINPUT))) {
+        CefTouchEvent touchEvent;
+        for (int i = 0; i < numPoints; ++i) {
             POINT point;
             point.x = TOUCH_COORD_TO_PIXEL(input[i].x);
             point.y = TOUCH_COORD_TO_PIXEL(input[i].y);
 
-            if (!util::isWindows8OrNewer()) {
+            if (!WinUtil::IsWindows8OrNewer()) {
                 // Windows 7 sends touch events for touches in the non-client area,
                 // whereas Windows 8 does not. In order to unify the behaviour, always
                 // ignore touch events in the non-client area.
-                LPARAM l_param_ht = MAKELPARAM(point.x, point.y);
-                LRESULT hittest = SendMessage(_hwnd, WM_NCHITTEST, 0, l_param_ht);
+                LPARAM lParamHt = MAKELPARAM(point.x, point.y);
+                LRESULT hittest = SendMessage(_hwnd, WM_NCHITTEST, 0, lParamHt);
                 if (hittest != HTCLIENT) {
                     return false;
                 }
             }
 
             ::ScreenToClient(_hwnd, &point);
-            touch_event.x = util::deviceToLogical(point.x, _deviceScaleFactor);
-            touch_event.y = util::deviceToLogical(point.y, _deviceScaleFactor);
+            touchEvent.x = ScreenUtil::DeviceToLogical(point.x, _deviceScaleFactor);
+            touchEvent.y = ScreenUtil::DeviceToLogical(point.y, _deviceScaleFactor);
 
             // Touch point identifier stays consistent in a touch contact sequence
-            touch_event.id = input[i].dwID;
+            touchEvent.id = input[i].dwID;
             if (input[i].dwFlags & TOUCHEVENTF_DOWN) {
-                touch_event.type = CEF_TET_PRESSED;
+                touchEvent.type = CEF_TET_PRESSED;
             }
             else if (input[i].dwFlags & TOUCHEVENTF_MOVE) {
-                touch_event.type = CEF_TET_MOVED;
+                touchEvent.type = CEF_TET_MOVED;
             }
             else if (input[i].dwFlags & TOUCHEVENTF_UP) {
-                touch_event.type = CEF_TET_RELEASED;
+                touchEvent.type = CEF_TET_RELEASED;
             }
 
-            touch_event.radius_x = 0;
-            touch_event.radius_y = 0;
-            touch_event.rotation_angle = 0;
-            touch_event.pressure = 0;
-            touch_event.modifiers = 0;
+            touchEvent.radius_x = 0;
+            touchEvent.radius_y = 0;
+            touchEvent.rotation_angle = 0;
+            touchEvent.pressure = 0;
+            touchEvent.modifiers = 0;
 
             // Notify the browser of touch event
             if (_browser) {
-                _browser->GetHost()->SendTouchEvent(touch_event);
+                _browser->GetHost()->SendTouchEvent(touchEvent);
             }
         }
         ::CloseTouchInputHandle(reinterpret_cast<HTOUCHINPUT>(lParam));
@@ -1147,7 +1147,7 @@ void CefWebView::onIMECancelCompositionEvent() {
 #pragma region dragEvents
 CefBrowserHost::DragOperationsMask CefWebView::onDragEnter(CefRefPtr<CefDragData> dragData, CefMouseEvent ev, CefBrowserHost::DragOperationsMask effect) {
     if (_browser) {
-        util::deviceToLogical(ev, _deviceScaleFactor);
+        ScreenUtil::DeviceToLogical(ev, _deviceScaleFactor);
         _browser->GetHost()->DragTargetDragEnter(dragData, ev, effect);
         _browser->GetHost()->DragTargetDragOver(ev, effect);
     }
@@ -1156,7 +1156,7 @@ CefBrowserHost::DragOperationsMask CefWebView::onDragEnter(CefRefPtr<CefDragData
 
 CefBrowserHost::DragOperationsMask CefWebView::onDragOver(CefMouseEvent ev, CefBrowserHost::DragOperationsMask effect) {
     if (_browser) {
-        util::deviceToLogical(ev, _deviceScaleFactor);
+        ScreenUtil::DeviceToLogical(ev, _deviceScaleFactor);
         _browser->GetHost()->DragTargetDragOver(ev, effect);
     }
     return _currentDragOp;
@@ -1170,7 +1170,7 @@ void CefWebView::onDragLeave() {
 
 CefBrowserHost::DragOperationsMask CefWebView::onDrop(CefMouseEvent ev, CefBrowserHost::DragOperationsMask effect) {
     if (_browser) {
-        util::deviceToLogical(ev, _deviceScaleFactor);
+        ScreenUtil::DeviceToLogical(ev, _deviceScaleFactor);
         _browser->GetHost()->DragTargetDragOver(ev, effect);
         _browser->GetHost()->DragTargetDrop(ev);
     }

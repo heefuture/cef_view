@@ -7,9 +7,15 @@
 
 namespace fs = std::filesystem;
 
-namespace cefview::util {
+namespace cefview {
 
-std::string PathUtil::getAppDirectory() {
+#ifdef _WIN32
+const std::string PathUtil::sPathSep = "\\";
+#else
+const std::string PathUtil::sPathSep = "/";
+#endif
+
+std::string PathUtil::GetAppDirectory() {
     char buffer[MAX_PATH];
     DWORD length = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
 
@@ -22,8 +28,8 @@ std::string PathUtil::getAppDirectory() {
     return exePath.parent_path().string();
 }
 
-std::string PathUtil::getAppResourcePath() {
-    std::string appDir = getAppDirectory();
+std::string PathUtil::GetAppResourcePath() {
+    std::string appDir = GetAppDirectory();
     if (appDir.empty()) {
         return "";
     }
@@ -41,8 +47,8 @@ std::string PathUtil::getAppResourcePath() {
     return appDir;
 }
 
-std::string PathUtil::getResourcePath(const std::string& resourceName) {
-    std::string resourceDir = getAppResourcePath();
+std::string PathUtil::GetResourcePath(const std::string& resourceName) {
+    std::string resourceDir = GetAppResourcePath();
     if (resourceDir.empty()) {
         return "";
     }
@@ -55,7 +61,7 @@ std::string PathUtil::getResourcePath(const std::string& resourceName) {
     }
 
     // If not found in resources directory, try app directory
-    std::string appDir = getAppDirectory();
+    std::string appDir = GetAppDirectory();
     fullPath = fs::path(appDir) / resourceName;
 
     if (fs::exists(fullPath) && fs::is_regular_file(fullPath)) {
@@ -66,7 +72,7 @@ std::string PathUtil::getResourcePath(const std::string& resourceName) {
     return "";
 }
 
-std::string PathUtil::getAppTempDirectory() {
+std::string PathUtil::GetAppTempDirectory() {
 #if defined(OS_WIN)
     std::unique_ptr<TCHAR[]> buffer(new TCHAR[MAX_PATH + 1]);
     if (!::GetTempPath(MAX_PATH, buffer.get())) {
@@ -94,4 +100,4 @@ std::string PathUtil::getAppTempDirectory() {
 #endif
 }
 
-}  // namespace cefview::util
+}  // namespace cefview

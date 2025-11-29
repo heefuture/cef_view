@@ -1,60 +1,129 @@
 /**
-* @file        WinUtil.h
-* @brief       Header file for Windows utility functions.
-* @version     1.0
-* @author      heefuture
-* @date        2025.11.18
-* @copyright
-*/
-#ifndef WINUTIL_H
-#define WINUTIL_H
+ * @file        WinUtil.h
+ * @brief       Utility class for Windows-specific operations
+ * @version     1.0
+ * @date        2025.11.29
+ */
 #pragma once
 
 #include <windows.h>
-
 #include <string>
 
 #include "include/internal/cef_types_wrappers.h"
 
-namespace cefview::util {
+namespace cefview {
 
-// Returns the current time in microseconds.
-uint64_t getTimeNow();
+/**
+ * @brief Utility class for Windows-specific operations
+ */
+class WinUtil {
+public:
+    /**
+     * @brief Get current time in microseconds
+     * @return Current time in microseconds
+     */
+    static uint64_t GetTimeNow();
 
-// Set the window's user data pointer.
-void setUserDataPtr(HWND hWnd, void* ptr);
+    /**
+     * @brief Set the window's user data pointer
+     * @param hwnd Window handle
+     * @param ptr Pointer to user data
+     */
+    static void SetUserDataPtr(HWND hwnd, void* ptr);
 
-// Return the window's user data pointer.
-template <typename T>
-T getUserDataPtr(HWND hWnd) {
-  return reinterpret_cast<T>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
-}
+    /**
+     * @brief Get the window's user data pointer
+     * @tparam T Type to cast the pointer to
+     * @param hwnd Window handle
+     * @return User data pointer cast to type T
+     */
+    template <typename T>
+    static T GetUserDataPtr(HWND hwnd) {
+        return reinterpret_cast<T>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    }
 
-// Set the window's window procedure pointer and return the old value.
-WNDPROC setWndProcPtr(HWND hWnd, WNDPROC wndProc);
+    /**
+     * @brief Set the window's window procedure pointer
+     * @param hwnd Window handle
+     * @param wndProc New window procedure
+     * @return Old window procedure pointer
+     */
+    static WNDPROC SetWndProcPtr(HWND hwnd, WNDPROC wndProc);
 
-bool isWindows8OrNewer();
+    /**
+     * @brief Check if the OS is Windows 8 or newer
+     * @return true if Windows 8 or newer, false otherwise
+     */
+    static bool IsWindows8OrNewer();
 
-// Return the resource string with the specified id.
-std::wstring getResourceString(UINT id);
+    /**
+     * @brief Get resource string by ID
+     * @param id Resource string ID
+     * @return Resource string
+     */
+    static std::wstring GetResourceString(UINT id);
 
-bool isMouseEventFromTouch(UINT message);
+    /**
+     * @brief Check if mouse event is from touch emulation
+     * @param message Windows message
+     * @return true if from touch, false otherwise
+     */
+    static bool IsMouseEventFromTouch(UINT message);
 
-int getCefMouseModifiers(WPARAM wparam);
+    /**
+     * @brief Get CEF mouse modifiers from Windows message
+     * @param wparam Windows WPARAM
+     * @return CEF mouse modifier flags
+     */
+    static int GetCefMouseModifiers(WPARAM wparam);
 
-int getCefKeyboardModifiers(WPARAM wparam, LPARAM lparam);
+    /**
+     * @brief Get CEF keyboard modifiers from Windows message
+     * @param wparam Windows WPARAM
+     * @param lparam Windows LPARAM
+     * @return CEF keyboard modifier flags
+     */
+    static int GetCefKeyboardModifiers(WPARAM wparam, LPARAM lparam);
 
-bool isKeyDown(WPARAM wparam);
+    /**
+     * @brief Check if a key is pressed
+     * @param wparam Virtual key code
+     * @return true if key is down, false otherwise
+     */
+    static bool IsKeyDown(WPARAM wparam);
 
-bool isProcessPerMonitorDpiAware();
+    /**
+     * @brief Check if process is per-monitor DPI aware
+     * @return true if per-monitor DPI aware, false otherwise
+     */
+    static bool IsProcessPerMonitorDpiAware();
 
-float getWindowScaleFactor(HWND hwnd);
-// Returns the device scale factor. For example, 200% display scaling will
-// return 2.0.
-float getDeviceScaleFactor();
+    /**
+     * @brief Get scale factor for a specific window
+     * @param hwnd Window handle
+     * @return Scale factor (e.g., 2.0 for 200% scaling)
+     */
+    static float GetWindowScaleFactor(HWND hwnd);
 
-CefRect getWindowRect(HWND hwnd, float deviceScaleFactor);
+    /**
+     * @brief Get device scale factor
+     * @return Device scale factor (e.g., 2.0 for 200% scaling)
+     */
+    static float GetDeviceScaleFactor();
 
-}  // namespace cefview::util
+    /**
+     * @brief Get window client rectangle in logical coordinates
+     * @param hwnd Window handle
+     * @param deviceScaleFactor Device scale factor
+     * @return Window rectangle in logical coordinates
+     */
+    static CefRect GetWindowRect(HWND hwnd, float deviceScaleFactor);
 
-#endif  // WINUTIL_H
+private:
+    WinUtil() = delete;
+    ~WinUtil() = delete;
+    WinUtil(const WinUtil&) = delete;
+    WinUtil& operator=(const WinUtil&) = delete;
+};
+
+}  // namespace cefview

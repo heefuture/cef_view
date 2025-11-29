@@ -117,9 +117,9 @@ public:
 
     /**
      * @brief Set page zoom level
-     * @param[in] zoom_level Zoom level value
+     * @param[in] zoomLevel Zoom level value
      */
-    void setZoomLevel(float zoom_level);
+    void setZoomLevel(float zoomLevel);
 
     /**
      * @brief Get window handle of the browser
@@ -190,7 +190,7 @@ public:
     void onCursorChange(CefRefPtr<CefBrowser> browser,
                         CefCursorHandle cursor,
                         cef_cursor_type_t type,
-                        const CefCursorInfo &custom_cursor_info);
+                        const CefCursorInfo& customCursorInfo);
     void onTitleChange(int browserId, const std::string& title);
     void onUrlChange(int browserId, const std::string& oldUrl, const std::string& url);
 #pragma endregion // CefDisplayHandler

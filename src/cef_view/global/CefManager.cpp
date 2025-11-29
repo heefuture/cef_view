@@ -125,7 +125,7 @@ CefString CefManager::getAppWorkingDirectory() {
 
 CefString CefManager::getAppTempDirectory()
 {
-    std::string tempDir = cefview::util::PathUtil::getAppTempDirectory();
+    std::string tempDir = cefview::PathUtil::GetAppTempDirectory();
     return CefString(tempDir);
 }
 

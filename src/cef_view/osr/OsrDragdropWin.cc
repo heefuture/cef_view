@@ -55,7 +55,7 @@ CefMouseEvent ToMouseEvent(POINTL p, DWORD keyState, HWND hWnd) {
     ::ScreenToClient(hWnd, &screenPoint);
     ev.x = screenPoint.x;
     ev.y = screenPoint.y;
-    ev.modifiers = util::getCefMouseModifiers(keyState);
+    ev.modifiers = WinUtil::GetCefMouseModifiers(keyState);
     return ev;
 }
 
