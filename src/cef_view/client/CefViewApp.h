@@ -19,16 +19,23 @@
 
 #include "CefViewAppDelegateInterface.h"
 
-namespace cefview
-{
+namespace cefview {
+
+/// Custom comparator for std::weak_ptr to enable usage in std::set
+template<typename T>
+struct WeakPtrCompare {
+    bool operator()(const std::weak_ptr<T>& lhs, const std::weak_ptr<T>& rhs) const {
+        return lhs.owner_before(rhs);
+    }
+};
 
 class CefViewApp : public CefApp,
                    public CefBrowserProcessHandler,
                    public CefRenderProcessHandler
 {
 public:
-
-    typedef std::set<CefViewAppDelegateInterface::WeakPtr> ViewAppDelegateSet;
+    typedef std::set<CefViewAppDelegateInterface::WeakPtr,
+                     WeakPtrCompare<CefViewAppDelegateInterface>> ViewAppDelegateSet;
 
 public:
     CefViewApp();
@@ -98,6 +105,6 @@ private:
     IMPLEMENT_REFCOUNTING(CefViewApp);
 };
 
-}
+}  // namespace cefview
 
-#endif //!CEFVIEWAPP_H
+#endif  // CEFVIEWAPP_H

@@ -12,7 +12,7 @@
 #pragma once
 #include <client/CefViewClient.h>
 #include <client/CefViewClientDelegateInterface.h>
-// #include <view/ProcessMessageDelegateWrapper.h>
+
 
 #include "include/cef_base.h"
 
@@ -21,24 +21,12 @@
 
 namespace cefview {
 class CefWebView;
-
+class CefJsBridgeBrowser;
 class CefViewClientDelegate : public CefViewClientDelegateInterface
 {
 public:
     CefViewClientDelegate(CefWebView* view);
     ~CefViewClientDelegate();
-
-public:
-    // /**
-    //  * @brief Register a ProcessMessageHandler for handling JS messages
-    //  * @param[in] handler ProcessMessageHandler object pointer
-    //  */
-    // virtual void registerProcessMessageHandler(ProcessMessageHandler* handler);
-
-
-    // virtual bool onExecuteCppFunc(const CefString& function_name, const CefString& params, int js_callback_id, CefRefPtr<CefBrowser> browser) override;
-
-    // virtual bool onExecuteCppCallbackFunc(int cpp_callback_id, const CefString& json_string) override;
 
 protected:
 #pragma region CefClient
@@ -177,16 +165,13 @@ protected:
     virtual void onRenderProcessTerminated(CefRefPtr<CefBrowser> browser, CefRequestHandler::TerminationStatus status, int errorCode, const CefString& errorString) override;
 #pragma endregion // CefRequestHandler
 
-    //// Wrapper for JS and C++ interaction functionality
-    //virtual bool onExecuteCppFunc(const CefString &function_name, const CefString &params, int js_callback_id, CefRefPtr<CefBrowser> browser) override;
-
-    //virtual bool onExecuteCppCallbackFunc(int cpp_callback_id, const CefString &json_string) override;
     //enum WebState { kNone, kCreating, kCreated };
     //WebState _webstate;
 protected:
     CefWebView*                             _view{nullptr};
     CefString                               _url;
     bool                                    _isDevtoolsOpened{false};
+    std::shared_ptr<CefJsBridgeBrowser>     _jsBridgeBrowser{nullptr};
 };
 }
 

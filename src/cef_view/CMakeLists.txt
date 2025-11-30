@@ -77,6 +77,8 @@ endif ()
 
 target_link_libraries(${CEFVIEW_TARGET} libcef_lib libcef_dll_wrapper)
 
+message(STATUS "CefView C++ compile flags: ${CEFVIEW_COMPILE_OPTIONS}")
+
 # Link D3D11 libraries for off-screen rendering (OSR) support
 if(WIN32)
     if(USE_ATL)

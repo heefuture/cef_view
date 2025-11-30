@@ -1,8 +1,12 @@
+#if defined(__clang__)
 #pragma clang diagnostic ignored "-Wunused-lambda-capture"
+#endif
 
-#include "CefWebView.h"
 #include "CefViewClientDelegate.h"
+#include "CefWebView.h"
 
+#include <bridge/CefJsBridgeBrowser.h>
+#include <client/CefSwitches.h>
 #include <utils/WinUtil.h>
 
 using namespace cefview;
@@ -11,6 +15,7 @@ CefViewClientDelegate::CefViewClientDelegate(CefWebView* view)
     : _view(view)
 {
     assert(_view);
+    _jsBridgeBrowser = std::make_shared<CefJsBridgeBrowser>();
 }
 
 CefViewClientDelegate::~CefViewClientDelegate()
@@ -31,19 +36,28 @@ bool CefViewClientDelegate::onProcessMessageReceived(CefRefPtr<CefBrowser> brows
                                                      CefProcessId sourceProcess,
                                                      CefRefPtr<CefProcessMessage> message)
 {
-    if (message && browser) {
-        auto id = browser->GetIdentifier();
-        auto name = message->GetName().ToString();
-        auto args = message->GetArgumentList();
-        std::string jsonArgs;
-        if (args && args->GetSize() > 0) {
-            jsonArgs = args->GetString(0).ToString();
+    std::string msgName = message->GetName();
+    if (msgName == kCallCppFunctionMessage) {
+        CefString funcName = message->GetArgumentList()->GetString(0);
+        CefString param = message->GetArgumentList()->GetString(1);
+        int jsCallbackId = message->GetArgumentList()->GetInt(2);
+
+        if (_jsBridgeBrowser) {
+            _jsBridgeBrowser->executeCppFunc(funcName, param, jsCallbackId, browser);
         }
 
+        return true;
+    } else if (msgName == kExecuteCppCallbackMessage) {
+        CefString param = message->GetArgumentList()->GetString(0);
+        int callbackId = message->GetArgumentList()->GetInt(1);
 
-        _view->onProcessMessageReceived(id, name, jsonArgs);
+        if (_jsBridgeBrowser) {
+            _jsBridgeBrowser->executeCppCallbackFunc(callbackId, param);
+        }
+
         return true;
     }
+
     return false;
 }
 #pragma endregion // CefClient

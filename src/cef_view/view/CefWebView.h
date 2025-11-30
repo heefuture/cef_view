@@ -48,6 +48,9 @@ public:
     CefWebView& operator=(CefWebView&&) = delete;
 
     void init();
+
+    void closeBrowser();
+
     /**
      * @brief Set browser view bounds
      * @param[in] left New left position
@@ -187,7 +190,7 @@ public:
 #pragma endregion // RenderHandler
 
 #pragma region CefDisplayHandler
-    void onCursorChange(CefRefPtr<CefBrowser> browser,
+    bool onCursorChange(CefRefPtr<CefBrowser> browser,
                         CefCursorHandle cursor,
                         cef_cursor_type_t type,
                         const CefCursorInfo& customCursorInfo);

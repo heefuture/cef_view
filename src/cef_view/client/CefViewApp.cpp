@@ -9,38 +9,33 @@
 #include <utils/util.h>
 #include <client/CefSwitches.h>
 
-namespace cefview
-{
+namespace cefview {
 
-CefViewApp::CefViewApp()
-{
+CefViewApp::CefViewApp() {
 }
 
-CefViewApp::CefViewApp(CefViewAppDelegateInterface::RefPtr delegate)
-{
+CefViewApp::CefViewApp(CefViewAppDelegateInterface::RefPtr delegate) {
     if (delegate) {
         _viewAppDelegates.insert(delegate);
     }
 }
 
-CefViewApp::~CefViewApp()
-{
+CefViewApp::~CefViewApp() {
     _viewAppDelegates.clear();
 }
 
-void CefViewApp::RegisterDelegate(CefViewAppDelegateInterface::RefPtr delegate)
-{
+void CefViewApp::RegisterDelegate(CefViewAppDelegateInterface::RefPtr delegate) {
     if (delegate) {
         _viewAppDelegates.insert(delegate);
     }
 }
 
-void CefViewApp::UnregisterDelegate(CefViewAppDelegateInterface::RefPtr delegate)
-{
+void CefViewApp::UnregisterDelegate(CefViewAppDelegateInterface::RefPtr delegate) {
     if (delegate) {
         _viewAppDelegates.erase(delegate);
     }
 }
+
 //////////////////////////////////////////////////////////////////////////////////////////
 // CefApp methods.
 void CefViewApp::OnBeforeCommandLineProcessing(const CefString& process_type, CefRefPtr<CefCommandLine> command_line)
@@ -164,15 +159,4 @@ bool CefViewApp::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
     return handled;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////
-// // static
-// void CefViewApp::CreateViewAppDelegates(ViewAppDelegateSet& delegates) {
-//    CreateBrowserDelegatesInner(delegates);
-// }
-
-// // static
-// void CefViewApp::CreateRenderDelegates(ViewAppDelegateSet& delegates) {
-//     CreateRenderDelegatesInner(delegates);
-// }
-
-}
+}  // namespace cefview

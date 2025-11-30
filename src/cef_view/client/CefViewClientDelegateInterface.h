@@ -31,13 +31,13 @@ public:
 #pragma endregion // CefClient
 
 #pragma region CefContextMenuHandler
-    // 在非UI线程中被调用
+    // Called in non-UI thread
     virtual void onBeforeContextMenu(CefRefPtr<CefBrowser> browser,
                                      CefRefPtr<CefFrame> frame,
                                      CefRefPtr<CefContextMenuParams> params,
                                      CefRefPtr<CefMenuModel> model) = 0;
 
-    // 在非UI线程中被调用
+    // Called in non-UI thread
     virtual bool onContextMenuCommand(CefRefPtr<CefBrowser> browser,
                                       CefRefPtr<CefFrame> frame,
                                       CefRefPtr<CefContextMenuParams> params,
@@ -56,10 +56,10 @@ public:
                                     const CefCursorInfo& customCursorInfo) = 0;
 
         virtual bool onConsoleMessage(CefRefPtr<CefBrowser> browser,
-                                    cef_log_severity_t level,
-                                    const CefString& message,
-                                    const CefString& source,
-                                    int line) = 0;
+                                      cef_log_severity_t level,
+                                      const CefString& message,
+                                      const CefString& source,
+                                      int line) = 0;
 #pragma endregion // CefDisplayHandler
 
 #pragma region CefDownloadHandler
@@ -84,7 +84,7 @@ public:
 #pragma endregion // CefKeyboardHandler
 
 #pragma region CefLifeSpanHandler
-    // 在非UI线程中被调用
+    // Called in non-UI thread
     virtual bool onBeforePopup(CefRefPtr<CefBrowser> browser,
                                CefRefPtr<CefFrame> frame,
                                int popupId,
@@ -163,7 +163,7 @@ public:
                                            int errorCode,
                                            const CefString& errorString) = 0;
 #pragma endregion // CefRequestHandler
-    // 封装一些 JS 与 C++ 交互的功能
+    // Wrapper for JS and C++ interaction functionality
     //virtual bool onExecuteCppFunc(const CefString& function_name, const CefString& params, int js_callback_id, CefRefPtr<CefBrowser> browser) = 0;
     //virtual bool onExecuteCppCallbackFunc(int cpp_callback_id, const CefString& json_string) = 0;
 };

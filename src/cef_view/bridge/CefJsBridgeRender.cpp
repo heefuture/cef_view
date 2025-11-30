@@ -143,14 +143,15 @@ bool CefJsBridgeRender::executeJSFunc(const CefString& functionName, const CefSt
             // Convert JSON passed from C++ to Object
             CefV8ValueList jsonParseArgs;
             jsonParseArgs.push_back(CefV8Value::CreateString(jsonParams));
+
             CefRefPtr<CefV8Value> jsonObject = context->GetGlobal()->GetValue("JSON");
-            CefRefPtr<CefV8Value> jsonParse = jsonObject->GetValue("parse");
+            // CefRefPtr<CefV8Value> jsonParse = jsonObject->GetValue("parse");
             CefRefPtr<CefV8Value> jsonStringify = jsonObject->GetValue("stringify");
-            CefRefPtr<CefV8Value> jsonObjectArgs = jsonParse->ExecuteFunction(nullptr, jsonParseArgs);
-            arguments.push_back(jsonObjectArgs);
+            // CefRefPtr<CefV8Value> jsonObjectArgs = jsonParse->ExecuteFunction(nullptr, jsonParseArgs);
+            // arguments.push_back(jsonObjectArgs);
 
             // Execute callback function
-            CefRefPtr<CefV8Value> retval = function->ExecuteFunction(nullptr, arguments);
+            CefRefPtr<CefV8Value> retval = function->ExecuteFunction(nullptr, jsonParseArgs);
             if (retval.get() && retval->IsObject()) {
                 // Reply with return value after calling JS
                 CefV8ValueList jsonStringifyArgs;

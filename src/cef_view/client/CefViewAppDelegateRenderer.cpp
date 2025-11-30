@@ -11,89 +11,86 @@
 #include <bridge/CefJsBridgeRender.h>
 #include <bridge/CefJsHandler.h>
 
-namespace cefview
-{
+namespace cefview {
 
+void CefViewAppDelegateRenderer::onWebKitInitialized() {
+    // DWORD pid = GetCurrentProcessId();
+    // DWORD tid = GetCurrentThreadId();
+    // std::cout << "ClientApp::OnWebKitInitialized (Process id " << pid << "), (Thread id " << tid << ")" << std::endl;
 
-void CefViewAppDelegateRenderer::onWebKitInitialized()
-   {
-       // DWORD pid = GetCurrentProcessId();
-       // DWORD tid = GetCurrentThreadId();
-       // std::cout << "ClientApp::OnWebKitInitialized (Process id " << pid << "), (Thread id " << tid << ")" << std::endl;
-
-       // Register the client_app extension.
+    // Register the client_app extension.
     CefRefPtr<CefJSHandler> appHandler(new CefJSHandler());
     std::string appCode =
-    "var cefViewApp;"
-    "if (!cefViewApp)"
-    "  cefViewApp = {};"
-    "(function() {"
-    "  cefViewApp.sendMessage = function(name, arguments) {"
-    "    native function sendMessage();"
-    "    return sendMessage(name, arguments);"
-    "  };"
-    "  cefViewApp.setMessageCallback = function(name, callback) {"
-    "    native function setMessageCallback();"
-    "    return setMessageCallback(name, callback);"
-    "  };"
-    "  cefViewApp.removeMessageCallback = function(name) {"
-    "    native function removeMessageCallback();"
-    "    return removeMessageCallback(name);"
-    "  };"
-    "  cefViewApp.call = (functionName, arg1, arg2) => {"
-    "    if (typeof arg1 === 'function') {"
-    "      native function call(functionName, arg1);"
-    "      return call(functionName, arg1);"
-    "    } else {"
-    "      const jsonString = JSON.stringify(arg1);"
-    "      native function call(functionName, jsonString, arg2);"
-    "      return call(functionName, jsonString, arg2);"
-    "    }"
-    "  };"
-    "  cefViewApp.register = (functionName, callback) => {"
-    "    native function register(functionName, callback);"
-    "    return register(functionName, callback);"
-    "  };"
-    "  cefViewApp.unRegister = (functionName) => {"
-    "    native function unRegister(functionName);"
-    "    return unRegister(functionName);"
-    "  };"
+        "var cefViewApp;"
+        "if (!cefViewApp)"
+        "  cefViewApp = {};"
+        "(function() {"
+        "  cefViewApp.sendMessage = function(name, arguments) {"
+        "    native function sendMessage();"
+        "    return sendMessage(name, arguments);"
+        "  };"
+        "  cefViewApp.setMessageCallback = function(name, callback) {"
+        "    native function setMessageCallback();"
+        "    return setMessageCallback(name, callback);"
+        "  };"
+        "  cefViewApp.removeMessageCallback = function(name) {"
+        "    native function removeMessageCallback();"
+        "    return removeMessageCallback(name);"
+        "  };"
+        "  cefViewApp.call = (functionName, arg1, arg2) => {"
+        "    if (typeof arg1 === 'function') {"
+        "      native function call(functionName, arg1);"
+        "      return call(functionName, arg1);"
+        "    } else {"
+        "      const jsonString = JSON.stringify(arg1);"
+        "      native function call(functionName, jsonString, arg2);"
+        "      return call(functionName, jsonString, arg2);"
+        "    }"
+        "  };"
+        "  cefViewApp.register = (functionName, callback) => {"
+        "    native function register(functionName, callback);"
+        "    return register(functionName, callback);"
+        "  };"
+        "  cefViewApp.unRegister = (functionName) => {"
+        "    native function unRegister(functionName);"
+        "    return unRegister(functionName);"
+        "  };"
         "})();";
-       CefRegisterExtension("v8/app", appCode, appHandler.get());
+    CefRegisterExtension("v8/app", appCode, appHandler.get());
+}
 
-   }
+void CefViewAppDelegateRenderer::onBrowserCreated(CefRefPtr<CefBrowser> browser,
+                                                  CefRefPtr<CefDictionaryValue> extraInfo) {
+    if (!_renderJsBridge) {
+        _renderJsBridge = std::make_shared<CefJsBridgeRender>();
+    }
+}
 
-   void CefViewAppDelegateRenderer::onBrowserCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefDictionaryValue> extraInfo)
-   {
-       if (!_renderJsBridge)
-           _renderJsBridge = std::make_shared<CefJsBridgeRender>();
-   }
+void CefViewAppDelegateRenderer::onContextReleased(CefRefPtr<CefBrowser> browser,
+                                                   CefRefPtr<CefFrame> frame,
+                                                   CefRefPtr<CefV8Context> context) {
+    _renderJsBridge->removeCallbackFuncWithFrame(frame);
+    _renderJsBridge->unRegisterJSFuncWithFrame(frame);
+}
 
-    void CefViewAppDelegateRenderer::onContextReleased(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context)
-   {
-       _renderJsBridge->removeCallbackFuncWithFrame(frame);
-       _renderJsBridge->unRegisterJSFuncWithFrame(frame);
-   }
+void CefViewAppDelegateRenderer::onFocusedNodeChanged(CefRefPtr<CefBrowser> browser,
+                                                      CefRefPtr<CefFrame> frame,
+                                                      CefRefPtr<CefDOMNode> node) {
+    bool isEditable = (node.get() && node->IsEditable());
+    if (isEditable != _lastNodeIsEditable) {
+        // Notify the browser of the change in focused element type.
+        _lastNodeIsEditable = isEditable;
+        CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kFocusedNodeChangedMessage);
+        message->GetArgumentList()->SetBool(0, isEditable);
+        frame->SendProcessMessage(PID_BROWSER, message);
+    }
+}
 
-    void CefViewAppDelegateRenderer::onFocusedNodeChanged(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefDOMNode> node)
-   {
-       bool isEditable = (node.get() && node->IsEditable());
-       if (isEditable != _lastNodeIsEditable) {
-           // Notify the browser of the change in focused element type.
-           _lastNodeIsEditable = isEditable;
-           CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kFocusedNodeChangedMessage);
-           message->GetArgumentList()->SetBool(0, isEditable);
-           frame->SendProcessMessage(PID_BROWSER, message);
-       }
-   }
-
-    void CefViewAppDelegateRenderer::onUncaughtException(CefRefPtr<CefBrowser> browser,
-                                    CefRefPtr<CefFrame> frame,
-                                    CefRefPtr<CefV8Context> context,
-                                    CefRefPtr<CefV8Exception> exception,
-                                    CefRefPtr<CefV8StackTrace> stackTrace)
-   {
-
+void CefViewAppDelegateRenderer::onUncaughtException(CefRefPtr<CefBrowser> browser,
+                                                     CefRefPtr<CefFrame> frame,
+                                                     CefRefPtr<CefV8Context> context,
+                                                     CefRefPtr<CefV8Exception> exception,
+                                                     CefRefPtr<CefV8StackTrace> stackTrace) {
     //    std::shared_ptr<std::ofstream> logFileStream = getLogFileStream();
     //    std::ofstream &out = *logFileStream;
     //    for (int i = 0; i != stackTrace->GetFrameCount(); ++i) {
@@ -101,35 +98,35 @@ void CefViewAppDelegateRenderer::onWebKitInitialized()
     //        out << frame->GetFunctionName().ToString() << " "
     //            << frame->GetLineNumber() << ":" << frame->GetColumn() << std::endl;
     //    }
-   }
-
-    bool CefViewAppDelegateRenderer::onProcessMessageReceived(CefRefPtr<CefBrowser> browser, CefProcessId sourceProcess, CefRefPtr<CefProcessMessage> message)
-   {
-       assert(sourceProcess == PID_BROWSER);
-       // 收到 browser 的消息回复
-       const CefString& messageName = message->GetName();
-       if (messageName == kExecuteJsCallbackMessage)
-       {
-           int         callbackId	= message->GetArgumentList()->GetInt(0);
-           bool        hasError	= message->GetArgumentList()->GetBool(1);
-           CefString	jsonString = message->GetArgumentList()->GetString(2);
-
-           // 将收到的参数通过管理器传递给调用时传递的回调函数
-           _renderJsBridge->executeJSCallbackFunc(callbackId, hasError, jsonString);
-       }
-       else if (messageName == kCallJsFunctionMessage)
-       {
-           CefString functionName = message->GetArgumentList()->GetString(0);
-           CefString jsonString = message->GetArgumentList()->GetString(1);
-           int cppCallbackId = message->GetArgumentList()->GetInt(2);
-           CefString frameId = message->GetArgumentList()->GetString(3);
-
-           // 通过 C++ 执行一个已经注册过的 JS 方法
-           // frame_id 小于 0 则可能是 browser 进程的 browser 是无效的，所以这里为了避免出现错误就获取一个顶层 frame 执行代码
-           _renderJsBridge->executeJSFunc(functionName, jsonString, frameId.empty() ? browser->GetMainFrame() : browser->GetFrameByIdentifier(frameId), cppCallbackId);
-       }
-
-       return false;
-   }
-
 }
+
+bool CefViewAppDelegateRenderer::onProcessMessageReceived(CefRefPtr<CefBrowser> browser,
+                                                          CefProcessId sourceProcess,
+                                                          CefRefPtr<CefProcessMessage> message) {
+    assert(sourceProcess == PID_BROWSER);
+    // 收到 browser 的消息回复
+    const CefString& messageName = message->GetName();
+    if (messageName == kExecuteJsCallbackMessage) {
+        int callbackId = message->GetArgumentList()->GetInt(0);
+        bool hasError = message->GetArgumentList()->GetBool(1);
+        CefString jsonString = message->GetArgumentList()->GetString(2);
+
+        // 将收到的参数通过管理器传递给调用时传递的回调函数
+        _renderJsBridge->executeJSCallbackFunc(callbackId, hasError, jsonString);
+    } else if (messageName == kCallJsFunctionMessage) {
+        CefString functionName = message->GetArgumentList()->GetString(0);
+        CefString jsonString = message->GetArgumentList()->GetString(1);
+        int cppCallbackId = message->GetArgumentList()->GetInt(2);
+        CefString frameId = message->GetArgumentList()->GetString(3);
+
+        // 通过 C++ 执行一个已经注册过的 JS 方法
+        // frame_id 小于 0 则可能是 browser 进程的 browser 是无效的，所以这里为了避免出现错误就获取一个顶层 frame 执行代码
+        _renderJsBridge->executeJSFunc(functionName, jsonString,
+                                       frameId.empty() ? browser->GetMainFrame() : browser->GetFrameByIdentifier(frameId),
+                                       cppCallbackId);
+    }
+
+    return false;
+}
+
+}  // namespace cefview

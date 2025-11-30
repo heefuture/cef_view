@@ -190,6 +190,12 @@ void CefWebView::init()
     }
 }
 
+void CefWebView::closeBrowser() {
+    if (_client && !_client->IsClosing()) {
+        _client->CloseAllBrowser();
+    }
+}
+
 void CefWebView::destroy() {
     if (_settings.offScreenRenderingEnabled) {
         // Revoke/delete the drag&drop handler.
