@@ -12,7 +12,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-        // Create delegates for browser and renderer processes
+    // Create delegates for browser and renderer processes
     std::shared_ptr<CefViewAppDelegateInterface> browserDelegate = nullptr;  // Can be set if needed
     std::shared_ptr<CefViewAppDelegateInterface> rendererDelegate = std::make_shared<CefViewAppDelegateRenderer>();
 
