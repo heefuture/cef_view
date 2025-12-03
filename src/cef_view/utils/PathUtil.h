@@ -45,6 +45,19 @@ public:
      */
     static std::string GetAppTempDirectory();
 
+    /**
+     * Get the current working directory of the application
+     * @return Full path to the working directory
+     */
+    static std::string GetAppWorkingDirectory();
+
+    /**
+     * Create a directory path (including all parent directories if needed)
+     * @param path Directory path to create
+     * @return true if directory was created successfully or already exists, false on error
+     */
+    static bool CreatePath(const std::string& path);
+
 private:
     PathUtil() = delete;
     ~PathUtil() = delete;

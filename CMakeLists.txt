@@ -96,4 +96,4 @@ endif()
 
 add_subdirectory(src/app)
 add_subdirectory(src/sub_process)
-add_subdirectory(src/cefview)
+add_subdirectory(src/cef_view)

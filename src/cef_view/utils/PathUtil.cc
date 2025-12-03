@@ -100,4 +100,53 @@ std::string PathUtil::GetAppTempDirectory() {
 #endif
 }
 
+std::string PathUtil::GetAppWorkingDirectory() {
+#if defined(OS_WIN)
+    std::unique_ptr<TCHAR[]> buffer(new TCHAR[MAX_PATH + 1]);
+    if (!::GetCurrentDirectory(MAX_PATH, buffer.get())) {
+        return std::string();
+    }
+
+    // Convert TCHAR to std::string
+#ifdef UNICODE
+    // Wide char to multibyte conversion
+    int sizeNeeded = ::WideCharToMultiByte(CP_UTF8, 0, buffer.get(), -1, nullptr, 0, nullptr, nullptr);
+    if (sizeNeeded <= 0) {
+        return std::string();
+    }
+    std::string result(sizeNeeded - 1, 0);
+    ::WideCharToMultiByte(CP_UTF8, 0, buffer.get(), -1, &result[0], sizeNeeded, nullptr, nullptr);
+    return result;
+#else
+    return std::string(buffer.get());
+#endif
+
+#elif defined(OS_MACOSX)
+    return std::string();
+#else
+    return std::string();
+#endif
+}
+
+bool PathUtil::CreatePath(const std::string& path) {
+    if (path.empty()) {
+        return false;
+    }
+
+    try {
+        fs::path dirPath(path);
+        
+        // Check if directory already exists
+        if (fs::exists(dirPath)) {
+            return fs::is_directory(dirPath);
+        }
+
+        // Create directory and all parent directories
+        return fs::create_directories(dirPath);
+    } catch (const fs::filesystem_error& e) {
+        std::cerr << "Failed to create directory: " << path << ", error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
 }  // namespace cefview

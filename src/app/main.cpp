@@ -3,6 +3,7 @@
 
 #include "MainWindow.h"
 #include <global/CefContext.h>
+#include <client/CefViewAppDelegateRenderer.h>
 
 using namespace cefview;
 
@@ -11,8 +12,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    CefConfig cefConfig;
-    CefContext context(cefConfig);
+        // Create delegates for browser and renderer processes
+    std::shared_ptr<CefViewAppDelegateInterface> browserDelegate = nullptr;  // Can be set if needed
+    std::shared_ptr<CefViewAppDelegateInterface> rendererDelegate = std::make_shared<CefViewAppDelegateRenderer>();
+
+    // Initialize CEF context
+    cefview::CefConfig cefConfig;
+    cefview::CefContext context(cefConfig);
+
+    int initResult = context.initialize(browserDelegate, rendererDelegate);
+    if (initResult >= 0) {
+        // This is a sub-process, exit immediately with the returned code
+        return initResult;
+    }
 
     auto mainWindow = std::make_unique<MainWindow>();
 
