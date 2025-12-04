@@ -125,7 +125,13 @@ LRESULT CALLBACK CefWebView::windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-CefWebView::CefWebView(const std::string& url, const CefWebViewSetting& settings, HWND parentHwnd)
+CefWebView::CefWebView(const CefWebViewSetting& settings)
+  :  _settings(settings)
+{
+}
+
+
+CefWebView::CefWebView(const CefWebViewSetting& settings, HWND parentHwnd)
   : _parentHwnd(parentHwnd)
   , _settings(settings)
 {
@@ -133,9 +139,21 @@ CefWebView::CefWebView(const std::string& url, const CefWebViewSetting& settings
         return;
     }
 
+    init(parentHwnd);
+}
+
+void CefWebView::init(HWND parentHwnd) {
+    if (!parentHwnd || _parentHwnd == parentHwnd) return;
+
+    if (_hwnd) {
+        closeBrowser();
+        destroy();
+    }
+
+    _parentHwnd = parentHwnd;
     _deviceScaleFactor = WinUtil::GetWindowScaleFactor(parentHwnd);
 
-    if (settings.width <= 0 || settings.height <= 0) {
+    if (_settings.width <= 0 || _settings.height <= 0) {
         ::GetWindowRect(parentHwnd, &_clientRect);
 
         _settings.x = 0;
@@ -148,46 +166,12 @@ CefWebView::CefWebView(const std::string& url, const CefWebViewSetting& settings
     if (_hwnd == nullptr) {
         return;
     }
-
-    createCefBrowser(url, settings);
-
-    if (settings.offScreenRenderingEnabled) {
-        _osrRenderer = std::make_unique<OsrRendererD3D11>(_hwnd, _settings.width, _settings.height);
-        if (!_osrRenderer->initialize()) {
-            _osrRenderer.reset();
-            return;
-        }
-
-        _dragEvents = std::make_shared<OsrDragEventsImpl>(this);
-        _dropTarget = OsrDropTargetWin::Create(_dragEvents.get(), _hwnd);
-        HRESULT registerRes = RegisterDragDrop(_hwnd, _dropTarget);
-
-        _imeHandler = std::make_unique<OsrImeHandlerWin>(_hwnd);
-        // Enable Touch Events if requested
-        // if (client::MainContext::Get()->TouchEventsEnabled()) {
-        //     RegisterTouchWindow(hwnd_, 0);
-        // }
-    }
+    createCefBrowser();
 }
 
 CefWebView::~CefWebView()
 {
-    if (_client && _browser.get()) {
-        // Request that the main browser close.
-        _browser->GetHost()->CloseBrowser(true);
-    }
-
-    _clientDelegate.reset();
-    _taskListAfterCreated.clear();
-
     destroy();
-}
-
-void CefWebView::init()
-{
-    if (!_clientDelegate)
-    {
-    }
 }
 
 void CefWebView::closeBrowser() {
@@ -197,6 +181,14 @@ void CefWebView::closeBrowser() {
 }
 
 void CefWebView::destroy() {
+    if (_client && _browser.get()) {
+        // Request that the main browser close.
+        _browser->GetHost()->CloseBrowser(true);
+    }
+
+    _clientDelegate.reset();
+    _taskListAfterCreated.clear();
+
     if (_settings.offScreenRenderingEnabled) {
         // Revoke/delete the drag&drop handler.
         ::RevokeDragDrop(_hwnd);
@@ -269,7 +261,7 @@ HWND CefWebView::createSubWindow(HWND parentHwnd, int x, int y,int width, int he
     return ret;
 }
 
-void CefWebView::createCefBrowser(const std::string& url, const CefWebViewSetting& settings)
+void CefWebView::createCefBrowser()
 {
     if (_clientDelegate) return;
 
@@ -282,7 +274,7 @@ void CefWebView::createCefBrowser(const std::string& url, const CefWebViewSettin
         windowInfo.ex_style |= WS_EX_NOACTIVATE;
     }
 
-    if (settings.offScreenRenderingEnabled) {
+    if (_settings.offScreenRenderingEnabled) {
         // Off-screen rendering mode
         windowInfo.SetAsWindowless(_hwnd);
         windowInfo.shared_texture_enabled = true;
@@ -296,9 +288,27 @@ void CefWebView::createCefBrowser(const std::string& url, const CefWebViewSettin
     windowInfo.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
 
     CefBrowserSettings browserSettings;
-    browserSettings.windowless_frame_rate = settings.windowlessFrameRate;
-    CefBrowserHost::CreateBrowser(windowInfo, _client, CefString(url), browserSettings, nullptr, nullptr);
+    browserSettings.windowless_frame_rate = _settings.windowlessFrameRate;
+    CefBrowserHost::CreateBrowser(windowInfo, _client, CefString(_settings.url), browserSettings, nullptr, nullptr);
     // CefBrowserHost::CreateBrowserSync(windowInfo, _client, CefString(url), browserSettings, nullptr, nullptr);
+
+    if (_settings.offScreenRenderingEnabled) {
+        _osrRenderer = std::make_unique<OsrRendererD3D11>(_hwnd, _settings.width, _settings.height);
+        if (!_osrRenderer->initialize()) {
+            _osrRenderer.reset();
+            return;
+        }
+
+        _dragEvents = std::make_shared<OsrDragEventsImpl>(this);
+        _dropTarget = OsrDropTargetWin::Create(_dragEvents.get(), _hwnd);
+        HRESULT registerRes = RegisterDragDrop(_hwnd, _dropTarget);
+
+        _imeHandler = std::make_unique<OsrImeHandlerWin>(_hwnd);
+        // Enable Touch Events if requested
+        // if (client::MainContext::Get()->TouchEventsEnabled()) {
+        //     RegisterTouchWindow(hwnd_, 0);
+        // }
+    }
 }
 
 void CefWebView::setBounds(int left, int top, int width, int height)
@@ -1008,9 +1018,8 @@ void CefWebView::onKeyEvent(UINT message, WPARAM wParam, LPARAM lParam) {
 }
 
 void CefWebView::onPaint() {
-    if (!_settings.offScreenRenderingEnabled) return;
+    if (!_settings.offScreenRenderingEnabled || !_osrRenderer) return;
     // Paint nothing here. Invalidate will cause OnPaint to be called for the
-
     _osrRenderer->render();
 
     if (_browser) {
