@@ -1,6 +1,12 @@
 #include "utils/PathUtil.h"
 
+#if defined(_WIN32)
 #include <windows.h>
+#include <ShlObj.h>  // SHGetFolderPathA
+#else
+#include <cstdlib>   // getenv
+#endif
+
 #include <iostream>
 #include <filesystem>
 #include <memory>
@@ -72,13 +78,13 @@ std::string PathUtil::GetResourcePath(const std::string& resourceName) {
     return "";
 }
 
-std::string PathUtil::GetAppTempDirectory() {
-#if defined(OS_WIN)
+std::string PathUtil::GetSysTempDirectory() {
+#if defined(WIN32)
     std::unique_ptr<TCHAR[]> buffer(new TCHAR[MAX_PATH + 1]);
     if (!::GetTempPath(MAX_PATH, buffer.get())) {
         return std::string();
     }
-    
+
     // Convert TCHAR to std::string
 #ifdef UNICODE
     // Wide char to multibyte conversion
@@ -101,7 +107,7 @@ std::string PathUtil::GetAppTempDirectory() {
 }
 
 std::string PathUtil::GetAppWorkingDirectory() {
-#if defined(OS_WIN)
+#if defined(WIN32)
     std::unique_ptr<TCHAR[]> buffer(new TCHAR[MAX_PATH + 1]);
     if (!::GetCurrentDirectory(MAX_PATH, buffer.get())) {
         return std::string();
@@ -135,7 +141,7 @@ bool PathUtil::CreatePath(const std::string& path) {
 
     try {
         fs::path dirPath(path);
-        
+
         // Check if directory already exists
         if (fs::exists(dirPath)) {
             return fs::is_directory(dirPath);
@@ -147,6 +153,53 @@ bool PathUtil::CreatePath(const std::string& path) {
         std::cerr << "Failed to create directory: " << path << ", error: " << e.what() << std::endl;
         return false;
     }
+}
+
+std::string PathUtil::GetAppCacheDirectory(const std::string& appName) {
+    // Validate appName
+    if (appName.empty()) {
+        return std::string();
+    }
+
+    std::string basePath;
+#if defined(_WIN32)
+    char localAppData[MAX_PATH] = {};
+    if (FAILED(SHGetFolderPathA(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, localAppData))) {
+        std::cerr << "Failed to get LocalAppData path" << std::endl;
+        return std::string();
+    }
+    basePath = localAppData;
+
+#elif defined(__APPLE__)
+    const char* home = getenv("HOME");
+    if (!home || home[0] == '\0') {
+        std::cerr << "Failed to get HOME environment variable" << std::endl;
+        return std::string();
+    }
+    basePath = std::string(home) + "/Library/Caches";
+
+#else
+    const char* cacheDir = getenv("XDG_CACHE_HOME");
+    if (cacheDir && cacheDir[0] != '\0') {
+        basePath = cacheDir;
+    } else {
+        const char* home = getenv("HOME");
+        if (!home || home[0] == '\0') {
+            std::cerr << "Failed to get HOME environment variable" << std::endl;
+            return std::string();
+        }
+        basePath = std::string(home) + "/.cache";
+    }
+#endif
+
+    std::string path = basePath + sPathSep + appName;
+
+    if (!CreatePath(path)) {
+        std::cerr << "Failed to create cache directory: " << path << std::endl;
+        return std::string();
+    }
+
+    return path;
 }
 
 }  // namespace cefview

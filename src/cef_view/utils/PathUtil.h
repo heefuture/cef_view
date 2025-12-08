@@ -43,7 +43,7 @@ public:
      * Get the system temporary directory path
      * @return Full path to the temp directory
      */
-    static std::string GetAppTempDirectory();
+    static std::string GetSysTempDirectory();
 
     /**
      * Get the current working directory of the application
@@ -57,6 +57,17 @@ public:
      * @return true if directory was created successfully or already exists, false on error
      */
     static bool CreatePath(const std::string& path);
+
+    /**
+     * Get the application cache directory
+     * - Windows: AppData\Local\{appName}
+     * - macOS: ~/Library/Caches/{appName}
+     * - Linux: $XDG_CACHE_HOME/{appName} or ~/.cache/{appName}
+     * Creates the directory if it does not exist.
+     * @param appName Application name to append as subdirectory (must not contain path separators or invalid characters)
+     * @return Full path to the cache directory, or empty string if appName is invalid or directory creation fails
+     */
+    static std::string GetAppCacheDirectory(const std::string& appName);
 
 private:
     PathUtil() = delete;

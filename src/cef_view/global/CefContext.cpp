@@ -59,20 +59,20 @@ static CefSettings getCefSettings(const CefConfig& config) {
 }
 
 #if defined(WIN32)
-    std::string CefContext::GetProcessType() {
-        CefRefPtr<CefCommandLine> commandLine = CefCommandLine::CreateCommandLine();
-        commandLine->InitFromString(::GetCommandLine());
+std::string CefContext::GetProcessType() {
+    CefRefPtr<CefCommandLine> commandLine = CefCommandLine::CreateCommandLine();
+    commandLine->InitFromString(::GetCommandLine());
 #else
-    std::string CefContext::GetProcessType(int argc, char* argv[]) {
-        CefRefPtr<CefCommandLine> commandLine = CefCommandLine::CreateCommandLine();
-        commandLine->InitFromArgv(argc, argv);
+std::string CefContext::GetProcessType(int argc, char* argv[]) {
+    CefRefPtr<CefCommandLine> commandLine = CefCommandLine::CreateCommandLine();
+    commandLine->InitFromArgv(argc, argv);
 #endif
-        if (!commandLine->HasSwitch("type")) {
-            return "browser";
-        }
-
-        return commandLine->GetSwitchValue("type").ToString();
+    if (!commandLine->HasSwitch("type")) {
+        return "browser";
     }
+
+    return commandLine->GetSwitchValue("type").ToString();
+}
 
 
 CefContext::CefContext(const CefConfig& config)
