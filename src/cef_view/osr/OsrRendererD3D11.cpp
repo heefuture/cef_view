@@ -472,11 +472,16 @@ void OsrRendererD3D11::updateSharedTexture(CefRenderHandler::PaintElementType ty
         return;
     }
 
-    // Open the shared texture resource
+    // Query for ID3D11Device1 interface (required for OpenSharedResource1)
+    ComPtr<ID3D11Device1> device1;
+    HRESULT hr = _d3dDevice.As(&device1);
+    if (FAILED(hr)) {
+        return;
+    }
+
+    // Open the shared texture resource using OpenSharedResource1
     ComPtr<ID3D11Texture2D> sharedTexture;
-    HRESULT hr = _d3dDevice->OpenSharedResource(sharedHandle,
-                                                 __uuidof(ID3D11Texture2D),
-                                                 (void**)sharedTexture.GetAddressOf());
+    hr = device1->OpenSharedResource1(sharedHandle, IID_PPV_ARGS(&sharedTexture));
     if (FAILED(hr)) {
         return;
     }

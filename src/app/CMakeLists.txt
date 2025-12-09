@@ -23,7 +23,7 @@ ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
 file(GLOB APP_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/*.*)
 
 
-set(CEFVIEWDIR ${CMAKE_CURRENT_SOURCE_DIR}/../cefview)
+set(CEFVIEWDIR ${CMAKE_CURRENT_SOURCE_DIR}/../cef_view)
 include_directories(${CEFVIEWDIR})
 
 # 创建主应用程序包

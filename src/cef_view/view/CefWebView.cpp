@@ -166,6 +166,10 @@ void CefWebView::init(HWND parentHwnd) {
     if (_hwnd == nullptr) {
         return;
     }
+
+    // Update _clientRect with actual window client area
+    ::GetClientRect(_hwnd, &_clientRect);
+
     createCefBrowser();
 }
 
@@ -321,11 +325,22 @@ void CefWebView::setBounds(int left, int top, int width, int height)
     _settings.width = width;
     _settings.height = height;
 
-    ::SetWindowPos(_hwnd, nullptr, left, top, width, height, SWP_NOZORDER | SWP_NOMOVE);
+    // Update _clientRect immediately
+    _clientRect.left = 0;
+    _clientRect.top = 0;
+    _clientRect.right = width;
+    _clientRect.bottom = height;
+
+    ::SetWindowPos(_hwnd, nullptr, left, top, width, height, SWP_NOZORDER);
 
     // Update D3D11 renderer size for OSR mode
     if (_settings.offScreenRenderingEnabled && _osrRenderer) {
         _osrRenderer->resize(width, height);
+    }
+
+    // Notify CEF that the window was resized
+    if (_browser) {
+        _browser->GetHost()->WasResized();
     }
 
     // For native window mode, resize CEF's child window

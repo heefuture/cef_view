@@ -7,7 +7,6 @@
 #include <shellscalingapi.h>
 
 using namespace cefview;
-using namespace cefview::util;
 
 #define MAX_URL_LENGTH 255
 
@@ -25,9 +24,6 @@ using namespace cefview::util;
 #define IDM_ABOUT          104
 #define IDM_EXIT           105
 #define IDD_ABOUTBOX       103
-
-namespace
-{
 
 // Message handler for the About box.
 INT_PTR CALLBACK AboutWndProc(HWND hDlg,
@@ -49,15 +45,13 @@ INT_PTR CALLBACK AboutWndProc(HWND hDlg,
 
 int GetButtonWidth(HWND hwnd)
 {
-    return static_cast<int>(BUTTON_WIDTH * getWindowScaleFactor(hwnd));
+    return static_cast<int>(BUTTON_WIDTH * WinUtil::GetWindowScaleFactor(hwnd));
 }
 
 int GetURLBarHeight(HWND hwnd)
 {
-    return static_cast<int>(URLBAR_HEIGHT * getWindowScaleFactor(hwnd));
+    return static_cast<int>(URLBAR_HEIGHT * WinUtil::GetWindowScaleFactor(hwnd));
 }
-
-} // namespace
 
 
 MainWindow::MainWindow()
@@ -215,7 +209,7 @@ void MainWindow::createRootWindow(bool initiallyHidden)
     _hwnd = CreateWindowEx(dwExStyle, windowClass.c_str(), windowTitle.c_str(), dwStyle,
                            x, y, width, height, nullptr, nullptr, hInstance, this);
 
-    if (!_calledEnableNonClientDpiScaling && isProcessPerMonitorDpiAware()) {
+    if (!_calledEnableNonClientDpiScaling && WinUtil::IsProcessPerMonitorDpiAware()) {
         // This call gets Windows to scale the non-client area when WM_DPICHANGED
         // is fired on Windows versions < 10.0.14393.0.
         // Derived signature; not available in headers.
@@ -276,7 +270,7 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
     MainWindow *self = nullptr;
     if (message != WM_NCCREATE)
     {
-        self = getUserDataPtr<MainWindow *>(hWnd);
+        self = WinUtil::GetUserDataPtr<MainWindow *>(hWnd);
         if (!self) {
             return DefWindowProc(hWnd, message, wParam, lParam);
         }
@@ -362,7 +356,7 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
         self = reinterpret_cast<MainWindow *>(cs->lpCreateParams);
         assert(self);
         // Associate |self| with the main window.
-        setUserDataPtr(hWnd, self);
+        WinUtil::SetUserDataPtr(hWnd, self);
         self->_hwnd = hWnd;
 
         self->onNCCreate(cs);
@@ -373,7 +367,7 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
 
     case WM_NCDESTROY:
         // Clear the reference to |self|.
-        setUserDataPtr(hWnd, nullptr);
+        WinUtil::SetUserDataPtr(hWnd, nullptr);
         self->_hwnd = nullptr;
         self->onDestroyed();
         break;
@@ -503,7 +497,7 @@ void MainWindow::onAbout()
 
 void MainWindow::onNCCreate(LPCREATESTRUCT lpCreateStruct)
 {
-    if (isProcessPerMonitorDpiAware())
+    if (WinUtil::IsProcessPerMonitorDpiAware())
     {
         // This call gets Windows to scale the non-client area when WM_DPICHANGED
         // is fired on Windows versions >= 10.0.14393.0.
@@ -544,9 +538,20 @@ void MainWindow::createTopView()
     int clientWidth = clientRect.right - clientRect.left;
     int clientHeight = clientRect.bottom - clientRect.top;
 
+    // Debug output
+    char debugMsg[256];
+    sprintf_s(debugMsg, "createTopView: Client rect = (%d, %d, %d, %d), Size = %dx%d\n",
+              clientRect.left, clientRect.top, clientRect.right, clientRect.bottom,
+              clientWidth, clientHeight);
+    OutputDebugStringA(debugMsg);
+
     int buttonAreaHeight = BUTTON_HEIGHT + 20;
     int availableHeight = clientHeight - buttonAreaHeight;
     int topHeight = availableHeight / 2;
+
+    sprintf_s(debugMsg, "createTopView: topHeight = %d, availableHeight = %d\n",
+              topHeight, availableHeight);
+    OutputDebugStringA(debugMsg);
 
     CefWebViewSetting settings;
     //settings.offScreenRenderingEnabled = true;
@@ -554,15 +559,10 @@ void MainWindow::createTopView()
     settings.y = 0;
     settings.width = clientWidth;
     settings.height = topHeight;
+    settings.url = "https://www.baidu.com";
 
-    // T107: Load default URL
-    _topView = std::make_shared<CefWebView>("https://www.baidu.com", settings, _hwnd);
-    _topView->init();
+    _topView = std::make_shared<CefWebView>(settings, _hwnd);
 }
-
-// ============================================================================
-// T080-T081: 实现createBottomViews()创建3个离屏模式CefWebView
-// ============================================================================
 
 void MainWindow::createBottomViews()
 {
@@ -592,9 +592,9 @@ void MainWindow::createBottomViews()
         settings.y = topHeight;
         settings.width = clientWidth;
         settings.height = bottomHeight;
+        settings.url = urls[i];
 
-        auto view = std::make_shared<CefWebView>(urls[i], settings, _hwnd);
-        view->init();
+        auto view = std::make_shared<CefWebView>(settings, _hwnd);
 
         if (i > 0) {
             view->setVisible(false);
@@ -627,10 +627,6 @@ void MainWindow::createBottomViews()
         10 + (BUTTON_WIDTH + buttonSpacing) * 2, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT,
         _hwnd, (HMENU)ID_BTN_SWITCH3, GetModuleHandle(nullptr), nullptr);
 }
-
-// ============================================================================
-// T082-T084: 实现setActiveBottomView()切换底部视图
-// ============================================================================
 
 void MainWindow::setActiveBottomView(int index)
 {
@@ -678,12 +674,12 @@ void MainWindow::updateLayout()
 
     // T111: 更新顶部视图布局
     if (_topView) {
-        _topView->setRect(0, 0, clientWidth, topHeight);
+        _topView->setBounds(0, 0, clientWidth, topHeight);
     }
 
     // T112: 更新所有底部视图布局（叠加在同一区域）
     for (auto& view : _bottomViews) {
-        view->setRect(0, topHeight, clientWidth, bottomHeight);
+        view->setBounds(0, topHeight, clientWidth, bottomHeight);
     }
 
     // 更新按钮位置
