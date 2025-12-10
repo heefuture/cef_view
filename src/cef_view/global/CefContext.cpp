@@ -2,6 +2,7 @@
 #include <client/CefViewApp.h>
 #include <client/CefViewAppDelegateInterface.h>
 #include <utils/PathUtil.h>
+#include <utils/LogUtil.h>
 
 #include "include/cef_app.h"
 
@@ -129,6 +130,8 @@ int CefContext::initialize(int argc,
     if (!CefInitialize(mainArgs, settings, app.get(), sandboxInfo)) {
         return -2;  // Initialization failed
     }
+
+    LOGI << "CefView initialized successfully";
 
     return -1;  // Browser process, continue execution
 }

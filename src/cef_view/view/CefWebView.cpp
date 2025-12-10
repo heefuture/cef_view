@@ -6,6 +6,7 @@
 #include <utils/Util.h>
 #include <utils/WinUtil.h>
 #include <utils/ScreenUtil.h>
+#include <utils/LogUtil.h>
 
 #include <osr/OsrDragdropEvents.h>
 #include <osr/OsrDragdropWin.h>
@@ -132,13 +133,8 @@ CefWebView::CefWebView(const CefWebViewSetting& settings)
 
 
 CefWebView::CefWebView(const CefWebViewSetting& settings, HWND parentHwnd)
-  : _parentHwnd(parentHwnd)
-  , _settings(settings)
+  : _settings(settings)
 {
-    if (parentHwnd == nullptr) {
-        return;
-    }
-
     init(parentHwnd);
 }
 
@@ -292,6 +288,7 @@ void CefWebView::createCefBrowser()
     windowInfo.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
 
     CefBrowserSettings browserSettings;
+    browserSettings.background_color = _settings.backgroundColor;
     browserSettings.windowless_frame_rate = _settings.windowlessFrameRate;
     CefBrowserHost::CreateBrowser(windowInfo, _client, CefString(_settings.url), browserSettings, nullptr, nullptr);
     // CefBrowserHost::CreateBrowserSync(windowInfo, _client, CefString(url), browserSettings, nullptr, nullptr);
@@ -326,8 +323,8 @@ void CefWebView::setBounds(int left, int top, int width, int height)
     _settings.height = height;
 
     // Update _clientRect immediately
-    _clientRect.left = 0;
-    _clientRect.top = 0;
+    _clientRect.left = left;
+    _clientRect.top = top;
     _clientRect.right = width;
     _clientRect.bottom = height;
 
@@ -520,11 +517,15 @@ void CefWebView::evaluateJavaScript(const std::string& script)
         return;
     }
 
-    if (_browser && _browser.get()) {
-        CefRefPtr<CefFrame> frame = _browser->GetMainFrame();
-        if (frame) {
-            frame->ExecuteJavaScript(CefString(script), frame->GetURL(), 0);
-        }
+    // Cache JS if loading or browser not created
+    if (_isLoading || !_browser) {
+        _cachedJsCodes.push_back(script);
+        return;
+    }
+
+    CefRefPtr<CefFrame> frame = _browser->GetMainFrame();
+    if (frame) {
+        frame->ExecuteJavaScript(CefString(script), frame->GetURL(), 0);
     }
 }
 
@@ -715,14 +716,28 @@ void CefWebView::onLoadingStateChange(int browserId, bool isLoading, bool canGoB
 
 void CefWebView::onLoadStart(const std::string& url)
 {
+    _isLoading = true;
 }
 
 void CefWebView::onLoadEnd(const std::string& url)
 {
+    _isLoading = false;
+
+    // Execute cached JS codes
+    if (!_cachedJsCodes.empty() && _browser) {
+        CefRefPtr<CefFrame> frame = _browser->GetMainFrame();
+        if (frame) {
+            for (const auto& script : _cachedJsCodes) {
+                frame->ExecuteJavaScript(CefString(script), frame->GetURL(), 0);
+            }
+        }
+        _cachedJsCodes.clear();
+    }
 }
 
 void CefWebView::onLoadError(int browserId, const std::string& errorText, const std::string& failedUrl)
 {
+    _isLoading = false;
 }
 #pragma endregion // LoadHandler
 
@@ -1035,7 +1050,7 @@ void CefWebView::onKeyEvent(UINT message, WPARAM wParam, LPARAM lParam) {
 void CefWebView::onPaint() {
     if (!_settings.offScreenRenderingEnabled || !_osrRenderer) return;
     // Paint nothing here. Invalidate will cause OnPaint to be called for the
-    _osrRenderer->render();
+    //_osrRenderer->render();
 
     if (_browser) {
         _browser->GetHost()->Invalidate(PET_VIEW);

@@ -270,7 +270,7 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
     MainWindow *self = nullptr;
     if (message != WM_NCCREATE)
     {
-        self = WinUtil::GetUserDataPtr<MainWindow *>(hWnd);
+        self = WinUtil::GetUserDataPtr<MainWindow*>(hWnd);
         if (!self) {
             return DefWindowProc(hWnd, message, wParam, lParam);
         }
@@ -538,23 +538,12 @@ void MainWindow::createTopView()
     int clientWidth = clientRect.right - clientRect.left;
     int clientHeight = clientRect.bottom - clientRect.top;
 
-    // Debug output
-    char debugMsg[256];
-    sprintf_s(debugMsg, "createTopView: Client rect = (%d, %d, %d, %d), Size = %dx%d\n",
-              clientRect.left, clientRect.top, clientRect.right, clientRect.bottom,
-              clientWidth, clientHeight);
-    OutputDebugStringA(debugMsg);
-
     int buttonAreaHeight = BUTTON_HEIGHT + 20;
     int availableHeight = clientHeight - buttonAreaHeight;
     int topHeight = availableHeight / 2;
 
-    sprintf_s(debugMsg, "createTopView: topHeight = %d, availableHeight = %d\n",
-              topHeight, availableHeight);
-    OutputDebugStringA(debugMsg);
-
     CefWebViewSetting settings;
-    //settings.offScreenRenderingEnabled = true;
+    settings.offScreenRenderingEnabled = true;
     settings.x = 0;
     settings.y = 0;
     settings.width = clientWidth;

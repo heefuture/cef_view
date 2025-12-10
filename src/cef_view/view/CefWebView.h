@@ -168,7 +168,7 @@ public:
      * @brief Set device scale factor
      * @param[in] deviceScaleFactor Device scale factor value
      */
-    void setDeviceScaleFactor(float deviceScaleFactor);
+    virtual void setDeviceScaleFactor(float deviceScaleFactor);
 
 public:
 #pragma region RenderHandler
@@ -184,7 +184,7 @@ public:
      * @param[out] rect Rectangle to receive view bounds
      * @return true if successful
      */
-    bool getViewRect(CefRect& rect);
+    virtual bool getViewRect(CefRect& rect);
 
     /**
      * @brief Convert view coordinates to screen coordinates
@@ -384,8 +384,8 @@ protected:
     void onSize();
     void onFocus(bool setFocus);
     void onCaptureLost();
-    void onKeyEvent(UINT message, WPARAM wParam, LPARAM lParam);
-    void onPaint();
+    virtual void onKeyEvent(UINT message, WPARAM wParam, LPARAM lParam);
+    virtual void onPaint();
     bool onTouchEvent(UINT message, WPARAM wParam, LPARAM lParam);
 
     // IME handlers
@@ -412,6 +412,10 @@ protected:
     using StdClosure = std::function<void(void)>;
     std::vector<StdClosure> _taskListAfterCreated;
     bool _isDevToolsOpened = false;
+
+    // Loading state and cached JS codes
+    bool _isLoading = false;
+    std::vector<std::string> _cachedJsCodes;
 
     // Settings and geometry
     CefWebViewSetting _settings;
