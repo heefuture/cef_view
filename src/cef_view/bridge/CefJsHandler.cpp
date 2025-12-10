@@ -175,8 +175,12 @@ bool CefJSHandler::Execute(const CefString& name, CefRefPtr<CefV8Value> object, 
             {
                 CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(msgName);
                 // Translate the arguments, if any.
-                if (arguments.size() == 2 && arguments[1]->IsArray())
+                if (arguments.size() == 2 && arguments[1]->IsArray()) {
                     SetList(arguments[1], message->GetArgumentList());
+                }
+                else if (arguments.size() == 2 && arguments[1]->IsString()) {
+                    message->GetArgumentList()->SetString(0, arguments[1]->GetStringValue());
+                }
                 frame->SendProcessMessage(PID_BROWSER, message);
                 return true;
             }

@@ -211,6 +211,9 @@ void CefViewClientDelegate::onLoadEnd(CefRefPtr<CefBrowser> browser, CefRefPtr<C
 
 void CefViewClientDelegate::onLoadError(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefLoadHandler::ErrorCode errorCode, const CefString& errorText, const CefString& failedUrl)
 {
+    std::string url = failedUrl.ToString();
+    _view->onLoadError(browser->GetIdentifier(), url, errorText.ToString());
+
     // Don't display an error for downloaded files.
     if (errorCode == ERR_ABORTED) {
         return;

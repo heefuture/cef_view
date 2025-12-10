@@ -56,7 +56,12 @@ void CefViewAppDelegateRenderer::onWebKitInitialized() {
         "    return unRegister(functionName);"
         "  };"
         "})();";
-    CefRegisterExtension("v8/app", appCode, appHandler.get());
+
+    if (!_renderJsBridge)
+        _renderJsBridge.reset(new cefview::CefJsBridgeRender);
+
+    appHandler->registerJsBridge(_renderJsBridge);
+    CefRegisterExtension("v8/cefViewApp", appCode, appHandler.get());
 }
 
 void CefViewAppDelegateRenderer::onBrowserCreated(CefRefPtr<CefBrowser> browser,

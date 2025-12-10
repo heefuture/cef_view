@@ -49,6 +49,10 @@ static CefSettings getCefSettings(const CefConfig& config) {
     // Enable remote debugging on the specified port.
     settings.remote_debugging_port = config.remoteDebuggingPort;
     settings.no_sandbox = config.noSandbox;
+    
+    // Enable windowless (off-screen) rendering support.
+    // This must be enabled globally for any browser to use OSR mode.
+    settings.windowless_rendering_enabled = config.windowlessRenderingEnabled;
 
 #ifndef SUB_PROCESS_DISABLED
     std::string subProcessPath = PathUtil::GetAppWorkingDirectory() + "/browser.exe";

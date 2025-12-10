@@ -19,13 +19,18 @@ bool CefJsBridgeBrowser::callJSFunction(const CefString& jsFunctionName,
 
     auto it = _browserCallback.find(_cppCallbackId);
     if (it == _browserCallback.cend()) {
-        _browserCallback.emplace(_cppCallbackId, callback);
         // Send message to render to execute a js function
         CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kCallJsFunctionMessage);
         CefRefPtr<CefListValue> args = message->GetArgumentList();
         args->SetString(0, jsFunctionName);
         args->SetString(1, params);
-        args->SetInt(2, _cppCallbackId++);
+        if (callback) {
+            args->SetInt(2, _cppCallbackId++);
+            _browserCallback.emplace(_cppCallbackId, callback);
+        } else {
+            args->SetInt(2, -1);
+        }
+
         args->SetString(3, frame->GetIdentifier());
 
         frame->SendProcessMessage(PID_RENDERER, message);

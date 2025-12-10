@@ -21,6 +21,9 @@ struct CefConfig
     bool multiThreadedMessageLoop = false;
     bool noSandbox = true;
     bool disableGpu = true;
+    // Enable off-screen rendering (OSR) support globally.
+    // Must be true if any CefWebView uses offScreenRenderingEnabled.
+    bool windowlessRenderingEnabled = true;
     int remoteDebuggingPort = 18432;
     std::string cookieableSchemesList = "http,https";
     std::string cachePath;

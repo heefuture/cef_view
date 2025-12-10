@@ -15,12 +15,15 @@ bool CefJsBridgeRender::callCppFunction(const CefString& functionName, const Cef
     if (it == _renderCallback.cend()) {
         CefRefPtr<CefV8Context> context = CefV8Context::GetCurrentContext();
         CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kCallCppFunctionMessage);
-
         message->GetArgumentList()->SetString(0, functionName);
         message->GetArgumentList()->SetString(1, params);
-        message->GetArgumentList()->SetInt(2, _jsCallbackId);
 
-        _renderCallback.emplace(_jsCallbackId++, std::make_pair(context, callback));
+        if (callback) {
+            message->GetArgumentList()->SetInt(2, _jsCallbackId);
+            _renderCallback.emplace(_jsCallbackId++, std::make_pair(context, callback));
+        } else {
+            message->GetArgumentList()->SetInt(2, -1);
+        }
 
         // Send message to browser process
         CefRefPtr<CefBrowser> browser = context->GetBrowser();
