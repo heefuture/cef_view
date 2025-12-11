@@ -7,9 +7,13 @@
  */
 #include "OsrRendererD3D11.h"
 
+#if defined(_WIN32)
+
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <algorithm>
+
+#include <utils/LogUtil.h>
 
 using namespace DirectX;
 using namespace Microsoft::WRL;
@@ -32,22 +36,22 @@ struct Vertex {
 static const char* g_vertexShaderSource = R"(
 struct VS_INPUT
 {
-	float4 pos : POSITION;
-	float2 tex : TEXCOORD0;
+    float4 pos : POSITION;
+    float2 tex : TEXCOORD0;
 };
 
 struct VS_OUTPUT
 {
-	float4 pos : SV_POSITION;
-	float2 tex : TEXCOORD0;
+    float4 pos : SV_POSITION;
+    float2 tex : TEXCOORD0;
 };
 
 VS_OUTPUT main(VS_INPUT input)
 {
-	VS_OUTPUT output;
-	output.pos = input.pos;
-	output.tex = input.tex;
-	return output;
+    VS_OUTPUT output;
+    output.pos = input.pos;
+    output.tex = input.tex;
+    return output;
 }
 )";
 
@@ -58,25 +62,21 @@ SamplerState samp0 : register(s0);
 
 struct VS_OUTPUT
 {
-	float4 pos : SV_POSITION;
-	float2 tex : TEXCOORD0;
+    float4 pos : SV_POSITION;
+    float2 tex : TEXCOORD0;
 };
 
 float4 main(VS_OUTPUT input) : SV_Target
 {
-	return tex0.Sample(samp0, input.tex);
+    return tex0.Sample(samp0, input.tex);
 }
 )";
 
-OsrRendererD3D11::OsrRendererD3D11(HWND hwnd, int width, int height)
-    : _hwnd(hwnd)
-    , _width(width)
-    , _height(height)
-    , _showPopup(false) {
-    _popupRect.x = 0;
-    _popupRect.y = 0;
-    _popupRect.width = 0;
-    _popupRect.height = 0;
+OsrRendererD3D11::OsrRendererD3D11(HWND hwnd, int width, int height, bool transparent)
+    : OsrRenderer(transparent)
+    , _hwnd(hwnd) {
+    _viewWidth = width;
+    _viewHeight = height;
 }
 
 OsrRendererD3D11::~OsrRendererD3D11() {
@@ -84,49 +84,55 @@ OsrRendererD3D11::~OsrRendererD3D11() {
 }
 
 bool OsrRendererD3D11::initialize() {
-    // Create device and swap chain
+    LOGD << "initialize() called";
+
     if (!createDeviceAndSwapchain()) {
+        LOGE << "createDeviceAndSwapchain() FAILED";
         return false;
     }
+    LOGD << "createDeviceAndSwapchain() OK";
 
-    // Create shader resources
     if (!createShaderResource()) {
+        LOGE << "createShaderResource() FAILED";
         uninitialize();
         return false;
     }
+    LOGD << "createShaderResource() OK";
 
-    // Create sampler
     if (!createSampler()) {
+        LOGE << "createSampler() FAILED";
         uninitialize();
         return false;
     }
+    LOGD << "createSampler() OK";
 
-    // Create blender
     if (!createBlender()) {
+        LOGE << "createBlender() FAILED";
         uninitialize();
         return false;
     }
+    LOGD << "createBlender() OK";
 
-    // Create render target view
     if (!createRenderTargetView()) {
+        LOGE << "createRenderTargetView() FAILED";
         uninitialize();
         return false;
     }
+    LOGD << "createRenderTargetView() OK";
 
-    // Setup rendering pipeline
     setupPipeline();
+    LOGI << "OsrRendererD3D11 initialized successfully";
 
     return true;
 }
 
 void OsrRendererD3D11::uninitialize() {
-    // ComPtr will automatically release resources, explicitly reset to ensure proper order
+    _sharedTextureSRV.Reset();
+    _sharedTexture.Reset();
+    _sharedTextureHandle = nullptr;
     _cefViewVertexBuffer.Reset();
-    _cefPopupVertexBuffer.Reset();
     _cefViewShaderResourceView.Reset();
-    _cefPopupShaderResourceView.Reset();
     _cefViewTexture.Reset();
-    _cefPopupTexture.Reset();
     _renderTargetView.Reset();
     _blenderState.Reset();
     _samplerState.Reset();
@@ -139,7 +145,6 @@ void OsrRendererD3D11::uninitialize() {
 }
 
 bool OsrRendererD3D11::createDeviceAndSwapchain() {
-    // Create D3D11 device and context
     UINT createDeviceFlags = 0;
 #ifdef _DEBUG
     createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
@@ -152,35 +157,31 @@ bool OsrRendererD3D11::createDeviceAndSwapchain() {
     UINT numFeatureLevels = ARRAYSIZE(featureLevels);
     D3D_FEATURE_LEVEL featureLevel;
 
-    HR_CHECK(D3D11CreateDevice(nullptr,                      // Default adapter
-                                D3D_DRIVER_TYPE_HARDWARE,    // Hardware device
-                                nullptr,                     // No software rasterizer
-                                createDeviceFlags,           // Device flags
-                                featureLevels,               // Feature level array
-                                numFeatureLevels,            // Array size
-                                D3D11_SDK_VERSION,           // SDK version
-                                _d3dDevice.GetAddressOf(),   // Output device
-                                &featureLevel,               // Actual feature level
-                                _d3dContext.GetAddressOf()   // Output context
-                                ));
+    HR_CHECK(D3D11CreateDevice(nullptr,
+                                D3D_DRIVER_TYPE_HARDWARE,
+                                nullptr,
+                                createDeviceFlags,
+                                featureLevels,
+                                numFeatureLevels,
+                                D3D11_SDK_VERSION,
+                                _d3dDevice.GetAddressOf(),
+                                &featureLevel,
+                                _d3dContext.GetAddressOf()));
 
-    // Get DXGI device
     ComPtr<IDXGIDevice> dxgiDevice;
     HR_CHECK(_d3dDevice.As(&dxgiDevice));
 
-    // Get DXGI adapter
     ComPtr<IDXGIAdapter> dxgiAdapter;
     HR_CHECK(dxgiDevice->GetAdapter(dxgiAdapter.GetAddressOf()));
 
-    // Get DXGI factory
     ComPtr<IDXGIFactory> dxgiFactory;
     HR_CHECK(dxgiAdapter->GetParent(IID_PPV_ARGS(dxgiFactory.GetAddressOf())));
 
     // Create swap chain description
     DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
     swapChainDesc.BufferCount = 2;                                     // Double buffering
-    swapChainDesc.BufferDesc.Width = _width;
-    swapChainDesc.BufferDesc.Height = _height;
+    swapChainDesc.BufferDesc.Width = _viewWidth;
+    swapChainDesc.BufferDesc.Height = _viewHeight;
     swapChainDesc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;      // BGRA format
     swapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
     swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
@@ -192,10 +193,7 @@ bool OsrRendererD3D11::createDeviceAndSwapchain() {
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;          // Flip mode
     swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
-    // Create swap chain
     HR_CHECK(dxgiFactory->CreateSwapChain(_d3dDevice.Get(), &swapChainDesc, _swapChain.GetAddressOf()));
-
-    // Disable Alt+Enter fullscreen toggle
     HR_CHECK(dxgiFactory->MakeWindowAssociation(_hwnd, DXGI_MWA_NO_ALT_ENTER));
 
     return true;
@@ -223,13 +221,11 @@ bool OsrRendererD3D11::createShaderResource() {
         return false;
     }
 
-    // Create vertex shader
     HR_CHECK(_d3dDevice->CreateVertexShader(vsBlob->GetBufferPointer(),
                                             vsBlob->GetBufferSize(),
                                             nullptr,
                                             _vertexShader.GetAddressOf()));
 
-    // Create input layout
     D3D11_INPUT_ELEMENT_DESC layout[] = {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
         {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -242,7 +238,6 @@ bool OsrRendererD3D11::createShaderResource() {
                                            vsBlob->GetBufferSize(),
                                            _inputLayout.GetAddressOf()));
 
-    // Compile pixel shader
     ComPtr<ID3DBlob> psBlob;
     hr = D3DCompile(g_pixelShaderSource,
                     strlen(g_pixelShaderSource),
@@ -262,17 +257,15 @@ bool OsrRendererD3D11::createShaderResource() {
         return false;
     }
 
-    // Create pixel shader
     HR_CHECK(_d3dDevice->CreatePixelShader(psBlob->GetBufferPointer(),
                                            psBlob->GetBufferSize(),
                                            nullptr,
                                            _pixelShader.GetAddressOf()));
 
-    // Create View texture (initial size, will be dynamically updated later)
-    if (_width > 0 && _height > 0) {
+    if (_viewWidth > 0 && _viewHeight > 0) {
         D3D11_TEXTURE2D_DESC texDesc = {};
-        texDesc.Width = _width;
-        texDesc.Height = _height;
+        texDesc.Width = _viewWidth;
+        texDesc.Height = _viewHeight;
         texDesc.MipLevels = 1;
         texDesc.ArraySize = 1;
         texDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -283,7 +276,6 @@ bool OsrRendererD3D11::createShaderResource() {
 
         HR_CHECK(_d3dDevice->CreateTexture2D(&texDesc, nullptr, _cefViewTexture.GetAddressOf()));
 
-        // Create shader resource view
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.Format = texDesc.Format;
         srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
@@ -298,18 +290,13 @@ bool OsrRendererD3D11::createShaderResource() {
 }
 
 bool OsrRendererD3D11::createRenderTargetView() {
-    // Get back buffer from swap chain
     ComPtr<ID3D11Texture2D> backBuffer;
     HR_CHECK(_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())));
-
-    // Create render target view
     HR_CHECK(_d3dDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, _renderTargetView.GetAddressOf()));
-
     return true;
 }
 
 bool OsrRendererD3D11::createSampler() {
-    // Create sampler state (linear filtering)
     D3D11_SAMPLER_DESC samplerDesc = {};
     samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
     samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -322,12 +309,10 @@ bool OsrRendererD3D11::createSampler() {
     samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
     HR_CHECK(_d3dDevice->CreateSamplerState(&samplerDesc, _samplerState.GetAddressOf()));
-
     return true;
 }
 
 bool OsrRendererD3D11::createBlender() {
-    // Create blend state (alpha blending)
     D3D11_BLEND_DESC blendDesc = {};
     blendDesc.AlphaToCoverageEnable = FALSE;
     blendDesc.IndependentBlendEnable = FALSE;
@@ -341,108 +326,95 @@ bool OsrRendererD3D11::createBlender() {
     blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
     HR_CHECK(_d3dDevice->CreateBlendState(&blendDesc, _blenderState.GetAddressOf()));
-
     return true;
 }
 
 void OsrRendererD3D11::setupPipeline() {
-    // Set input layout
     _d3dContext->IASetInputLayout(_inputLayout.Get());
-
-    // Set primitive topology (triangle list)
     _d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    // Set vertex shader
     _d3dContext->VSSetShader(_vertexShader.Get(), nullptr, 0);
-
-    // Set pixel shader
     _d3dContext->PSSetShader(_pixelShader.Get(), nullptr, 0);
-
-    // Set sampler
     _d3dContext->PSSetSamplers(0, 1, _samplerState.GetAddressOf());
 
-    // Set blend state
     float blendFactor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     _d3dContext->OMSetBlendState(_blenderState.Get(), blendFactor, 0xffffffff);
-
-    // Set render target
     _d3dContext->OMSetRenderTargets(1, _renderTargetView.GetAddressOf(), nullptr);
 
-    // Set viewport
     D3D11_VIEWPORT viewport = {};
     viewport.TopLeftX = 0.0f;
     viewport.TopLeftY = 0.0f;
-    viewport.Width = static_cast<float>(_width);
-    viewport.Height = static_cast<float>(_height);
+    viewport.Width = static_cast<float>(_viewWidth);
+    viewport.Height = static_cast<float>(_viewHeight);
     viewport.MinDepth = 0.0f;
     viewport.MaxDepth = 1.0f;
     _d3dContext->RSSetViewports(1, &viewport);
 }
 
-void OsrRendererD3D11::updateFrameData(CefRenderHandler::PaintElementType type,
-                                       const CefRenderHandler::RectList& dirtyRects,
-                                       const void* buffer,
-                                       int width,
-                                       int height) {
+void OsrRendererD3D11::onPaint(CefRenderHandler::PaintElementType type,
+                               const CefRenderHandler::RectList& dirtyRects,
+                               const void* buffer,
+                               int width,
+                               int height) {
     if (!_d3dDevice || !_d3dContext) {
+        LOGE << "onPaint() FAILED - device or context is null";
         return;
     }
 
-    // Determine if this is View or Popup
-    bool isView = (type == PET_VIEW);
-    ComPtr<ID3D11Texture2D>& texture = isView ? _cefViewTexture : _cefPopupTexture;
-    ComPtr<ID3D11ShaderResourceView>& srv = isView ? _cefViewShaderResourceView : _cefPopupShaderResourceView;
+    if (type != PET_VIEW) {
+        return;
+    }
 
     // Check if texture size needs to be recreated
-    if (texture) {
+    if (_cefViewTexture) {
         D3D11_TEXTURE2D_DESC desc;
-        texture->GetDesc(&desc);
+        _cefViewTexture->GetDesc(&desc);
         if (desc.Width != static_cast<UINT>(width) || desc.Height != static_cast<UINT>(height)) {
-            // Size changed, recreate texture
-            texture.Reset();
-            srv.Reset();
+            _cefViewTexture.Reset();
+            _cefViewShaderResourceView.Reset();
         }
     }
 
-    // If texture doesn't exist, create new texture
-    if (!texture) {
+    // Create texture if not exists
+    if (!_cefViewTexture) {
         D3D11_TEXTURE2D_DESC texDesc = {};
         texDesc.Width = width;
         texDesc.Height = height;
         texDesc.MipLevels = 1;
         texDesc.ArraySize = 1;
-        texDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;  // CEF uses BGRA format
+        texDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         texDesc.SampleDesc.Count = 1;
         texDesc.Usage = D3D11_USAGE_DEFAULT;
         texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
         texDesc.CPUAccessFlags = 0;
 
-        if (FAILED(_d3dDevice->CreateTexture2D(&texDesc, nullptr, texture.GetAddressOf()))) {
+        HRESULT hr = _d3dDevice->CreateTexture2D(&texDesc, nullptr, _cefViewTexture.GetAddressOf());
+        if (FAILED(hr)) {
+            LOGE << "onPaint() CreateTexture2D FAILED hr=0x" << std::hex << hr;
             return;
         }
 
-        // Create shader resource view
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.Format = texDesc.Format;
         srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = 1;
 
-        if (FAILED(_d3dDevice->CreateShaderResourceView(texture.Get(), &srvDesc, srv.GetAddressOf()))) {
-            texture.Reset();
+        hr = _d3dDevice->CreateShaderResourceView(_cefViewTexture.Get(), &srvDesc, _cefViewShaderResourceView.GetAddressOf());
+        if (FAILED(hr)) {
+            LOGE << "onPaint() CreateShaderResourceView FAILED hr=0x" << std::hex << hr;
+            _cefViewTexture.Reset();
             return;
         }
+        LOGD << "onPaint() texture created " << width << "x" << height;
     }
 
     // Update texture data (only update dirty rectangles)
     for (size_t i = 0; i < dirtyRects.size(); ++i) {
         const CefRect& rect = dirtyRects[i];
 
-        // Calculate source data offset
-        int srcPitch = width * 4;  // 4 bytes per pixel (BGRA)
+        int srcPitch = width * 4;
         const unsigned char* srcData = static_cast<const unsigned char*>(buffer);
         srcData += rect.y * srcPitch + rect.x * 4;
 
-        // Update subresource
         D3D11_BOX destBox = {};
         destBox.left = rect.x;
         destBox.top = rect.y;
@@ -451,93 +423,67 @@ void OsrRendererD3D11::updateFrameData(CefRenderHandler::PaintElementType type,
         destBox.front = 0;
         destBox.back = 1;
 
-        _d3dContext->UpdateSubresource(texture.Get(), 0, &destBox, srcData, srcPitch, 0);
+        _d3dContext->UpdateSubresource(_cefViewTexture.Get(), 0, &destBox, srcData, srcPitch, 0);
     }
 }
 
-void OsrRendererD3D11::updateSharedTexture(CefRenderHandler::PaintElementType type,
-                                           const CefAcceleratedPaintInfo& info) {
+void OsrRendererD3D11::onAcceleratedPaint(CefRenderHandler::PaintElementType type,
+                                          const CefRenderHandler::RectList& dirtyRects,
+                                          const CefAcceleratedPaintInfo& info) {
     if (!_d3dDevice || !_d3dContext) {
+        LOGE << "onAcceleratedPaint() FAILED - device or context is null";
         return;
     }
 
-    // Determine if this is the View or Popup layer
-    bool isView = (type == PET_VIEW);
-    ComPtr<ID3D11Texture2D>& texture = isView ? _cefViewTexture : _cefPopupTexture;
-    ComPtr<ID3D11ShaderResourceView>& srv = isView ? _cefViewShaderResourceView : _cefPopupShaderResourceView;
+    if (type != PET_VIEW) {
+        return;
+    }
 
-    // Extract shared texture handle from CEF
     void* sharedHandle = info.shared_texture_handle;
     if (!sharedHandle) {
         return;
     }
 
-    // Query for ID3D11Device1 interface (required for OpenSharedResource1)
-    ComPtr<ID3D11Device1> device1;
-    HRESULT hr = _d3dDevice.As(&device1);
-    if (FAILED(hr)) {
-        return;
+    // Check if shared texture handle changed
+    if (_sharedTextureHandle != sharedHandle) {
+        _sharedTexture.Reset();
+        _sharedTextureSRV.Reset();
+        _sharedTextureHandle = nullptr;
     }
 
-    // Open the shared texture resource using OpenSharedResource1
-    ComPtr<ID3D11Texture2D> sharedTexture;
-    hr = device1->OpenSharedResource1(sharedHandle, IID_PPV_ARGS(&sharedTexture));
-    if (FAILED(hr)) {
-        return;
-    }
-
-    // Check if local texture needs to be recreated
-    bool needUpdate = false;
-    if (!texture) {
-        needUpdate = true;
-    } else {
-        // Compare dimensions
-        D3D11_TEXTURE2D_DESC existingDesc, newDesc;
-        texture->GetDesc(&existingDesc);
-        sharedTexture->GetDesc(&newDesc);
-        if (existingDesc.Width != newDesc.Width || existingDesc.Height != newDesc.Height) {
-            needUpdate = true;
-        }
-    }
-
-    if (needUpdate) {
-        // Get shared texture description
-        D3D11_TEXTURE2D_DESC sharedDesc;
-        sharedTexture->GetDesc(&sharedDesc);
-
-        // Create local texture matching the shared texture format
-        D3D11_TEXTURE2D_DESC texDesc = {};
-        texDesc.Width = sharedDesc.Width;
-        texDesc.Height = sharedDesc.Height;
-        texDesc.MipLevels = 1;
-        texDesc.ArraySize = 1;
-        texDesc.Format = sharedDesc.Format;  // Match shared texture format
-        texDesc.SampleDesc.Count = 1;
-        texDesc.Usage = D3D11_USAGE_DEFAULT;
-        texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        texDesc.CPUAccessFlags = 0;
-
-        texture.Reset();
-        srv.Reset();
-
-        if (FAILED(_d3dDevice->CreateTexture2D(&texDesc, nullptr, texture.GetAddressOf()))) {
+    // Open shared texture if needed
+    if (!_sharedTexture) {
+        ComPtr<ID3D11Device1> device1;
+        HRESULT hr = _d3dDevice.As(&device1);
+        if (FAILED(hr)) {
+            LOGE << "onAcceleratedPaint() QueryInterface ID3D11Device1 FAILED hr=0x" << std::hex << hr;
             return;
         }
 
-        // Create shader resource view
+        hr = device1->OpenSharedResource1(sharedHandle, IID_PPV_ARGS(&_sharedTexture));
+        if (FAILED(hr)) {
+            LOGE << "onAcceleratedPaint() OpenSharedResource1 FAILED hr=0x" << std::hex << hr;
+            return;
+        }
+
+        D3D11_TEXTURE2D_DESC sharedDesc;
+        _sharedTexture->GetDesc(&sharedDesc);
+
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-        srvDesc.Format = texDesc.Format;
+        srvDesc.Format = sharedDesc.Format;
         srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = 1;
 
-        if (FAILED(_d3dDevice->CreateShaderResourceView(texture.Get(), &srvDesc, srv.GetAddressOf()))) {
-            texture.Reset();
+        hr = _d3dDevice->CreateShaderResourceView(_sharedTexture.Get(), &srvDesc, _sharedTextureSRV.GetAddressOf());
+        if (FAILED(hr)) {
+            LOGE << "onAcceleratedPaint() CreateShaderResourceView FAILED hr=0x" << std::hex << hr;
+            _sharedTexture.Reset();
             return;
         }
-    }
 
-    // Copy shared texture to local texture (GPU-to-GPU copy, zero CPU overhead)
-    _d3dContext->CopyResource(texture.Get(), sharedTexture.Get());
+        _sharedTextureHandle = sharedHandle;
+        LOGD << "onAcceleratedPaint() shared texture opened " << sharedDesc.Width << "x" << sharedDesc.Height;
+    }
 }
 
 void OsrRendererD3D11::render() {
@@ -545,122 +491,103 @@ void OsrRendererD3D11::render() {
         return;
     }
 
-    // Clear render target (black background)
-    float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    // Set render target and viewport
+    _d3dContext->OMSetRenderTargets(1, _renderTargetView.GetAddressOf(), nullptr);
+
+    D3D11_VIEWPORT viewport = {};
+    viewport.TopLeftX = 0.0f;
+    viewport.TopLeftY = 0.0f;
+    viewport.Width = static_cast<float>(_viewWidth);
+    viewport.Height = static_cast<float>(_viewHeight);
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    _d3dContext->RSSetViewports(1, &viewport);
+
+    // Clear render target
+    float clearColor[4] = {0.0f, 0.0f, 0.0f, _transparent ? 0.0f : 1.0f};
     _d3dContext->ClearRenderTargetView(_renderTargetView.Get(), clearColor);
 
+    // Select texture SRV: prefer shared texture (hardware), fallback to local texture (software)
+    ID3D11ShaderResourceView* textureSRV = nullptr;
+    if (_sharedTextureSRV) {
+        textureSRV = _sharedTextureSRV.Get();
+    } else if (_cefViewShaderResourceView) {
+        textureSRV = _cefViewShaderResourceView.Get();
+    }
+
     // Draw View texture (fullscreen quad)
-    if (_cefViewTexture && _cefViewShaderResourceView) {
-        // Create or update vertex buffer
+    if (textureSRV) {
         if (!_cefViewVertexBuffer) {
-            createQuadVertexBuffer(-1.0f, 1.0f, 2.0f, -2.0f, _width, _height, _cefViewVertexBuffer.GetAddressOf());
+            createQuadVertexBuffer(-1.0f, 1.0f, 2.0f, -2.0f, _viewWidth, _viewHeight, _cefViewVertexBuffer.GetAddressOf());
         }
 
         if (_cefViewVertexBuffer) {
-            // Set vertex buffer
+            // Set pipeline state
+            _d3dContext->IASetInputLayout(_inputLayout.Get());
+            _d3dContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            _d3dContext->VSSetShader(_vertexShader.Get(), nullptr, 0);
+            _d3dContext->PSSetShader(_pixelShader.Get(), nullptr, 0);
+            _d3dContext->PSSetSamplers(0, 1, _samplerState.GetAddressOf());
+
+            float blendFactor[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+            _d3dContext->OMSetBlendState(_blenderState.Get(), blendFactor, 0xffffffff);
+
+            // Set vertex buffer and texture
             UINT stride = sizeof(Vertex);
             UINT offset = 0;
             _d3dContext->IASetVertexBuffers(0, 1, _cefViewVertexBuffer.GetAddressOf(), &stride, &offset);
+            _d3dContext->PSSetShaderResources(0, 1, &textureSRV);
 
-            // Set texture
-            _d3dContext->PSSetShaderResources(0, 1, _cefViewShaderResourceView.GetAddressOf());
-
-            // Draw 6 vertices (2 triangles)
+            // Draw
             _d3dContext->Draw(6, 0);
         }
     }
 
-    // Draw Popup texture (if visible)
-    if (_showPopup && _cefPopupTexture && _cefPopupShaderResourceView) {
-        // Calculate Popup position in NDC coordinate system
-        float x = (float)_popupRect.x / _width * 2.0f - 1.0f;
-        float y = 1.0f - (float)_popupRect.y / _height * 2.0f;
-        float w = (float)_popupRect.width / _width * 2.0f;
-        float h = (float)_popupRect.height / _height * 2.0f;
-
-        // Create or update Popup vertex buffer
-        if (!_cefPopupVertexBuffer) {
-            createQuadVertexBuffer(x, y, w, -h, _width, _height, _cefPopupVertexBuffer.GetAddressOf());
-        }
-
-        if (_cefPopupVertexBuffer) {
-            UINT stride = sizeof(Vertex);
-            UINT offset = 0;
-            _d3dContext->IASetVertexBuffers(0, 1, _cefPopupVertexBuffer.GetAddressOf(), &stride, &offset);
-            _d3dContext->PSSetShaderResources(0, 1, _cefPopupShaderResourceView.GetAddressOf());
-            _d3dContext->Draw(6, 0);
-        }
+    HRESULT hr = _swapChain->Present(1, 0);
+    if (FAILED(hr)) {
+        LOGE << "render() Present FAILED hr=0x" << std::hex << hr;
     }
-
-    // Present to screen
-    _swapChain->Present(1, 0);  // VSync
 }
 
-void OsrRendererD3D11::resize(int width, int height) {
+void OsrRendererD3D11::setBounds(int x, int y, int width, int height) {
     if (width <= 0 || height <= 0) {
         return;
     }
 
-    _width = width;
-    _height = height;
+    _viewX = x;
+    _viewY = y;
+
+    if (width == _viewWidth && height == _viewHeight) {
+        return;
+    }
+
+    _viewWidth = width;
+    _viewHeight = height;
 
     if (!_swapChain) {
         return;
     }
 
-    // Release render target view (must be released before resizing swap chain)
     _renderTargetView.Reset();
     _d3dContext->OMSetRenderTargets(0, nullptr, nullptr);
     _d3dContext->Flush();
 
-    // Resize swap chain buffers
-    HRESULT hr = _swapChain->ResizeBuffers(0,                             // Keep buffer count
-                                           width,
-                                           height,
-                                           DXGI_FORMAT_UNKNOWN,           // Keep format
-                                           DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+    HRESULT hr = _swapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
 
     if (FAILED(hr)) {
-        // Device may be lost, attempt recovery
         handleDeviceLost();
         return;
     }
 
-    // Recreate render target view
     createRenderTargetView();
-
-    // Reset pipeline
     setupPipeline();
 
-    // Recreate vertex buffers (size changed)
     _cefViewVertexBuffer.Reset();
-    _cefPopupVertexBuffer.Reset();
 }
 
 void OsrRendererD3D11::handleDeviceLost() {
-    // Release all resources
     uninitialize();
-
-    // Reinitialize
     initialize();
-}
-
-void OsrRendererD3D11::updatePopupVisibility(bool visible) {
-    _showPopup = visible;
-
-    if (!visible) {
-        // Release Popup resources when hidden
-        _cefPopupTexture.Reset();
-        _cefPopupShaderResourceView.Reset();
-        _cefPopupVertexBuffer.Reset();
-    }
-}
-
-void OsrRendererD3D11::updatePopupRect(const CefRect& rect) {
-    _popupRect = rect;
-
-    // Recreate Popup vertex buffer (position changed)
-    _cefPopupVertexBuffer.Reset();
 }
 
 bool OsrRendererD3D11::createQuadVertexBuffer(float x,
@@ -670,8 +597,6 @@ bool OsrRendererD3D11::createQuadVertexBuffer(float x,
                                               int viewWidth,
                                               int viewHeight,
                                               ID3D11Buffer** ppBuffer) {
-    // Define 6 vertices (2 triangles forming a rectangle)
-    // Vertex order: top-left, top-right, bottom-left, bottom-left, top-right, bottom-right
     Vertex vertices[6] = {
         {XMFLOAT3(x, y, 0.0f), XMFLOAT2(0.0f, 0.0f)},          // Top-left
         {XMFLOAT3(x + w, y, 0.0f), XMFLOAT2(1.0f, 0.0f)},      // Top-right
@@ -692,8 +617,9 @@ bool OsrRendererD3D11::createQuadVertexBuffer(float x,
     initData.pSysMem = vertices;
 
     HR_CHECK(_d3dDevice->CreateBuffer(&bufferDesc, &initData, ppBuffer));
-
     return true;
 }
 
 }  // namespace cefview
+
+#endif  // defined(_WIN32)

@@ -9,12 +9,14 @@
 #define OSRRENDERERD3D11_H
 #pragma once
 
+#include "OsrRenderer.h"
+
+#if defined(_WIN32)
+
 #include <windows.h>
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
 #include <wrl.h>
-
-#include "include/cef_render_handler.h"
 
 namespace cefview {
 
@@ -22,126 +24,45 @@ namespace cefview {
  * @brief D3D11 hardware-accelerated renderer for CEF off-screen rendering mode
  *
  * Responsible for creating D3D11 device, swap chain, texture resources,
- * and rendering CEF's OnPaint buffer to window via GPU.
- * Implementation references dx11/DX11RenderBackend and libcef osr_d3d11_win.
+ * and rendering CEF's OnPaint/OnAcceleratedPaint buffer to window via GPU.
  */
-class OsrRendererD3D11 {
+class OsrRendererD3D11 : public OsrRenderer {
 public:
     /**
      * @brief Constructor
      * @param hwnd Target window handle
      * @param width Rendering area width
      * @param height Rendering area height
+     * @param transparent Enable transparent rendering
      */
-    OsrRendererD3D11(HWND hwnd, int width, int height);
+    OsrRendererD3D11(HWND hwnd, int width, int height, bool transparent = false);
 
     /**
      * @brief Destructor, releases all D3D11 resources
      */
-    ~OsrRendererD3D11();
+    ~OsrRendererD3D11() override;
 
-    // Disable copy and move
-    OsrRendererD3D11(const OsrRendererD3D11&) = delete;
-    OsrRendererD3D11& operator=(const OsrRendererD3D11&) = delete;
-    OsrRendererD3D11(OsrRendererD3D11&&) = delete;
-    OsrRendererD3D11& operator=(OsrRendererD3D11&&) = delete;
-
-    /**
-     * @brief Initialize D3D11 renderer
-     * @return true on success, false on failure
-     */
-    bool initialize();
-
-    /**
-     * @brief Uninitialize and release all resources
-     */
-    void uninitialize();
-
-    /**
-     * @brief Handle window resize event
-     * @param width New width
-     * @param height New height
-     */
-    void resize(int width, int height);
-
-    /**
-     * @brief Update frame data from CEF OnPaint callback (CPU software rendering)
-     * @param type Paint element type (View or Popup)
-     * @param dirtyRects List of dirty rectangles requiring update
-     * @param buffer Pixel buffer pointer (BGRA format)
-     * @param width Buffer width in pixels
-     * @param height Buffer height in pixels
-     */
-    void updateFrameData(CefRenderHandler::PaintElementType type,
-                         const CefRenderHandler::RectList& dirtyRects,
-                         const void* buffer,
-                         int width,
-                         int height);
-
-    /**
-     * @brief Update shared texture from CEF OnAcceleratedPaint callback (GPU hardware-accelerated rendering)
-     * @param type Paint element type (View or Popup)
-     * @param info Accelerated paint info containing the shared texture handle
-     */
-    void updateSharedTexture(CefRenderHandler::PaintElementType type,
-                             const CefAcceleratedPaintInfo& info);
-
-    /**
-     * @brief Render current frame to window
-     */
-    void render();
-
-    /**
-     * @brief Update popup visibility
-     * @param visible true to show, false to hide
-     */
-    void updatePopupVisibility(bool visible);
-
-    /**
-     * @brief Update popup rectangle region
-     * @param rect Popup rectangle (coordinates relative to view)
-     */
-    void updatePopupRect(const CefRect& rect);
+    // OsrRenderer interface
+    bool initialize() override;
+    void uninitialize() override;
+    void setBounds(int x, int y, int width, int height) override;
+    void onPaint(CefRenderHandler::PaintElementType type,
+                 const CefRenderHandler::RectList& dirtyRects,
+                 const void* buffer,
+                 int width,
+                 int height) override;
+    void onAcceleratedPaint(CefRenderHandler::PaintElementType type,
+                            const CefRenderHandler::RectList& dirtyRects,
+                            const CefAcceleratedPaintInfo& info) override;
+    void render() override;
 
 protected:
-    /**
-     * @brief Create D3D11 device and swap chain
-     * @return true on success, false on failure
-     */
     bool createDeviceAndSwapchain();
-
-    /**
-     * @brief Create shader resources (textures and shader resource views)
-     * @return true on success, false on failure
-     */
     bool createShaderResource();
-
-    /**
-     * @brief Create sampler state
-     * @return true on success, false on failure
-     */
     bool createSampler();
-
-    /**
-     * @brief Create blend state
-     * @return true on success, false on failure
-     */
     bool createBlender();
-
-    /**
-     * @brief Create render target view
-     * @return true on success, false on failure
-     */
     bool createRenderTargetView();
-
-    /**
-     * @brief Setup rendering pipeline
-     */
     void setupPipeline();
-
-    /**
-     * @brief Handle D3D11 device lost recovery
-     */
     void handleDeviceLost();
 
     /**
@@ -164,9 +85,7 @@ protected:
                                 ID3D11Buffer** ppBuffer);
 
 private:
-    HWND _hwnd;   ///< Target window handle
-    int _width;   ///< Rendering area width
-    int _height;  ///< Rendering area height
+    HWND _hwnd = nullptr;
 
     // D3D11 device and context
     Microsoft::WRL::ComPtr<ID3D11Device> _d3dDevice;
@@ -183,19 +102,19 @@ private:
     Microsoft::WRL::ComPtr<ID3D11BlendState> _blenderState;
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> _renderTargetView;
 
-    // View texture resources
+    // View texture resources (for software rendering via onPaint)
     Microsoft::WRL::ComPtr<ID3D11Texture2D> _cefViewTexture;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> _cefViewShaderResourceView;
     Microsoft::WRL::ComPtr<ID3D11Buffer> _cefViewVertexBuffer;
 
-    // Popup texture resources
-    bool _showPopup;  ///< Whether popup is visible
-    CefRect _popupRect;  ///< Popup rectangle region
-    Microsoft::WRL::ComPtr<ID3D11Texture2D> _cefPopupTexture;
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> _cefPopupShaderResourceView;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> _cefPopupVertexBuffer;
+    // Shared texture resources (for hardware rendering via onAcceleratedPaint)
+    void* _sharedTextureHandle = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> _sharedTexture;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> _sharedTextureSRV;
 };
 
 }  // namespace cefview
+
+#endif  // defined(_WIN32)
 
 #endif  // OSRRENDERERD3D11_H

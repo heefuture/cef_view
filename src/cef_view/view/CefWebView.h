@@ -27,7 +27,7 @@ namespace cefview {
 
 class CefViewClientDelegate;
 class CefViewClient;
-class OsrRendererD3D11;
+class OsrRenderer;
 class OsrDragEvents;
 class OsrDropTargetWin;
 class OsrImeHandlerWin;
@@ -156,7 +156,7 @@ public:
      * @brief Check if developer tools is opened
      * @return true if opened, false otherwise
      */
-    virtual bool isDevToolsOpened() const { return _isDevToolsOpened; }
+    virtual bool isDevToolsOpened() const;
 
     /**
      * @brief Execute JavaScript code
@@ -406,12 +406,11 @@ protected:
     std::shared_ptr<CefViewClientDelegate> _clientDelegate;
 
     // OSR renderer
-    std::unique_ptr<OsrRendererD3D11> _osrRenderer;
+    std::unique_ptr<OsrRenderer> _osrRenderer;
 
     // Task queue to execute after browser is created
     using StdClosure = std::function<void(void)>;
     std::vector<StdClosure> _taskListAfterCreated;
-    bool _isDevToolsOpened = false;
 
     // Loading state and cached JS codes
     bool _isLoading = false;

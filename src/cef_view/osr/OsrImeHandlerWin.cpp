@@ -1,5 +1,5 @@
 /**
- * @file        OsrImeHandlerWin.cc
+ * @file        OsrImeHandlerWin.cpp
  * @brief       Implementation of Windows IME handler for OSR mode
  * @version     1.0
  * @author      cef_view project (based on Chromium ui/base/ime/win/imm32_manager.cc)

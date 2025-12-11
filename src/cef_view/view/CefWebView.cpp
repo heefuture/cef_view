@@ -11,6 +11,7 @@
 #include <osr/OsrDragdropEvents.h>
 #include <osr/OsrDragdropWin.h>
 #include <osr/OsrImeHandlerWin.h>
+#include <osr/OsrRenderer.h>
 #include <osr/OsrRendererD3D11.h>
 
 #include <client/CefViewClient.h>
@@ -330,9 +331,9 @@ void CefWebView::setBounds(int left, int top, int width, int height)
 
     ::SetWindowPos(_hwnd, nullptr, left, top, width, height, SWP_NOZORDER);
 
-    // Update D3D11 renderer size for OSR mode
+    // Update renderer size for OSR mode
     if (_settings.offScreenRenderingEnabled && _osrRenderer) {
-        _osrRenderer->resize(width, height);
+        _osrRenderer->setBounds(left, top, width, height);
     }
 
     // Notify CEF that the window was resized
@@ -487,28 +488,35 @@ HWND CefWebView::getWindowHandle() const
 
 bool CefWebView::openDevTools()
 {
-    if (_isDevToolsOpened) return true;
-
-    if (_browser && _browser.get()) {
-        CefWindowInfo windowInfo;
-        windowInfo.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
-        windowInfo.SetAsWindowless(nullptr);
-        CefBrowserSettings settings;
-        _browser->GetHost()->ShowDevTools(windowInfo, _client, settings, CefPoint());
-        _isDevToolsOpened = true;
+    if (!_browser) {
+        return false;
     }
-    return _isDevToolsOpened;
+
+    if (_browser->GetHost()->HasDevTools()) {
+        return true;
+    }
+
+    CefWindowInfo windowInfo;
+    windowInfo.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
+    windowInfo.SetAsWindowless(nullptr);
+    CefBrowserSettings settings;
+    _browser->GetHost()->ShowDevTools(windowInfo, _client, settings, CefPoint());
+    return true;
 }
 
 void CefWebView::closeDevTools()
 {
-    if (!_isDevToolsOpened)
-        return;
-
-    if (_browser && _browser.get()) {
+    if (_browser && _browser->GetHost()->HasDevTools()) {
         _browser->GetHost()->CloseDevTools();
-        _isDevToolsOpened = false;
     }
+}
+
+bool CefWebView::isDevToolsOpened() const
+{
+    if (_browser) {
+        return _browser->GetHost()->HasDevTools();
+    }
+    return false;
 }
 
 void CefWebView::evaluateJavaScript(const std::string& script)
@@ -621,7 +629,7 @@ void CefWebView::onPaint(CefRenderHandler::PaintElementType type,
                          int height)
 {
     // Update frame data from CPU memory buffer
-    _osrRenderer->updateFrameData(type, dirtyRects, buffer, width, height);
+    _osrRenderer->onPaint(type, dirtyRects, buffer, width, height);
 
     // Trigger rendering
     _osrRenderer->render();
@@ -631,8 +639,8 @@ void CefWebView::onAcceleratedPaint(CefRenderHandler::PaintElementType type,
                                     const CefRenderHandler::RectList& dirtyRects,
                                     const CefAcceleratedPaintInfo& info)
 {
-    // Update D3D11 renderer using the shared texture handle from CEF
-    _osrRenderer->updateSharedTexture(type, info);
+    // Update renderer using the shared texture handle from CEF
+    _osrRenderer->onAcceleratedPaint(type, dirtyRects, info);
 
     // Trigger rendering
     _osrRenderer->render();
@@ -970,9 +978,9 @@ void CefWebView::onSize() {
     int width = _clientRect.right - _clientRect.left;
     int height = _clientRect.bottom - _clientRect.top;
 
-    // Update D3D11 renderer size
+    // Update renderer size
     if (_osrRenderer && width > 0 && height > 0) {
-        _osrRenderer->resize(width, height);
+        _osrRenderer->setBounds(_clientRect.left, _clientRect.top, width, height);
     }
 
     // Notify CEF browser about size change

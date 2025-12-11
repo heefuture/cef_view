@@ -1,83 +1,100 @@
-// Copyright (c) 2012 The Chromium Embedded Framework Authors. All rights
-// reserved. Use of this source code is governed by a BSD-style license
-// that can be found in the LICENSE file.
-
-#ifndef CEF_OSR_RENDERER_H_
-#define CEF_OSR_RENDERER_H_
+/**
+ * @file OsrRenderer.h
+ * @brief Off-screen renderer base class for CEF rendering
+ *
+ * This file is part of CefView project.
+ * Licensed under BSD-style license.
+ */
+#ifndef OSRRENDERER_H
+#define OSRRENDERER_H
 #pragma once
 
-#include <vector>
-
-#include "include/cef_browser.h"
 #include "include/cef_render_handler.h"
-#include "tests/cefclient/browser/osr_renderer_settings.h"
 
-// Enable shader-based rendering for Linux only. Windows still uses OpenGL 1.1
-// to avoid the added complexity of linking newer OpenGL APIs on that platform.
-// MacOS has deprecated OpenGL and we should eventually provide a Metal-based
-// implementation on that platform.
+namespace cefview {
 
-class OsrRenderer
-{
+/**
+ * @brief Abstract base class for off-screen renderers
+ *
+ * Defines the common interface for CEF off-screen rendering implementations.
+ * Derived classes provide platform-specific rendering (D3D11, OpenGL).
+ */
+class OsrRenderer {
 public:
-    explicit OsrRenderer(bool transparent = false);
-    ~OsrRenderer();
+    virtual ~OsrRenderer() = default;
 
-    // Initialize the OpenGL environment.
-    void Initialize();
+    // Disable copy and move
+    OsrRenderer(const OsrRenderer&) = delete;
+    OsrRenderer& operator=(const OsrRenderer&) = delete;
+    OsrRenderer(OsrRenderer&&) = delete;
+    OsrRenderer& operator=(OsrRenderer&&) = delete;
 
-    // Clean up the OpenGL environment.
-    void Cleanup();
+    /**
+     * @brief Initialize renderer resources
+     * @return true on success, false on failure
+     */
+    virtual bool initialize() = 0;
 
-    // Render to the screen.
-    void Render();
+    /**
+     * @brief Release all renderer resources
+     */
+    virtual void uninitialize() = 0;
 
-    // Forwarded from CefRenderHandler callbacks.
-    void OnPopupShow(CefRefPtr<CefBrowser> browser, bool show);
-    // |rect| must be in pixel coordinates.
-    void OnPopupSize(CefRefPtr<CefBrowser> browser, const CefRect &rect);
-    void OnPaint(CefRefPtr<CefBrowser> browser,
-                 CefRenderHandler::PaintElementType type,
-                 const CefRenderHandler::RectList &dirtyRects,
-                 const void *buffer,
-                 int width,
-                 int height);
+    /**
+     * @brief Update renderer bounds
+     * @param x Left position
+     * @param y Top position
+     * @param width Width in pixels
+     * @param height Height in pixels
+     */
+    virtual void setBounds(int x, int y, int width, int height) = 0;
 
-    // Used when rendering with shared textures.
-    void OnAcceleratedPaint(CefRefPtr<CefBrowser> browser,
-                            CefRenderHandler::PaintElementType type,
-                            const CefRenderHandler::RectList &dirtyRects,
-                            unsigned int io_surface_tex,
-                            int width,
-                            int height);
+    /**
+     * @brief Handle CEF OnPaint callback (software rendering)
+     * @param type PET_VIEW or PET_POPUP
+     * @param dirtyRects Dirty rectangles to update
+     * @param buffer Pixel buffer (BGRA format)
+     * @param width Buffer width
+     * @param height Buffer height
+     */
+    virtual void onPaint(CefRenderHandler::PaintElementType type,
+                         const CefRenderHandler::RectList& dirtyRects,
+                         const void* buffer,
+                         int width,
+                         int height) = 0;
 
-    // Apply spin.
-    void SetSpin(float spinX, float spinY);
-    void IncrementSpin(float spinDX, float spinDY);
+    /**
+     * @brief Handle CEF OnAcceleratedPaint callback (hardware rendering)
+     * @param type PET_VIEW or PET_POPUP
+     * @param dirtyRects Dirty rectangles
+     * @param info Accelerated paint info (shared texture handle)
+     */
+    virtual void onAcceleratedPaint(CefRenderHandler::PaintElementType type,
+                                    const CefRenderHandler::RectList& dirtyRects,
+                                    const CefAcceleratedPaintInfo& info) = 0;
 
-    int GetViewWidth() const { return view_width_; }
-    int GetViewHeight() const { return view_height_; }
+    /**
+     * @brief Render current frame to window
+     */
+    virtual void render() = 0;
 
-    CefRect popup_rect() const { return popup_rect_; }
-    CefRect original_popup_rect() const { return original_popup_rect_; }
+    // Accessors
+    int viewX() const { return _viewX; }
+    int viewY() const { return _viewY; }
+    int viewWidth() const { return _viewWidth; }
+    int viewHeight() const { return _viewHeight; }
+    bool isTransparent() const { return _transparent; }
 
-    void ClearPopupRects();
+protected:
+    explicit OsrRenderer(bool transparent);
 
-private:
-    CefRect GetPopupRectInWebView(const CefRect &original_rect);
-
-    bool transparent_ = false;
-    bool initialized_ = false;
-    unsigned int texture_id_ = 0;
-    int view_width_ = 0;
-    int view_height_ = 0;
-    CefRect popup_rect_;
-    CefRect original_popup_rect_;
-    float spin_x_ = 0;
-    float spin_y_ = 0;
-    CefRect update_rect_;
-    bool show_update_rect_ = false;
-    DISALLOW_COPY_AND_ASSIGN(OsrRenderer);
+    bool _transparent = false;
+    int _viewX = 0;
+    int _viewY = 0;
+    int _viewWidth = 0;
+    int _viewHeight = 0;
 };
 
-#endif // CEF_TESTS_CEFCLIENT_BROWSER_OSR_RENDERER_H_
+}  // namespace cefview
+
+#endif  // OSRRENDERER_H
