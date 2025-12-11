@@ -26,14 +26,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return initResult;
     }
 
-#ifdef _DEBUG
-    // Allocate a console for std::cout output in debug mode
-    AllocConsole();
-    FILE* pCout;
-    freopen_s(&pCout, "CONOUT$", "w", stdout);
-    freopen_s(&pCout, "CONOUT$", "w", stderr);
-#endif
-
     auto mainWindow = std::make_unique<MainWindow>();
 
     auto config = std::make_unique<MainWindow::Config>();
