@@ -136,10 +136,16 @@ public:
     void setZoomLevel(float zoomLevel);
 
     /**
-     * @brief Get window handle of the browser
-     * @return Window handle
+     * @brief Get the view window handle
+     * @return View window handle (_hwnd)
      */
-    CefWindowHandle getWindowHandle() const;
+    HWND getWindowHandle() const;
+
+    /**
+     * @brief Get the CEF browser's internal window handle
+     * @return CEF browser window handle
+     */
+    CefWindowHandle getBrowserWindowHandle() const;
 
     /**
      * @brief Open developer tools
@@ -170,6 +176,14 @@ public:
      */
     virtual void setDeviceScaleFactor(float deviceScaleFactor);
 
+    /**
+     * @brief Handle shortcut key events (F5/Ctrl+R/F11/F12/Ctrl+Shift+I)
+     * @param[in] keyCode Windows virtual key code
+     * @param[in] modifiers CEF event modifier flags (EVENTFLAG_*)
+     * @return true if shortcut was handled
+     */
+    virtual bool handleShortcutKey(int keyCode, uint32_t modifiers);
+
 public:
 #pragma region RenderHandler
     /**
@@ -184,7 +198,7 @@ public:
      * @param[out] rect Rectangle to receive view bounds
      * @return true if successful
      */
-    virtual bool getViewRect(CefRect& rect);
+    bool getViewRect(CefRect& rect);
 
     /**
      * @brief Convert view coordinates to screen coordinates
@@ -211,11 +225,11 @@ public:
      * @param[in] width Buffer width in pixels
      * @param[in] height Buffer height in pixels
      */
-    virtual void onPaint(CefRenderHandler::PaintElementType type,
-                         const CefRenderHandler::RectList& dirtyRects,
-                         const void* buffer,
-                         int width,
-                         int height);
+    void onPaint(CefRenderHandler::PaintElementType type,
+                 const CefRenderHandler::RectList& dirtyRects,
+                 const void* buffer,
+                 int width,
+                 int height);
 
     /**
      * @brief Handle CEF OnAcceleratedPaint callback for GPU hardware-accelerated rendering
@@ -223,9 +237,9 @@ public:
      * @param[in] dirtyRects List of dirty rectangles to repaint
      * @param[in] info Accelerated paint information including shared texture handle
      */
-    virtual void onAcceleratedPaint(CefRenderHandler::PaintElementType type,
-                                    const CefRenderHandler::RectList& dirtyRects,
-                                    const CefAcceleratedPaintInfo& info);
+    void onAcceleratedPaint(CefRenderHandler::PaintElementType type,
+                            const CefRenderHandler::RectList& dirtyRects,
+                            const CefAcceleratedPaintInfo& info);
 
     /**
      * @brief Start a drag operation
@@ -375,6 +389,17 @@ protected:
 
     virtual void createCefBrowser();
 
+    /**
+     * @brief Initialize off-screen renderer and related resources
+     */
+    virtual void initOsrRenderer();
+
+    /**
+     * @brief Create off-screen renderer instance
+     * @return Unique pointer to OsrRenderer, override in subclass for custom renderer
+     */
+    virtual std::unique_ptr<OsrRenderer> createOsrRenderer();
+
     void destroy();
 
     CefRefPtr<CefBrowser> getBrowser() const;
@@ -384,7 +409,7 @@ protected:
     void onSize();
     void onFocus(bool setFocus);
     void onCaptureLost();
-    virtual void onKeyEvent(UINT message, WPARAM wParam, LPARAM lParam);
+    void onKeyEvent(UINT message, WPARAM wParam, LPARAM lParam);
     virtual void onPaint();
     bool onTouchEvent(UINT message, WPARAM wParam, LPARAM lParam);
 

@@ -7,8 +7,8 @@
 #include <cstdlib>   // getenv
 #endif
 
-#include <iostream>
 #include <filesystem>
+#include <utils/LogUtil.h>
 #include <memory>
 
 namespace fs = std::filesystem;
@@ -26,7 +26,7 @@ std::string PathUtil::GetAppDirectory() {
     DWORD length = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
 
     if (length == 0) {
-        std::cerr << "Failed to get module file name: " << GetLastError() << std::endl;
+        LOGE << "Failed to get module file name: " << GetLastError();
         return "";
     }
 
@@ -74,7 +74,7 @@ std::string PathUtil::GetResourcePath(const std::string& resourceName) {
         return fullPath.string();
     }
 
-    std::cerr << "Resource not found: " << resourceName << std::endl;
+    LOGW << "Resource not found: " << resourceName;
     return "";
 }
 
@@ -150,7 +150,7 @@ bool PathUtil::CreatePath(const std::string& path) {
         // Create directory and all parent directories
         return fs::create_directories(dirPath);
     } catch (const fs::filesystem_error& e) {
-        std::cerr << "Failed to create directory: " << path << ", error: " << e.what() << std::endl;
+        LOGE << "Failed to create directory: " << path << ", error: " << e.what();
         return false;
     }
 }
@@ -165,7 +165,7 @@ std::string PathUtil::GetAppCacheDirectory(const std::string& appName) {
 #if defined(_WIN32)
     char localAppData[MAX_PATH] = {};
     if (FAILED(SHGetFolderPathA(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, localAppData))) {
-        std::cerr << "Failed to get LocalAppData path" << std::endl;
+        LOGE << "Failed to get LocalAppData path";
         return std::string();
     }
     basePath = localAppData;
@@ -173,7 +173,7 @@ std::string PathUtil::GetAppCacheDirectory(const std::string& appName) {
 #elif defined(__APPLE__)
     const char* home = getenv("HOME");
     if (!home || home[0] == '\0') {
-        std::cerr << "Failed to get HOME environment variable" << std::endl;
+        LOGE << "Failed to get HOME environment variable";
         return std::string();
     }
     basePath = std::string(home) + "/Library/Caches";
@@ -185,7 +185,7 @@ std::string PathUtil::GetAppCacheDirectory(const std::string& appName) {
     } else {
         const char* home = getenv("HOME");
         if (!home || home[0] == '\0') {
-            std::cerr << "Failed to get HOME environment variable" << std::endl;
+            LOGE << "Failed to get HOME environment variable";
             return std::string();
         }
         basePath = std::string(home) + "/.cache";
@@ -195,7 +195,7 @@ std::string PathUtil::GetAppCacheDirectory(const std::string& appName) {
     std::string path = basePath + sPathSep + appName;
 
     if (!CreatePath(path)) {
-        std::cerr << "Failed to create cache directory: " << path << std::endl;
+        LOGE << "Failed to create cache directory: " << path;
         return std::string();
     }
 

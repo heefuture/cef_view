@@ -216,6 +216,21 @@ bool CefViewClient::OnDragEnter(CefRefPtr<CefBrowser> browser,
 #pragma endregion // CefDragHandler
 
 #pragma region CefKeyboardHandler
+bool CefViewClient::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
+                                  const CefKeyEvent& event,
+                                  CefEventHandle os_event,
+                                  bool* is_keyboard_shortcut)
+{
+    REQUIRE_UI_THREAD();
+    if (auto clientDelegate = _clientDelegate.lock()) {
+        // Handle shortcuts before browser processes the key event
+        if (clientDelegate->onPreKeyEvent(browser, event, os_event, is_keyboard_shortcut)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool CefViewClient::OnKeyEvent(CefRefPtr<CefBrowser> browser, const CefKeyEvent& event, CefEventHandle os_event)
 {
     REQUIRE_UI_THREAD();

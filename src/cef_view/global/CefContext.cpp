@@ -55,6 +55,9 @@ static CefSettings getCefSettings(const CefConfig& config) {
     // This must be enabled globally for any browser to use OSR mode.
     settings.windowless_rendering_enabled = config.windowlessRenderingEnabled;
 
+    // Set background color from config
+    settings.background_color = config.backgroundColor;
+
 #ifndef SUB_PROCESS_DISABLED
     std::string subProcessPath = PathUtil::GetAppWorkingDirectory() + "/browser.exe";
     CefString(&settings.browser_subprocess_path) = CefString(subProcessPath);

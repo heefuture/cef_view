@@ -118,6 +118,10 @@ public:
 #pragma endregion // CefDragHandler
 
 #pragma region CefKeyboardHandler
+    virtual bool OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
+                               const CefKeyEvent& event,
+                               CefEventHandle os_event,
+                               bool* is_keyboard_shortcut) override;
     virtual bool OnKeyEvent(CefRefPtr<CefBrowser> browser, const CefKeyEvent& event, CefEventHandle os_event) override;
 #pragma endregion // CefKeyboardHandler
 

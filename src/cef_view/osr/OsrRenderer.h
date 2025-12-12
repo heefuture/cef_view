@@ -78,17 +78,25 @@ public:
      */
     virtual void render() = 0;
 
+    /**
+     * @brief Set device scale factor for DPI awareness
+     * @param scaleFactor Scale factor (e.g., 1.0, 1.25, 1.5, 2.0)
+     */
+    virtual void setDeviceScaleFactor(float scaleFactor) { _deviceScaleFactor = scaleFactor; }
+
     // Accessors
     int viewX() const { return _viewX; }
     int viewY() const { return _viewY; }
     int viewWidth() const { return _viewWidth; }
     int viewHeight() const { return _viewHeight; }
     bool isTransparent() const { return _transparent; }
+    float deviceScaleFactor() const { return _deviceScaleFactor; }
 
 protected:
     explicit OsrRenderer(bool transparent);
 
     bool _transparent = false;
+    float _deviceScaleFactor = 1.0f;
     int _viewX = 0;
     int _viewY = 0;
     int _viewWidth = 0;

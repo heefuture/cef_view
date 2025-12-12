@@ -11,6 +11,7 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 
 namespace cefview {
 
@@ -34,6 +35,9 @@ struct CefConfig
     std::string logFilePath;
     // Subprocess path, only valid on Windows
     std::string subProcessPath;
+    // Background color for CEF browser (ARGB format: 0xAARRGGBB)
+    // Default is white (0xFFFFFFFF)
+    uint32_t backgroundColor = 0xFFFFFFFF;
 };
 
 } // namespace cefview

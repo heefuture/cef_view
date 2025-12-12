@@ -16,6 +16,7 @@
 #include <windows.h>
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
+#include <dcomp.h>
 #include <wrl.h>
 
 namespace cefview {
@@ -58,6 +59,7 @@ public:
 
 protected:
     bool createDeviceAndSwapchain();
+    bool createDirectComposition();
     bool createShaderResource();
     bool createSampler();
     bool createBlender();
@@ -84,7 +86,7 @@ protected:
                                 int viewHeight,
                                 ID3D11Buffer** ppBuffer);
 
-private:
+protected:
     HWND _hwnd = nullptr;
 
     // D3D11 device and context
@@ -92,7 +94,12 @@ private:
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> _d3dContext;
 
     // Swap chain
-    Microsoft::WRL::ComPtr<IDXGISwapChain> _swapChain;
+    Microsoft::WRL::ComPtr<IDXGISwapChain1> _swapChain;
+
+    // DirectComposition for transparent window
+    Microsoft::WRL::ComPtr<IDCompositionDevice> _dcompDevice;
+    Microsoft::WRL::ComPtr<IDCompositionTarget> _dcompTarget;
+    Microsoft::WRL::ComPtr<IDCompositionVisual> _dcompVisual;
 
     // Rendering pipeline
     Microsoft::WRL::ComPtr<ID3D11InputLayout> _inputLayout;

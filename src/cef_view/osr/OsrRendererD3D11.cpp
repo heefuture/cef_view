@@ -84,41 +84,34 @@ OsrRendererD3D11::~OsrRendererD3D11() {
 }
 
 bool OsrRendererD3D11::initialize() {
-    LOGD << "initialize() called";
-
     if (!createDeviceAndSwapchain()) {
         LOGE << "createDeviceAndSwapchain() FAILED";
         return false;
     }
-    LOGD << "createDeviceAndSwapchain() OK";
 
     if (!createShaderResource()) {
         LOGE << "createShaderResource() FAILED";
         uninitialize();
         return false;
     }
-    LOGD << "createShaderResource() OK";
 
     if (!createSampler()) {
         LOGE << "createSampler() FAILED";
         uninitialize();
         return false;
     }
-    LOGD << "createSampler() OK";
 
     if (!createBlender()) {
         LOGE << "createBlender() FAILED";
         uninitialize();
         return false;
     }
-    LOGD << "createBlender() OK";
 
     if (!createRenderTargetView()) {
         LOGE << "createRenderTargetView() FAILED";
         uninitialize();
         return false;
     }
-    LOGD << "createRenderTargetView() OK";
 
     setupPipeline();
     LOGI << "OsrRendererD3D11 initialized successfully";
@@ -139,6 +132,10 @@ void OsrRendererD3D11::uninitialize() {
     _pixelShader.Reset();
     _vertexShader.Reset();
     _inputLayout.Reset();
+    // Release DirectComposition resources before swap chain
+    _dcompVisual.Reset();
+    _dcompTarget.Reset();
+    _dcompDevice.Reset();
     _swapChain.Reset();
     _d3dContext.Reset();
     _d3dDevice.Reset();
@@ -174,27 +171,71 @@ bool OsrRendererD3D11::createDeviceAndSwapchain() {
     ComPtr<IDXGIAdapter> dxgiAdapter;
     HR_CHECK(dxgiDevice->GetAdapter(dxgiAdapter.GetAddressOf()));
 
-    ComPtr<IDXGIFactory> dxgiFactory;
-    HR_CHECK(dxgiAdapter->GetParent(IID_PPV_ARGS(dxgiFactory.GetAddressOf())));
+    ComPtr<IDXGIFactory2> dxgiFactory2;
+    HR_CHECK(dxgiAdapter->GetParent(IID_PPV_ARGS(dxgiFactory2.GetAddressOf())));
 
     // Create swap chain description
-    DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
-    swapChainDesc.BufferCount = 2;                                     // Double buffering
-    swapChainDesc.BufferDesc.Width = _viewWidth;
-    swapChainDesc.BufferDesc.Height = _viewHeight;
-    swapChainDesc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;      // BGRA format
-    swapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
-    swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
-    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.OutputWindow = _hwnd;
-    swapChainDesc.SampleDesc.Count = 1;                                // No multisampling
-    swapChainDesc.SampleDesc.Quality = 0;
-    swapChainDesc.Windowed = TRUE;                                     // Windowed mode
-    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;          // Flip mode
-    swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    DXGI_SWAP_CHAIN_DESC1 swapChainDesc1 = {};
+    swapChainDesc1.Width = _viewWidth;
+    swapChainDesc1.Height = _viewHeight;
+    swapChainDesc1.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    swapChainDesc1.Stereo = FALSE;
+    swapChainDesc1.SampleDesc.Count = 1;
+    swapChainDesc1.SampleDesc.Quality = 0;
+    swapChainDesc1.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapChainDesc1.BufferCount = 2;
+    swapChainDesc1.Scaling = DXGI_SCALING_STRETCH;
+    swapChainDesc1.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+    // Use premultiplied alpha for transparent window composition with DirectComposition
+    swapChainDesc1.AlphaMode = _transparent ? DXGI_ALPHA_MODE_PREMULTIPLIED : DXGI_ALPHA_MODE_IGNORE;
+    swapChainDesc1.Flags = 0;
 
-    HR_CHECK(dxgiFactory->CreateSwapChain(_d3dDevice.Get(), &swapChainDesc, _swapChain.GetAddressOf()));
-    HR_CHECK(dxgiFactory->MakeWindowAssociation(_hwnd, DXGI_MWA_NO_ALT_ENTER));
+    if (_transparent) {
+        // For transparent mode, use CreateSwapChainForComposition with DirectComposition
+        HR_CHECK(dxgiFactory2->CreateSwapChainForComposition(
+            _d3dDevice.Get(),
+            &swapChainDesc1,
+            nullptr,  // No restrict to output
+            _swapChain.GetAddressOf()));
+
+        // Create DirectComposition device and bind swap chain
+        HR_CHECK(createDirectComposition());
+    } else {
+        // For opaque mode, use CreateSwapChainForHwnd
+        swapChainDesc1.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+        HR_CHECK(dxgiFactory2->CreateSwapChainForHwnd(
+            _d3dDevice.Get(),
+            _hwnd,
+            &swapChainDesc1,
+            nullptr,  // No fullscreen desc
+            nullptr,  // No restrict to output
+            _swapChain.GetAddressOf()));
+    }
+
+    HR_CHECK(dxgiFactory2->MakeWindowAssociation(_hwnd, DXGI_MWA_NO_ALT_ENTER));
+
+    return true;
+}
+
+bool OsrRendererD3D11::createDirectComposition() {
+    ComPtr<IDXGIDevice> dxgiDevice;
+    HR_CHECK(_d3dDevice.As(&dxgiDevice));
+
+    // Create DirectComposition device
+    HR_CHECK(DCompositionCreateDevice(dxgiDevice.Get(), IID_PPV_ARGS(_dcompDevice.GetAddressOf())));
+
+    // Create composition target for the window
+    HR_CHECK(_dcompDevice->CreateTargetForHwnd(_hwnd, TRUE, _dcompTarget.GetAddressOf()));
+
+    // Create visual and set swap chain as content
+    HR_CHECK(_dcompDevice->CreateVisual(_dcompVisual.GetAddressOf()));
+    HR_CHECK(_dcompVisual->SetContent(_swapChain.Get()));
+
+    // Set the visual as root of the composition target
+    HR_CHECK(_dcompTarget->SetRoot(_dcompVisual.Get()));
+
+    // Commit the composition
+    HR_CHECK(_dcompDevice->Commit());
 
     return true;
 }
@@ -317,11 +358,13 @@ bool OsrRendererD3D11::createBlender() {
     blendDesc.AlphaToCoverageEnable = FALSE;
     blendDesc.IndependentBlendEnable = FALSE;
     blendDesc.RenderTarget[0].BlendEnable = TRUE;
-    blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+    // Use premultiplied alpha blending for transparent window composition
+    // Source is already premultiplied, so use ONE instead of SRC_ALPHA
+    blendDesc.RenderTarget[0].SrcBlend = _transparent ? D3D11_BLEND_ONE : D3D11_BLEND_SRC_ALPHA;
     blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
     blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
     blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-    blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+    blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
     blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
     blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
@@ -482,7 +525,6 @@ void OsrRendererD3D11::onAcceleratedPaint(CefRenderHandler::PaintElementType typ
         }
 
         _sharedTextureHandle = sharedHandle;
-        LOGD << "onAcceleratedPaint() shared texture opened " << sharedDesc.Width << "x" << sharedDesc.Height;
     }
 }
 
@@ -557,12 +599,16 @@ void OsrRendererD3D11::setBounds(int x, int y, int width, int height) {
     _viewX = x;
     _viewY = y;
 
-    if (width == _viewWidth && height == _viewHeight) {
+    // Apply DPI scaling for physical pixel dimensions
+    int physicalWidth = static_cast<int>(width * _deviceScaleFactor);
+    int physicalHeight = static_cast<int>(height * _deviceScaleFactor);
+
+    if (physicalWidth == _viewWidth && physicalHeight == _viewHeight) {
         return;
     }
 
-    _viewWidth = width;
-    _viewHeight = height;
+    _viewWidth = physicalWidth;
+    _viewHeight = physicalHeight;
 
     if (!_swapChain) {
         return;
@@ -572,7 +618,9 @@ void OsrRendererD3D11::setBounds(int x, int y, int width, int height) {
     _d3dContext->OMSetRenderTargets(0, nullptr, nullptr);
     _d3dContext->Flush();
 
-    HRESULT hr = _swapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+    // For transparent mode (DirectComposition), don't use ALLOW_MODE_SWITCH flag
+    UINT flags = _transparent ? 0 : DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    HRESULT hr = _swapChain->ResizeBuffers(0, physicalWidth, physicalHeight, DXGI_FORMAT_UNKNOWN, flags);
 
     if (FAILED(hr)) {
         handleDeviceLost();

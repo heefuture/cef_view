@@ -26,13 +26,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return initResult;
     }
 
-    auto mainWindow = std::make_unique<MainWindow>();
+    const int windowWidth = 1920;
+    const int windowHeight = 1080;
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+    int posX = (screenWidth - windowWidth) / 2;
+    int posY = (screenHeight - windowHeight) / 2;
 
     auto config = std::make_unique<MainWindow::Config>();
     config->showMode = MainWindow::ShowMode::NORMAL;
-    config->bounds = {0, 0, 1280, 800};  // 默认窗口大小
-    config->initiallyHidden = false;
+    config->bounds = {posX, posY, posX + windowWidth, posY + windowHeight};
 
+    auto mainWindow = std::make_unique<MainWindow>();
     mainWindow->init(std::move(config));
 
     MSG msg = {};

@@ -155,6 +155,20 @@ bool CefViewClientDelegate::onDragEnter(CefRefPtr<CefBrowser> browser,
 #pragma endregion // CefDragHandler
 
 #pragma region CefKeyboardHandler
+bool CefViewClientDelegate::onPreKeyEvent(CefRefPtr<CefBrowser> browser,
+                                          const CefKeyEvent& event,
+                                          CefEventHandle osEvent,
+                                          bool* isKeyboardShortcut)
+{
+    // Only handle key down events
+    if (event.type != KEYEVENT_RAWKEYDOWN && event.type != KEYEVENT_KEYDOWN) {
+        return false;
+    }
+
+    // Handle shortcuts before browser processes the key event
+    return _view->handleShortcutKey(event.windows_key_code, event.modifiers);
+}
+
 bool CefViewClientDelegate::onKeyEvent(CefRefPtr<CefBrowser> browser, const CefKeyEvent& event, CefEventHandle osEvent)
 {
     return false;

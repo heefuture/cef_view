@@ -262,6 +262,26 @@ HWND CefWebView::createSubWindow(HWND parentHwnd, int x, int y,int width, int he
     return ret;
 }
 
+void CefWebView::initOsrRenderer() {
+    _osrRenderer = createOsrRenderer();
+    if (_osrRenderer && !_osrRenderer->initialize()) {
+        _osrRenderer.reset();
+        return;
+    }
+    _osrRenderer->setDeviceScaleFactor(_deviceScaleFactor);
+
+    _dragEvents = std::make_shared<OsrDragEventsImpl>(this);
+    _dropTarget = OsrDropTargetWin::Create(_dragEvents.get(), _hwnd);
+    HRESULT registerRes = RegisterDragDrop(_hwnd, _dropTarget);
+    (void)registerRes;
+
+    _imeHandler = std::make_unique<OsrImeHandlerWin>(_hwnd);
+}
+
+std::unique_ptr<OsrRenderer> CefWebView::createOsrRenderer() {
+    return std::make_unique<OsrRendererD3D11>(_hwnd, _settings.width, _settings.height, _settings.transparentPaintingEnabled);
+}
+
 void CefWebView::createCefBrowser()
 {
     if (_clientDelegate) return;
@@ -295,21 +315,7 @@ void CefWebView::createCefBrowser()
     // CefBrowserHost::CreateBrowserSync(windowInfo, _client, CefString(url), browserSettings, nullptr, nullptr);
 
     if (_settings.offScreenRenderingEnabled) {
-        _osrRenderer = std::make_unique<OsrRendererD3D11>(_hwnd, _settings.width, _settings.height);
-        if (!_osrRenderer->initialize()) {
-            _osrRenderer.reset();
-            return;
-        }
-
-        _dragEvents = std::make_shared<OsrDragEventsImpl>(this);
-        _dropTarget = OsrDropTargetWin::Create(_dragEvents.get(), _hwnd);
-        HRESULT registerRes = RegisterDragDrop(_hwnd, _dropTarget);
-
-        _imeHandler = std::make_unique<OsrImeHandlerWin>(_hwnd);
-        // Enable Touch Events if requested
-        // if (client::MainContext::Get()->TouchEventsEnabled()) {
-        //     RegisterTouchWindow(hwnd_, 0);
-        // }
+        initOsrRenderer();
     }
 }
 
@@ -342,7 +348,7 @@ void CefWebView::setBounds(int left, int top, int width, int height)
     }
 
     // For native window mode, resize CEF's child window
-    HWND cefHwnd = getWindowHandle();
+    HWND cefHwnd = getBrowserWindowHandle();
     if (cefHwnd && cefHwnd != _hwnd) {
         // CEF child window coordinates are relative to _hwnd (not the main window)
         // So position is always (0, 0) and only size needs to be updated
@@ -365,7 +371,7 @@ void CefWebView::setVisible(bool bVisible /*= true*/)
     //_browser->GetHost()->WasHidden(!bVisible);
     //_browser->GetHost()->SetFocus(bVisible);
 
-    HWND hwnd = getWindowHandle();
+    HWND hwnd = getBrowserWindowHandle();
     if (hwnd && hwnd != _hwnd) {
         int cmdShow = bVisible ? SW_SHOW : SW_HIDE;
         ::ShowWindow(hwnd, cmdShow);
@@ -472,6 +478,11 @@ void CefWebView::setZoomLevel(float zoomLevel)
 
 HWND CefWebView::getWindowHandle() const
 {
+    return _hwnd;
+}
+
+HWND CefWebView::getBrowserWindowHandle() const
+{
     if (_browser && _browser.get()) {
         return _browser->GetHost()->GetWindowHandle();
     }
@@ -554,6 +565,10 @@ void CefWebView::setDeviceScaleFactor(float deviceScaleFactor)
         _browser->GetHost()->NotifyScreenInfoChanged();
         _browser->GetHost()->WasResized();
     }
+
+    if (_osrRenderer) {
+        _osrRenderer->setDeviceScaleFactor(deviceScaleFactor);
+    }
 }
 
 CefRefPtr<CefBrowser> CefWebView::getBrowser() const
@@ -617,6 +632,10 @@ bool CefWebView::getViewRect(CefRect& rect){
     rect.height = ScreenUtil::DeviceToLogical(_clientRect.bottom - _clientRect.top, _deviceScaleFactor);
     if (rect.height == 0) {
         rect.height = 1;
+    }
+
+    if (_osrRenderer) {
+        _osrRenderer->setBounds(rect.x, rect.y, rect.width, rect.height);
     }
 
     return true;
@@ -855,7 +874,6 @@ void CefWebView::onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam) {
         if (_mouseRotation) {
             // End rotation effect.
             _mouseRotation = false;
-            // _osrRenderer->setSpin(0, 0);
         }
         else {
             int x = GET_X_LPARAM(lParam);
@@ -880,9 +898,6 @@ void CefWebView::onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam) {
             // Apply rotation effect.
             _currentMousePos.x = x;
             _currentMousePos.y = y;
-            // _osrRenderer->IncrementSpin(
-            //     _currentMousePos.x - _lastMousePos.x,
-            //     _currentMousePos.y - _lastMousePos.y);
             _lastMousePos.x = _currentMousePos.x;
             _lastMousePos.y = _currentMousePos.y;
         }
@@ -1010,6 +1025,15 @@ void CefWebView::onCaptureLost() {
 }
 
 void CefWebView::onKeyEvent(UINT message, WPARAM wParam, LPARAM lParam) {
+    // Handle shortcut keys for key down events
+    if (message == WM_KEYDOWN || message == WM_SYSKEYDOWN) {
+        uint32_t modifiers = WinUtil::GetCefKeyboardModifiers(wParam, lParam);
+        if (handleShortcutKey(static_cast<int>(wParam), modifiers)) {
+            return;
+        }
+    }
+
+    // For non-OSR mode, CEF handles key events directly
     if (!_settings.offScreenRenderingEnabled) return;
 
     if (!_browser) return;
@@ -1055,14 +1079,40 @@ void CefWebView::onKeyEvent(UINT message, WPARAM wParam, LPARAM lParam) {
     _browser->GetHost()->SendKeyEvent(event);
 }
 
+bool CefWebView::handleShortcutKey(int keyCode, uint32_t modifiers) {
+    bool ctrlPressed = (modifiers & EVENTFLAG_CONTROL_DOWN) != 0;
+    bool shiftPressed = (modifiers & EVENTFLAG_SHIFT_DOWN) != 0;
+    // bool altPressed = (modifiers & EVENTFLAG_ALT_DOWN) != 0;
+
+    // F5: Reload
+    if (keyCode == VK_F5) {
+        refresh();
+        return true;
+    }
+
+    // Ctrl + R: Reload
+    if (ctrlPressed && keyCode == 'R') {
+        refresh();
+        return true;
+    }
+
+    // F12 or Ctrl+Shift+I: Open DevTools
+    if (keyCode == VK_F12 || (ctrlPressed && shiftPressed && keyCode == 'I')) {
+        openDevTools();
+        return true;
+    }
+
+    return false;
+}
+
 void CefWebView::onPaint() {
     if (!_settings.offScreenRenderingEnabled || !_osrRenderer) return;
     // Paint nothing here. Invalidate will cause OnPaint to be called for the
     //_osrRenderer->render();
 
-    if (_browser) {
-        _browser->GetHost()->Invalidate(PET_VIEW);
-    }
+    //if (_browser) {
+    //    _browser->GetHost()->Invalidate(PET_VIEW);
+    //}
 }
 
 bool CefWebView::onTouchEvent(UINT message, WPARAM wParam, LPARAM lParam) {
