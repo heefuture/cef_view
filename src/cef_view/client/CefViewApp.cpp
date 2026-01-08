@@ -14,7 +14,12 @@ namespace cefview {
 CefViewApp::CefViewApp() {
 }
 
-CefViewApp::CefViewApp(CefViewAppDelegateInterface::RefPtr delegate) {
+CefViewApp::CefViewApp(const CefConfig& config)
+    : _config(config) {
+}
+
+CefViewApp::CefViewApp(const CefConfig& config, CefViewAppDelegateInterface::RefPtr delegate)
+    : _config(config) {
     if (delegate) {
         _viewAppDelegates.insert(delegate);
     }

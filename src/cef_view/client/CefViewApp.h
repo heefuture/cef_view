@@ -18,6 +18,7 @@
 #include "include/cef_base.h"
 
 #include "CefViewAppDelegateInterface.h"
+#include <global/CefConfig.h>
 
 namespace cefview {
 
@@ -39,7 +40,8 @@ public:
 
 public:
     CefViewApp();
-    explicit CefViewApp(CefViewAppDelegateInterface::RefPtr delegate);
+    explicit CefViewApp(const CefConfig& config);
+    explicit CefViewApp(const CefConfig& config, CefViewAppDelegateInterface::RefPtr delegate);
     ~CefViewApp();
 
     // Register a delegate to handle app-level callbacks
@@ -100,6 +102,7 @@ private:
     // static void CreateRenderDelegates(RenderDelegateSet& delegates);
 
 private:
+    CefConfig _config;
     ViewAppDelegateSet _viewAppDelegates;
 
     IMPLEMENT_REFCOUNTING(CefViewApp);

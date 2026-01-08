@@ -42,6 +42,17 @@ public:
 #endif
 
     /**
+     * Run the CEF message loop. This will block until quitMessageLoop() is called.
+     * Use this instead of doMessageLoopWork() for proper IME support.
+     */
+    void runMessageLoop();
+
+    /**
+     * Quit the CEF message loop that was started by runMessageLoop().
+     */
+    void quitMessageLoop();
+
+    /**
      * Process CEF message loop work. Only call in single-threaded mode.
      */
     void doMessageLoopWork();

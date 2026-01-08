@@ -1,12 +1,12 @@
 
 /**
-* @file        mainWindow.h
-* @brief
-* @version     1.0
-* @author      heefuture
-* @date        2025.07.31
-* @copyright
-*/
+ * @file        MainWindow.h
+ * @brief       Main application window implementation
+ * @version     1.0
+ * @author      heefuture
+ * @date        2025.07.31
+ * @copyright
+ */
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 #pragma once
@@ -16,154 +16,178 @@
 #include <list>
 #include <vector>
 
+#include <utils/AcrylicHelper.h>
+
 namespace cefview {
 class CefWebView;
 }
 
 using cefview::CefWebView;
-// Windows implementation of a top-level native window in the browser process.
-// The methods of this class must be called on the main thread unless otherwise
-// indicated.
+
+/**
+ * @brief Windows implementation of a top-level native window in the browser process
+ * 
+ * The methods of this class must be called on the main thread unless otherwise indicated.
+ */
 class MainWindow
 {
 public:
+    /**
+     * @brief Window show mode enumeration
+     */
     enum class ShowMode {
         NORMAL,
-        // Show the window as minimized.
-        MINIMIZED,
-        // Show the window as maximized.
-        MAXIMIZED,
-        // Show the window as fullscreen.
-        FULLSCREEN,
-        // Show the window without activating it.
-        NO_ACTIVATE,
-        // Show the window as hidden (no dock thumbnail).
-        // Only supported on MacOS.
-        // CEF_SHOW_STATE_HIDDEN,
+        MINIMIZED,      ///< Show the window as minimized
+        MAXIMIZED,      ///< Show the window as maximized
+        FULLSCREEN,     ///< Show the window as fullscreen
+        NO_ACTIVATE,    ///< Show the window without activating it
     };
 
-    // Used to configure how a MainWindow is created.
+    /**
+     * @brief Configuration structure for MainWindow creation
+     */
     struct Config
     {
-        // Configure the show mode.
-        ShowMode showMode = ShowMode::NORMAL;
-        // If true the window will always display above other windows.
-        bool alwaysOnTop = false;
-        // If true the window will be created initially hidden.
-        bool initiallyHidden = false;
+        ShowMode showMode = ShowMode::NORMAL;   ///< Configure the show mode
+        bool alwaysOnTop = false;               ///< Window will always display above other windows
+        bool initiallyHidden = false;           ///< Window will be created initially hidden
         bool noActivate = false;
-        // Requested window position. If |bounds| and |source_bounds| are empty the
-        // default window size and location will be used.
-        RECT bounds;
-        // Position of the UI element that triggered the window creation. If |bounds|
-        // is empty and |source_bounds| is non-empty the new window will be positioned
-        // relative to |sourceBounds|. This is currently only implemented for Views-
-        // hosted windows when |initiallyHidden| is also true.
-        RECT sourceBounds;
+        RECT bounds;                            ///< Requested window position and size
+        RECT sourceBounds;                      ///< Position of UI element that triggered window creation
     };
 
-    // Constructor may be called on any thread.
+    /**
+     * @brief Constructor (may be called on any thread)
+     */
     explicit MainWindow();
     ~MainWindow();
 
-    // RootWindow methods.
+    /**
+     * @brief Initialize the main window with configuration
+     * @param config Window configuration
+     */
     void init(std::unique_ptr<Config> config);
+    
+    /**
+     * @brief Show the window with specified mode
+     * @param mode Show mode
+     */
     void show(ShowMode mode);
+    
+    /**
+     * @brief Hide the window
+     */
     void hide();
+    
+    /**
+     * @brief Set window bounds
+     * @param x X position
+     * @param y Y position
+     * @param width Window width
+     * @param height Window height
+     */
     void setBounds(int x, int y, size_t width, size_t height);
+    
+    /**
+     * @brief Close the window
+     * @param force Force close without prompting
+     */
     void close(bool force);
+    
+    /**
+     * @brief Set device scale factor for DPI scaling
+     * @param deviceScaleFactor Scale factor
+     */
     void setDeviceScaleFactor(float deviceScaleFactor);
+    
+    /**
+     * @brief Get current device scale factor
+     * @return Scale factor
+     */
     float getDeviceScaleFactor() const;
 
+    /**
+     * @brief Get window handle
+     * @return HWND handle
+     */
     HWND getWindowHandle() const;
 
-    // CefRefPtr<CefBrowser> getBrowser() const;
-
-    // T078-T086: 多视图管理（Phase 6）
+    /**
+     * @brief Create top view browser
+     */
     void createTopView();
+    
+    /**
+     * @brief Create bottom view browsers
+     */
     void createBottomViews();
+    
+    /**
+     * @brief Set active bottom view
+     * @param index View index
+     */
     void setActiveBottomView(int index);
+    
+    /**
+     * @brief Update window layout
+     */
     void updateLayout();
 
 private:
-    // void createBrowserWindow(const std::string& startup_url);
     void createRootWindow(bool initiallyHidden);
     void createCefViews();
 
-    // Register the root window class.
+    /**
+     * @brief Register the root window class
+     */
     static void RegisterRootClass(HINSTANCE hInstance,
                                   const std::wstring &windowClass,
                                   HBRUSH backgroundBrush);
 
-    // Window procedure for the edit field.
-    static LRESULT CALLBACK EditWndProc(HWND hWnd,
-                                        UINT message,
-                                        WPARAM wParam,
-                                        LPARAM lParam);
-
-    // Window procedure for the find dialog.
-    static LRESULT CALLBACK FindWndProc(HWND hWnd,
-                                        UINT message,
-                                        WPARAM wParam,
-                                        LPARAM lParam);
-
-    // Window procedure for the root window.
+    /**
+     * @brief Window procedure for the root window
+     */
     static LRESULT CALLBACK RootWndProc(HWND hWnd,
                                         UINT message,
                                         WPARAM wParam,
                                         LPARAM lParam);
 
-    // Event handlers.
+    // Event handlers
     void onPaint();
     void onFocus();
     void onActivate(bool active);
     void onSize(bool minimized);
     void onMove();
     void onDpiChanged(WPARAM wParam, LPARAM lParam);
-    bool onEraseBkgnd();
     bool onCommand(UINT id);
-    void onFind();
-    void onFindEvent();
     void onAbout();
     void onNCCreate(LPCREATESTRUCT lpCreateStruct);
     void onCreate(LPCREATESTRUCT lpCreateStruct);
     bool onClose();
     void onDestroyed();
 
-    void NotifyDestroyedIfDone();
-
-    static void SaveWindowRestoreOnUIThread(const WINDOWPLACEMENT &placement);
-
 private:
     bool _initialized = false;
     bool _alwaysOnTop = false;
     float _deviceScaleFactor = 1.0f;
-    RECT _initialBounds;
+    RECT _initialBounds = {};
     ShowMode _initialShowMode = ShowMode::NORMAL;
 
-    // T078: 顶部视图（独立浏览器）
-    std::shared_ptr<CefWebView> _topView;
+    std::shared_ptr<CefWebView> _topView;                        ///< Top view (independent browser)
+    std::vector<std::shared_ptr<CefWebView>> _bottomViews;       ///< Bottom view list (overlay display)
+    int _activeBottomViewIndex = 0;                              ///< Currently active bottom view index
 
-    // T078: 底部视图列表（叠加显示的多个浏览器）
-    std::vector<std::shared_ptr<CefWebView>> _bottomViews;
+    HWND _btnSwitch1 = nullptr;                                  ///< Switch button 1
+    HWND _btnSwitch2 = nullptr;                                  ///< Switch button 2
+    HWND _btnSwitch3 = nullptr;                                  ///< Switch button 3
 
-    // T079: 当前激活的底部视图索引
-    int _activeBottomViewIndex = 0;
+    cefview::BackdropType _backdropType = cefview::BackdropType::kAcrylic;  ///< Acrylic effect type
 
-    // T085: 切换按钮句柄
-    HWND _btnSwitch1 = nullptr;
-    HWND _btnSwitch2 = nullptr;
-    HWND _btnSwitch3 = nullptr;
-
-    // Main window.
-    HWND _hwnd = nullptr;
-
-    // Draggable region.
-    HRGN _draggableRegion = nullptr;
+    HWND _hwnd = nullptr;                                        ///< Main window handle
+    HRGN _draggableRegion = nullptr;                             ///< Draggable region
 
     bool _windowDestroyed = false;
     bool _windowCreated = false;
-
     bool _calledEnableNonClientDpiScaling = false;
 };
 

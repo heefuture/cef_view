@@ -15,6 +15,7 @@
 
 #include "BytesWriteHandler.h"
 #include "include/wrapper/cef_helpers.h"
+#include "include/cef_image.h"
 #include "utils/WinUtil.h"
 
 namespace cefview {
@@ -414,6 +415,13 @@ CefBrowserHost::DragOperationsMask OsrDropTargetWin::StartDragging(CefRefPtr<Cef
         DWORD effect = DragOperationToDropEffect(allowedOps);
         _currentDragData = dragData->Clone();
         _currentDragData->ResetFileContents();
+
+        // Get device scale factor from window
+        float scaleFactor = WinUtil::GetWindowScaleFactor(_hWnd);
+
+        // Set drag image before starting drag operation
+        dropSource->SetDragImage(dragData, dataObject, scaleFactor);
+
         HRESULT res = DoDragDrop(dataObject, dropSource, effect, &resEffect);
         if (res != DRAGDROP_S_DROP) {
             resEffect = DROPEFFECT_NONE;
@@ -458,6 +466,146 @@ HRESULT OsrDropTargetWin::Drop(IDataObject* dataObject,
 
 CComPtr<DropSourceWin> DropSourceWin::Create() {
   return CComPtr<DropSourceWin>(new DropSourceWin());
+}
+
+HBITMAP DropSourceWin::CreateBitmapFromCefImage(CefRefPtr<CefImage> cefImage, float scaleFactor, int& outWidth, int& outHeight) {
+    if (!cefImage || cefImage->IsEmpty()) {
+        return nullptr;
+    }
+
+    // Get image dimensions
+    int pixelWidth = static_cast<int>(cefImage->GetWidth());
+    int pixelHeight = static_cast<int>(cefImage->GetHeight());
+    if (pixelWidth == 0 || pixelHeight == 0) {
+        return nullptr;
+    }
+
+    // Get bitmap data as BGRA
+    CefRefPtr<CefBinaryValue> bitmapData = cefImage->GetAsBitmap(
+        scaleFactor, CEF_COLOR_TYPE_BGRA_8888, CEF_ALPHA_TYPE_PREMULTIPLIED,
+        pixelWidth, pixelHeight);
+
+    if (!bitmapData || bitmapData->GetSize() == 0) {
+        return nullptr;
+    }
+
+    size_t dataSize = bitmapData->GetSize();
+    std::vector<unsigned char> buffer(dataSize);
+    bitmapData->GetData(&buffer[0], dataSize, 0);
+
+    // Create DIB section
+    BITMAPINFO bmi = {};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = static_cast<LONG>(pixelWidth);
+    bmi.bmiHeader.biHeight = -static_cast<LONG>(pixelHeight);  // Top-down DIB
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    void* bits = nullptr;
+    HDC hdc = GetDC(nullptr);
+    HBITMAP hBitmap = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    ReleaseDC(nullptr, hdc);
+
+    if (hBitmap && bits) {
+        memcpy(bits, &buffer[0], dataSize);
+        outWidth = static_cast<int>(pixelWidth);
+        outHeight = static_cast<int>(pixelHeight);
+    }
+
+    return hBitmap;
+}
+
+HBITMAP DropSourceWin::CreatePlaceholderBitmap(int width, int height) {
+    // Create a semi-transparent gray placeholder bitmap
+    BITMAPINFO bmi = {};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biHeight = -height;  // Top-down DIB
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    void* bits = nullptr;
+    HDC hdc = GetDC(nullptr);
+    HBITMAP hBitmap = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    ReleaseDC(nullptr, hdc);
+
+    if (hBitmap && bits) {
+        // Fill with semi-transparent gray (BGRA format, premultiplied alpha)
+        uint32_t* pixels = static_cast<uint32_t*>(bits);
+        // Gray color with 50% alpha: R=128, G=128, B=128, A=128
+        // Premultiplied: R=64, G=64, B=64, A=128
+        uint32_t grayColor = 0x80404040;  // BGRA: B=0x40, G=0x40, R=0x40, A=0x80
+
+        int totalPixels = width * height;
+        for (int i = 0; i < totalPixels; ++i) {
+            // Draw border (darker)
+            int x = i % width;
+            int y = i / width;
+            if (x == 0 || x == width - 1 || y == 0 || y == height - 1) {
+                pixels[i] = 0xCC333333;  // Darker border
+            } else {
+                pixels[i] = grayColor;
+            }
+        }
+    }
+
+    return hBitmap;
+}
+
+void DropSourceWin::SetDragImage(CefRefPtr<CefDragData> dragData, IDataObject* dataObject, float scaleFactor) {
+    if (!dragData || !dataObject) {
+        return;
+    }
+
+    // Create IDragSourceHelper to set drag image
+    CComPtr<IDragSourceHelper> dragSourceHelper;
+    HRESULT hr = CoCreateInstance(CLSID_DragDropHelper, nullptr, CLSCTX_INPROC_SERVER,
+                                   IID_IDragSourceHelper, reinterpret_cast<void**>(&dragSourceHelper));
+    if (FAILED(hr) || !dragSourceHelper) {
+        return;
+    }
+
+    HBITMAP hBitmap = nullptr;
+    int imageWidth = 0;
+    int imageHeight = 0;
+    CefPoint hotspot = {0, 0};
+
+    // Try to get image from drag data
+    if (dragData->HasImage()) {
+        CefRefPtr<CefImage> cefImage = dragData->GetImage();
+        if (cefImage && !cefImage->IsEmpty()) {
+            hBitmap = CreateBitmapFromCefImage(cefImage, scaleFactor, imageWidth, imageHeight);
+            hotspot = dragData->GetImageHotspot();
+        }
+    }
+
+    // If no image available, create a placeholder
+    if (!hBitmap) {
+        imageWidth = 100;
+        imageHeight = 30;
+        hBitmap = CreatePlaceholderBitmap(imageWidth, imageHeight);
+        hotspot.x = imageWidth / 2;
+        hotspot.y = imageHeight / 2;
+    }
+
+    if (hBitmap) {
+        SHDRAGIMAGE dragImage = {};
+        dragImage.sizeDragImage.cx = imageWidth;
+        dragImage.sizeDragImage.cy = imageHeight;
+        dragImage.ptOffset.x = hotspot.x;
+        dragImage.ptOffset.y = hotspot.y;
+        dragImage.hbmpDragImage = hBitmap;
+        dragImage.crColorKey = CLR_NONE;  // No color key, use alpha
+
+        hr = dragSourceHelper->InitializeFromBitmap(&dragImage, dataObject);
+        if (FAILED(hr)) {
+            // If failed, clean up the bitmap
+            DeleteObject(hBitmap);
+        }
+        // Note: If successful, the system takes ownership of the bitmap
+    }
 }
 
 HRESULT DropSourceWin::GiveFeedback(DWORD dwEffect) {

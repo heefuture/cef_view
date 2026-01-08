@@ -124,7 +124,7 @@ private:
 };
 
 /**
- * @brief Drop source implementation for Windows
+ * @brief Drop source implementation for Windows with drag image support
  */
 class DropSourceWin : public IDropSource {
 public:
@@ -133,6 +133,14 @@ public:
      * @return Drop source instance
      */
     static CComPtr<DropSourceWin> Create();
+
+    /**
+     * @brief Set drag image from CefDragData
+     * @param dragData Drag data containing image
+     * @param dataObject Data object to associate with drag image
+     * @param scaleFactor Device scale factor
+     */
+    void SetDragImage(CefRefPtr<CefDragData> dragData, IDataObject* dataObject, float scaleFactor);
 
     // IDropSource implementation:
     HRESULT __stdcall GiveFeedback(DWORD dwEffect) override;
@@ -145,6 +153,25 @@ public:
 protected:
     explicit DropSourceWin() : _refCount(0) {}
     virtual ~DropSourceWin() = default;
+
+private:
+    /**
+     * @brief Create HBITMAP from CefImage
+     * @param cefImage CEF image
+     * @param scaleFactor Device scale factor
+     * @param outWidth Output image width
+     * @param outHeight Output image height
+     * @return HBITMAP handle or nullptr
+     */
+    HBITMAP CreateBitmapFromCefImage(CefRefPtr<CefImage> cefImage, float scaleFactor, int& outWidth, int& outHeight);
+
+    /**
+     * @brief Create placeholder drag image
+     * @param width Image width
+     * @param height Image height
+     * @return HBITMAP handle
+     */
+    HBITMAP CreatePlaceholderBitmap(int width, int height);
 };
 
 /**

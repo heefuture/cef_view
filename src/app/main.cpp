@@ -18,6 +18,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // Initialize CEF context
     cefview::CefConfig cefConfig;
+    cefConfig.backgroundColor = 0x00000000;  // Fully transparent background
+
+    // Follow system language settings
+    wchar_t localeName[LOCALE_NAME_MAX_LENGTH];
+    if (GetUserDefaultLocaleName(localeName, LOCALE_NAME_MAX_LENGTH) > 0) {
+        int size = WideCharToMultiByte(CP_UTF8, 0, localeName, -1, nullptr, 0, nullptr, nullptr);
+        if (size > 0) {
+            std::string langStr(size - 1, '\0');
+            WideCharToMultiByte(CP_UTF8, 0, localeName, -1, &langStr[0], size, nullptr, nullptr);
+            cefConfig.locale = langStr;
+            // Set Accept-Language, add English as fallback for non-English locales
+            cefConfig.acceptLanguageList = langStr;
+            if (langStr.find("en") != 0) {
+                cefConfig.acceptLanguageList += ",en-US;q=0.9,en;q=0.8";
+            }
+        }
+    }
+
     cefview::CefContext context(cefConfig);
 
     int initResult = context.initialize(browserDelegate, rendererDelegate);

@@ -109,14 +109,14 @@ bool CefViewAppDelegateRenderer::onProcessMessageReceived(CefRefPtr<CefBrowser> 
                                                           CefProcessId sourceProcess,
                                                           CefRefPtr<CefProcessMessage> message) {
     assert(sourceProcess == PID_BROWSER);
-    // 收到 browser 的消息回复
+    // Received message reply from browser process
     const CefString& messageName = message->GetName();
     if (messageName == kExecuteJsCallbackMessage) {
         int callbackId = message->GetArgumentList()->GetInt(0);
         bool hasError = message->GetArgumentList()->GetBool(1);
         CefString jsonString = message->GetArgumentList()->GetString(2);
 
-        // 将收到的参数通过管理器传递给调用时传递的回调函数
+        // Pass received parameters to callback function via manager
         _renderJsBridge->executeJSCallbackFunc(callbackId, hasError, jsonString);
     } else if (messageName == kCallJsFunctionMessage) {
         CefString functionName = message->GetArgumentList()->GetString(0);
@@ -124,8 +124,8 @@ bool CefViewAppDelegateRenderer::onProcessMessageReceived(CefRefPtr<CefBrowser> 
         int cppCallbackId = message->GetArgumentList()->GetInt(2);
         CefString frameId = message->GetArgumentList()->GetString(3);
 
-        // 通过 C++ 执行一个已经注册过的 JS 方法
-        // frame_id 小于 0 则可能是 browser 进程的 browser 是无效的，所以这里为了避免出现错误就获取一个顶层 frame 执行代码
+        // Execute a registered JS function from C++
+        // If frame_id is invalid (browser process browser may be invalid), get main frame to execute
         _renderJsBridge->executeJSFunc(functionName, jsonString,
                                        frameId.empty() ? browser->GetMainFrame() : browser->GetFrameByIdentifier(frameId),
                                        cppCallbackId);

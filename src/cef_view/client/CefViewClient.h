@@ -28,6 +28,7 @@ class CefViewClient : public CefClient,
                       public CefKeyboardHandler,
                       public CefLifeSpanHandler,
                       public CefLoadHandler,
+                      public CefPermissionHandler,
                       public CefRenderHandler,
                       public CefRequestHandler
 {
@@ -39,9 +40,6 @@ public:
 
     // // Set the size of CEF rendering content
     // void NotifyRectUpdated();
-
-    // Check if the currently focused element in the web page is editable
-    bool IsCurFieldEditable(){ return _isFocusOnEditableField; }
 
     CefRefPtr<CefBrowser> GetBrowser(){ return _browser; }
 
@@ -60,6 +58,7 @@ public:
     virtual CefRefPtr<CefKeyboardHandler> GetKeyboardHandler() override { return this; }
     virtual CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
     virtual CefRefPtr<CefLoadHandler> GetLoadHandler() override { return this; }
+    virtual CefRefPtr<CefPermissionHandler> GetPermissionHandler() override { return this; }
     virtual CefRefPtr<CefRenderHandler> GetRenderHandler() override { return this; }
     virtual CefRefPtr<CefRequestHandler> GetRequestHandler() override { return this; }
     virtual bool OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
@@ -199,6 +198,14 @@ public:
                                               const CefRenderHandler::RectList& character_bounds) override;
 #pragma endregion // CefRenderHandler
 
+#pragma region CefPermissionHandler
+    virtual bool OnShowPermissionPrompt(CefRefPtr<CefBrowser> browser,
+                                        uint64_t prompt_id,
+                                        const CefString& requesting_origin,
+                                        uint32_t requested_permissions,
+                                        CefRefPtr<CefPermissionPromptCallback> callback) override;
+#pragma endregion // CefPermissionHandler
+
 #pragma region CefRequestHandler
     virtual bool OnBeforeBrowse(CefRefPtr<CefBrowser> browser,
                                 CefRefPtr<CefFrame> frame,
@@ -219,7 +226,6 @@ protected:
     BrowserList                                 _popupBrowsers;
     int                                         _browserId{0};
     CefRefPtr<CefBrowser>                       _browser;
-    bool                                        _isFocusOnEditableField{false};
     bool                                        _isClosing{false};
     CefViewClientDelegateInterface::WeakPtr     _clientDelegate;
 };

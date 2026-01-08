@@ -76,11 +76,10 @@ bool CefViewClient::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser, CefR
     // Check for messages from the client renderer.
     std::string message_name = message->GetName();
     if (message_name == kFocusedNodeChangedMessage) {
-        // A message is sent from ClientRenderDelegate to tell us whether the
-        // currently focused DOM node is editable. Use of |m_bFocusOnEditableField|
-        // is redundant with CefKeyEvent.focus_on_editable_field in OnPreKeyEvent
-        // but is useful for demonstration purposes.
-        _isFocusOnEditableField = message->GetArgumentList()->GetBool(0);
+        // Notify delegate about focus change
+        if (auto clientDelegate = _clientDelegate.lock()) {
+            clientDelegate->onFocusOnEditableFieldChanged(message->GetArgumentList()->GetBool(0));
+        }
         return true;
     }
 
@@ -516,6 +515,21 @@ void CefViewClient::OnImeCompositionRangeChanged(
     }
 }
 #pragma endregion // CefRenderHandler
+
+#pragma region CefPermissionHandler
+bool CefViewClient::OnShowPermissionPrompt(CefRefPtr<CefBrowser> browser,
+                                           uint64_t prompt_id,
+                                           const CefString& requesting_origin,
+                                           uint32_t requested_permissions,
+                                           CefRefPtr<CefPermissionPromptCallback> callback)
+{
+    REQUIRE_UI_THREAD();
+    if (auto clientDelegate = _clientDelegate.lock()) {
+        return clientDelegate->onShowPermissionPrompt(browser, prompt_id, requesting_origin, requested_permissions, callback);
+    }
+    return false;
+}
+#pragma endregion // CefPermissionHandler
 
 #pragma region CefRequestHandler
 bool CefViewClient::OnBeforeBrowse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request, bool user_gesture, bool is_redirect)

@@ -47,10 +47,15 @@ static CefSettings getCefSettings(const CefConfig& config) {
         CefString(&settings.locales_dir_path) = CefString(config.localesDirPath);
     }
 
+    // Set locale from config
+    if (!config.locale.empty()) {
+        CefString(&settings.locale) = CefString(config.locale);
+    }
+
     // Enable remote debugging on the specified port.
     settings.remote_debugging_port = config.remoteDebuggingPort;
     settings.no_sandbox = config.noSandbox;
-    
+
     // Enable windowless (off-screen) rendering support.
     // This must be enabled globally for any browser to use OSR mode.
     settings.windowless_rendering_enabled = config.windowlessRenderingEnabled;
@@ -109,12 +114,12 @@ int CefContext::initialize(int argc,
     // Create CefViewApp and register appropriate delegate based on process type
     CefRefPtr<CefViewApp> app;
     if (processType == "browser") {
-        app = new CefViewApp(browserAppDelegate);
+        app = new CefViewApp(_config, browserAppDelegate);
     } else if (processType == "renderer") {
-        app = new CefViewApp(rendererAppDelegate);
+        app = new CefViewApp(_config, rendererAppDelegate);
     } else {
         // Other process types (GPU, plugin, etc.) - no delegate
-        app = new CefViewApp();
+        app = new CefViewApp(_config);
     }
 
 #ifdef SUB_PROCESS_DISABLED
@@ -131,12 +136,27 @@ int CefContext::initialize(int argc,
     void* sandboxInfo = NULL;
 
     if (!CefInitialize(mainArgs, settings, app.get(), sandboxInfo)) {
+        LOGE << "CefInitialize failed!";
         return -2;  // Initialization failed
     }
 
     LOGI << "CefView initialized successfully";
 
     return -1;  // Browser process, continue execution
+}
+
+void CefContext::runMessageLoop() {
+    if (!_config.multiThreadedMessageLoop) {
+        return;
+    }
+    CefRunMessageLoop();
+}
+
+void CefContext::quitMessageLoop() {
+    if (!_config.multiThreadedMessageLoop) {
+        return;
+    }
+    CefQuitMessageLoop();
 }
 
 void CefContext::doMessageLoopWork() {

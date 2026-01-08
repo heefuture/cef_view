@@ -112,6 +112,11 @@ LRESULT CALLBACK CefWebView::windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
         webView->onPaint();
         return 0;
 
+    case WM_ERASEBKGND:
+        // Return non-zero to indicate background is erased (but we don't actually erase it)
+        // This prevents the default white background from being drawn
+        return 1;
+
     case WM_TOUCH:
         if (webView->onTouchEvent(uMsg, wParam, lParam)) {
             return 0;
@@ -231,7 +236,7 @@ HWND CefWebView::createSubWindow(HWND parentHwnd, int x, int y,int width, int he
         wc.lpfnWndProc = &windowProc;                   // points to window procedure
         wc.cbWndExtra = sizeof(void*) ;                 // save extra window memory
         wc.lpszClassName = className;                   // name of window class
-        //wc.hbrBackground = backgroundBrush;
+        wc.hbrBackground = nullptr;                     // No background brush for transparency
         ::RegisterClass(&wc);
     }
 
@@ -369,7 +374,6 @@ void CefWebView::setVisible(bool bVisible /*= true*/)
     if (!_browser) return;
 
     //_browser->GetHost()->WasHidden(!bVisible);
-    //_browser->GetHost()->SetFocus(bVisible);
 
     HWND hwnd = getBrowserWindowHandle();
     if (hwnd && hwnd != _hwnd) {
@@ -408,6 +412,18 @@ void CefWebView::loadUrl(const std::string& url)
 const std::string& CefWebView::getUrl() const
 {
     return _settings.url;
+}
+
+std::string CefWebView::getCurrentUrl() const
+{
+    if (!_browser) {
+        return _settings.url;
+    }
+    CefRefPtr<CefFrame> mainFrame = _browser->GetMainFrame();
+    if (!mainFrame) {
+        return _settings.url;
+    }
+    return mainFrame->GetURL().ToString();
 }
 
 void CefWebView::goBack()
@@ -792,6 +808,15 @@ void CefWebView::onAfterCreated(int browserId)
 void CefWebView::onProcessMessageReceived(int browserId, const std::string& messageName, const std::string& jsonArgs)
 {
     // Process message handling (extensible)
+}
+
+void CefWebView::onFocusOnEditableFieldChanged(bool focusOnEditableField)
+{
+    // A message is sent from ClientRenderDelegate to tell us whether the
+    // currently focused DOM node is editable. Use of |m_bFocusOnEditableField|
+    // is redundant with CefKeyEvent.focus_on_editable_field in OnPreKeyEvent
+    // but is useful for demonstration purposes.
+    _focusOnEditableField = focusOnEditableField;
 }
 
 #pragma region windowProchandler

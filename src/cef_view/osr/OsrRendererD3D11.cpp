@@ -12,8 +12,140 @@
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <algorithm>
+#include <fstream>
+#include <vector>
+// #include <ShlObj.h>
 
 #include <utils/LogUtil.h>
+
+// Helper function to save texture to BMP file for debugging
+static bool SaveTextureToBMP(ID3D11Device* device,
+                             ID3D11DeviceContext* context,
+                             ID3D11Texture2D* texture,
+                             const wchar_t* filename) {
+    if (!device || !context || !texture) {
+        return false;
+    }
+
+    D3D11_TEXTURE2D_DESC desc;
+    texture->GetDesc(&desc);
+
+    // Create staging texture for CPU read
+    D3D11_TEXTURE2D_DESC stagingDesc = desc;
+    stagingDesc.Usage = D3D11_USAGE_STAGING;
+    stagingDesc.BindFlags = 0;
+    stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    stagingDesc.MiscFlags = 0;
+
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> stagingTexture;
+    HRESULT hr = device->CreateTexture2D(&stagingDesc, nullptr, stagingTexture.GetAddressOf());
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    // Copy texture to staging
+    context->CopyResource(stagingTexture.Get(), texture);
+
+    // Map staging texture
+    D3D11_MAPPED_SUBRESOURCE mapped;
+    hr = context->Map(stagingTexture.Get(), 0, D3D11_MAP_READ, 0, &mapped);
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    // Save as 32-bit BMP file (with alpha channel)
+    std::wstring bmpFilename = filename;
+    bmpFilename += L".bmp";
+
+    std::ofstream file(bmpFilename, std::ios::binary);
+    if (!file.is_open()) {
+        context->Unmap(stagingTexture.Get(), 0);
+        return false;
+    }
+
+    // 32-bit BMP: 4 bytes per pixel, already 4-byte aligned
+    UINT rowSize = desc.Width * 4;
+    UINT imageSize = rowSize * desc.Height;
+
+    // BMP File Header (14 bytes)
+    uint8_t bmpFileHeader[14] = {
+        'B', 'M',           // Signature
+        0, 0, 0, 0,         // File size (filled later)
+        0, 0, 0, 0,         // Reserved
+        0, 0, 0, 0          // Pixel data offset (filled later)
+    };
+    // Use BITMAPV4HEADER (108 bytes) for alpha channel support
+    uint32_t headerSize = 108;
+    uint32_t pixelOffset = 14 + headerSize;
+    uint32_t fileSize = pixelOffset + imageSize;
+    memcpy(&bmpFileHeader[2], &fileSize, 4);
+    memcpy(&bmpFileHeader[10], &pixelOffset, 4);
+
+    // BITMAPV4HEADER (108 bytes) for 32-bit BGRA with alpha
+    uint8_t bmpInfoHeader[108] = {0};
+    int32_t bmpWidth = static_cast<int32_t>(desc.Width);
+    int32_t bmpHeight = static_cast<int32_t>(desc.Height);
+    uint16_t planes = 1;
+    uint16_t bitsPerPixel = 32;
+    uint32_t compression = 3;  // BI_BITFIELDS
+
+    memcpy(&bmpInfoHeader[0], &headerSize, 4);
+    memcpy(&bmpInfoHeader[4], &bmpWidth, 4);
+    memcpy(&bmpInfoHeader[8], &bmpHeight, 4);
+    memcpy(&bmpInfoHeader[12], &planes, 2);
+    memcpy(&bmpInfoHeader[14], &bitsPerPixel, 2);
+    memcpy(&bmpInfoHeader[16], &compression, 4);
+    memcpy(&bmpInfoHeader[20], &imageSize, 4);
+
+    // Color masks for BGRA format (BI_BITFIELDS)
+    uint32_t redMask   = 0x00FF0000;  // Red mask
+    uint32_t greenMask = 0x0000FF00;  // Green mask
+    uint32_t blueMask  = 0x000000FF;  // Blue mask
+    uint32_t alphaMask = 0xFF000000;  // Alpha mask
+    memcpy(&bmpInfoHeader[40], &redMask, 4);
+    memcpy(&bmpInfoHeader[44], &greenMask, 4);
+    memcpy(&bmpInfoHeader[48], &blueMask, 4);
+    memcpy(&bmpInfoHeader[52], &alphaMask, 4);
+
+    // Color space type: LCS_sRGB
+    uint32_t csType = 0x73524742;  // 'sRGB'
+    memcpy(&bmpInfoHeader[56], &csType, 4);
+
+    // Write headers
+    file.write(reinterpret_cast<char*>(bmpFileHeader), 14);
+    file.write(reinterpret_cast<char*>(bmpInfoHeader), headerSize);
+
+    // Write pixel data (BMP: bottom-to-top, BGRA order)
+    std::vector<uint8_t> rowBuffer(rowSize, 0);
+    for (int y = static_cast<int>(desc.Height) - 1; y >= 0; --y) {
+        const uint8_t* srcRow = static_cast<const uint8_t*>(mapped.pData) + y * mapped.RowPitch;
+        for (UINT x = 0; x < desc.Width; ++x) {
+            // Source: BGRA, BMP 32-bit needs BGRA (same order)
+            rowBuffer[x * 4 + 0] = srcRow[x * 4 + 0];  // B
+            rowBuffer[x * 4 + 1] = srcRow[x * 4 + 1];  // G
+            rowBuffer[x * 4 + 2] = srcRow[x * 4 + 2];  // R
+            rowBuffer[x * 4 + 3] = srcRow[x * 4 + 3];  // A
+        }
+        file.write(reinterpret_cast<char*>(rowBuffer.data()), rowSize);
+    }
+
+    file.close();
+    context->Unmap(stagingTexture.Get(), 0);
+
+    // Log alpha values of first few pixels for debugging
+    const uint8_t* srcData = static_cast<const uint8_t*>(mapped.pData);
+    for (int i = 0; i < 5; ++i) {
+        uint8_t b = srcData[i * 4 + 0];
+        uint8_t g = srcData[i * 4 + 1];
+        uint8_t r = srcData[i * 4 + 2];
+        uint8_t a = srcData[i * 4 + 3];
+        OutputDebugStringA(("Pixel[" + std::to_string(i) + "] BGRA=" +
+                            std::to_string(b) + "," + std::to_string(g) + "," +
+                            std::to_string(r) + "," + std::to_string(a) + "\n").c_str());
+    }
+
+    return true;
+}
 
 using namespace DirectX;
 using namespace Microsoft::WRL;
@@ -315,7 +447,20 @@ bool OsrRendererD3D11::createShaderResource() {
         texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
         texDesc.CPUAccessFlags = 0;
 
-        HR_CHECK(_d3dDevice->CreateTexture2D(&texDesc, nullptr, _cefViewTexture.GetAddressOf()));
+        // Initialize with transparent black data if in transparent mode
+        D3D11_SUBRESOURCE_DATA* pInitialData = nullptr;
+        std::vector<uint32_t> transparentData;
+        if (_transparent) {
+            // Create transparent black pixels (BGRA format: 0x00000000)
+            transparentData.resize(_viewWidth * _viewHeight, 0x00000000);
+            D3D11_SUBRESOURCE_DATA initialData = {};
+            initialData.pSysMem = transparentData.data();
+            initialData.SysMemPitch = _viewWidth * 4;  // 4 bytes per pixel
+            initialData.SysMemSlicePitch = 0;
+            pInitialData = &initialData;
+        }
+
+        HR_CHECK(_d3dDevice->CreateTexture2D(&texDesc, pInitialData, _cefViewTexture.GetAddressOf()));
 
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.Format = texDesc.Format;
@@ -524,6 +669,18 @@ void OsrRendererD3D11::onAcceleratedPaint(CefRenderHandler::PaintElementType typ
             return;
         }
 
+        // // DEBUG: Save shared texture to desktop for alpha inspection
+        // wchar_t desktopPath[MAX_PATH];
+        // if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_DESKTOP, NULL, 0, desktopPath))) {
+        //     std::wstring filePath = desktopPath;
+        //     filePath += L"\\cef_shared_texture";
+        //     if (SaveTextureToBMP(_d3dDevice.Get(), _d3dContext.Get(), _sharedTexture.Get(), filePath.c_str())) {
+        //         LOGI << "Saved CEF shared texture to desktop for alpha inspection";
+        //     } else {
+        //         LOGE << "Failed to save CEF shared texture";
+        //     }
+        // }
+
         _sharedTextureHandle = sharedHandle;
     }
 }
@@ -584,6 +741,8 @@ void OsrRendererD3D11::render() {
             _d3dContext->Draw(6, 0);
         }
     }
+    // Note: When no CEF content is available, we only clear to transparent color
+    // The DirectComposition will handle the transparency correctly
 
     HRESULT hr = _swapChain->Present(1, 0);
     if (FAILED(hr)) {

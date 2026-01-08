@@ -70,6 +70,11 @@ bool CefViewClientDelegate::onProcessMessageReceived(CefRefPtr<CefBrowser> brows
 
     return false;
 }
+
+void CefViewClientDelegate::onFocusOnEditableFieldChanged(bool focusOnEditableField)
+{
+    _view->onFocusOnEditableFieldChanged(focusOnEditableField);
+}
 #pragma endregion // CefClient
 
 
@@ -80,7 +85,26 @@ void CefViewClientDelegate::onBeforeContextMenu(CefRefPtr<CefBrowser> browser,
                                              CefRefPtr<CefContextMenuParams> params,
                                              CefRefPtr<CefMenuModel> model)
 {
-    return;
+#ifdef _DEBUG
+    // In debug mode, add DevTools menu item
+    if (model->GetCount() > 0) {
+        model->AddSeparator();
+    }
+    
+    // Add "Open DevTools" menu item
+    // Use MENU_ID_USER_FIRST as custom command ID to avoid conflicts
+    constexpr int kShowDevToolsMenuId = MENU_ID_USER_FIRST + 1;
+    model->AddItem(kShowDevToolsMenuId, "Open DevTools");
+#else
+    // In release mode, disable context menu
+    // Only disable context menu for page or frame areas
+    if ((params->GetTypeFlags() & (CM_TYPEFLAG_PAGE | CM_TYPEFLAG_FRAME)) != 0) {
+        if (model->GetCount() > 0) {
+            // Clear all menu items to disable the context menu
+            model->Clear();
+        }
+    }
+#endif
 }
 
 bool CefViewClientDelegate::onContextMenuCommand(CefRefPtr<CefBrowser> browser,
@@ -89,6 +113,14 @@ bool CefViewClientDelegate::onContextMenuCommand(CefRefPtr<CefBrowser> browser,
                                               int commandId,
                                               CefContextMenuHandler::EventFlags eventFlags)
 {
+#ifdef _DEBUG
+    constexpr int kShowDevToolsMenuId = MENU_ID_USER_FIRST + 1;
+    if (commandId == kShowDevToolsMenuId) {
+        // Open DevTools
+        _view->openDevTools();
+        return true;
+    }
+#endif
     return false;
 }
 #pragma endregion // CefContextMenuHandler
@@ -309,6 +341,25 @@ void CefViewClientDelegate::onImeCompositionRangeChanged(CefRefPtr<CefBrowser> b
     _view->onImeCompositionRangeChanged(selectionRange, characterBounds);
 }
 #pragma endregion // CefRenderHandler
+
+#pragma region CefPermissionHandler
+bool CefViewClientDelegate::onShowPermissionPrompt(CefRefPtr<CefBrowser> browser,
+                                                   uint64_t promptId,
+                                                   const CefString& requestingOrigin,
+                                                   uint32_t requestedPermissions,
+                                                   CefRefPtr<CefPermissionPromptCallback> callback)
+{
+    // Auto-grant clipboard permissions for the application
+    // CEF_PERMISSION_TYPE_CLIPBOARD = 1 << 4 = 16
+    if (requestedPermissions & CEF_PERMISSION_TYPE_CLIPBOARD) {
+        callback->Continue(CEF_PERMISSION_RESULT_ACCEPT);
+        return true;
+    }
+
+    // For other permissions, use default handling
+    return false;
+}
+#pragma endregion // CefPermissionHandler
 
 #pragma region CefRequestHandler
 bool CefViewClientDelegate::onBeforeBrowse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request, bool userGesture, bool isRedirect)

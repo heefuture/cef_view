@@ -86,6 +86,12 @@ public:
     const std::string& getUrl() const;
 
     /**
+     * @brief Get current URL from the browser's main frame in real-time
+     * @return Current URL from main frame, or cached URL if browser not available
+     */
+    std::string getCurrentUrl() const;
+
+    /**
      * @brief Refresh the page
      */
     void refresh();
@@ -382,6 +388,18 @@ public:
      * @param[in] jsonArgs JSON formatted message arguments
      */
     void onProcessMessageReceived(int browserId, const std::string& messageName, const std::string& jsonArgs);
+
+    /**
+     * @brief Called when focus on editable field changes
+     * @param[in] focusOnEditableField true if focus is on an editable field
+     */
+    virtual void onFocusOnEditableFieldChanged(bool focusOnEditableField);
+
+    /**
+     * @brief Check if focus is on an editable field
+     * @return true if focus is on an editable field
+     */
+    bool isFocusOnEditableField() const { return _focusOnEditableField; }
 protected:
     static LRESULT CALLBACK windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -464,6 +482,9 @@ protected:
 
     // IME handler
     std::unique_ptr<OsrImeHandlerWin> _imeHandler;
+
+    // Focus state
+    bool _focusOnEditableField = false;
 };
 
 }  // namespace cefview

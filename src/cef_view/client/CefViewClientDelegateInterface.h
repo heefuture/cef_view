@@ -28,6 +28,12 @@ public:
                                           CefRefPtr<CefFrame> frame,
                                           CefProcessId sourceProcess,
                                           CefRefPtr<CefProcessMessage> message) { return false; }
+
+    /**
+     * @brief Called when focus on editable field changes
+     * @param[in] focusOnEditableField true if focus is on an editable field
+     */
+    virtual void onFocusOnEditableFieldChanged(bool focusOnEditableField) {}
 #pragma endregion // CefClient
 
 #pragma region CefContextMenuHandler
@@ -158,6 +164,14 @@ public:
                                               const CefRange& selectionRange,
                                               const CefRenderHandler::RectList& characterBounds) = 0;
 #pragma endregion // CefRenderHandler
+
+#pragma region CefPermissionHandler
+    virtual bool onShowPermissionPrompt(CefRefPtr<CefBrowser> browser,
+                                        uint64_t promptId,
+                                        const CefString& requestingOrigin,
+                                        uint32_t requestedPermissions,
+                                        CefRefPtr<CefPermissionPromptCallback> callback) = 0;
+#pragma endregion // CefPermissionHandler
 
 #pragma region CefRequestHandler
     virtual bool onBeforeBrowse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request, bool userGesture, bool isRedirect) = 0;

@@ -2,6 +2,8 @@
 #include <view/CefWebView.h>
 #include <view/CefWebViewSetting.h>
 #include <utils/WinUtil.h>
+#include <utils/AcrylicHelper.h>
+#include <utils/PathUtil.h>
 
 #include <optional>
 #include <shellscalingapi.h>
@@ -17,7 +19,7 @@ using namespace cefview;
 #define ID_BTN_SWITCH2 102
 #define ID_BTN_SWITCH3 103
 
-// 资源ID定义
+// Resource ID definitions
 #define IDS_APP_TITLE      103
 #define IDR_MAINFRAME      128
 #define IDI_SMALL          108
@@ -169,10 +171,11 @@ void MainWindow::createRootWindow(bool initiallyHidden)
 
     HINSTANCE hInstance = GetModuleHandle(nullptr);
 
-    // 窗口标题和类名
+    // Window title and class name
     const std::wstring windowTitle = L"CEF View Demo Application";
     const std::wstring windowClass = L"CefViewMainWindow";
 
+    // For Acrylic effect, use null brush to avoid white background flash
     const HBRUSH backgroundBrush = nullptr;
 
     // Register the window class.
@@ -221,6 +224,9 @@ void MainWindow::createRootWindow(bool initiallyHidden)
             funcPtr(_hwnd, TRUE);
         }
     }
+
+    // Apply Acrylic backdrop effect BEFORE showing window to avoid white flash
+    AcrylicHelper::ApplyBackdrop(_hwnd, _backdropType);
 
     if (!initiallyHidden) {
         // Show this window.
@@ -309,11 +315,7 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
         self->onDpiChanged(wParam, lParam); break;
 
     case WM_ERASEBKGND:
-        if (self->onEraseBkgnd()) {
-            break;
-        }
-        // Don't erase the background.
-        return 0;
+        break;
 
     // case WM_ENTERMENULOOP:
     //     if (!wParam)
@@ -378,14 +380,26 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
 
 void MainWindow::onPaint()
 {
-    // PAINTSTRUCT ps;
-    // BeginPaint(_hwnd, &ps);
-    // EndPaint(_hwnd, &ps);
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(_hwnd, &ps);
+
+    // For Acrylic effect to work properly, we need to draw something in the client area
+    // Even if it's just a transparent fill, it ensures the backdrop effect is applied
+    RECT clientRect;
+    GetClientRect(_hwnd, &clientRect);
+
+    // Fill with a semi-transparent color to demonstrate the Acrylic effect
+    // This will show through the Acrylic blur behind the window
+    HBRUSH hBrush = CreateSolidBrush(RGB(40, 40, 40));
+    FillRect(hdc, &clientRect, hBrush);
+    DeleteObject(hBrush);
+
+    EndPaint(_hwnd, &ps);
 }
 
 void MainWindow::onFocus()
 {
-    //// T115: 给顶部视图焦点
+    // Give focus to top view
     //if (_topView && ::IsWindowEnabled(_hwnd)) {
     //    ::SetFocus(_topView->getWindowHandle());
     //}
@@ -398,7 +412,7 @@ void MainWindow::onActivate(bool active)
 void MainWindow::onSize(bool minimized)
 {
     if (minimized) {
-        // 最小化时隐藏所有视图
+        // Hide all views when minimized
         if (_topView) {
             _topView->setVisible(false);
         }
@@ -408,10 +422,10 @@ void MainWindow::onSize(bool minimized)
         return;
     }
 
-    // T113: 窗口大小变化时更新布局
+    // Update layout when window size changes
     updateLayout();
 
-    // 恢复可见性
+    // Restore visibility
     if (_topView) {
         _topView->setVisible(true);
     }
@@ -422,7 +436,7 @@ void MainWindow::onSize(bool minimized)
 
 void MainWindow::onMove()
 {
-    //// 通知所有浏览器窗口移动（用于弹出窗口正确定位）
+    // Notify all browser windows of movement (for proper popup positioning)
     //if (_topView) {
     //    auto browser = _topView->getBrowser();
     //    if (browser) {
@@ -448,25 +462,18 @@ void MainWindow::onDpiChanged(WPARAM wParam, LPARAM lParam)
         return;
     }
 
-    // T118-T119: 更新设备缩放因子并通知所有CefWebView
+    // Update device scale factor and notify all CefWebView
     const float displayScaleFactor = static_cast<float>(LOWORD(wParam)) / DPI_1X;
     setDeviceScaleFactor(displayScaleFactor);
 
-    // T119: 调整窗口大小和位置
+    // Adjust window size and position
     const RECT* rect = reinterpret_cast<RECT*>(lParam);
     setBounds(rect->left, rect->top, rect->right - rect->left, rect->bottom - rect->top);
 }
 
-bool MainWindow::onEraseBkgnd()
-{
-    // Erase the background when the browser does not exist.
-    // return (browser_window_ == nullptr);
-    return false; // Do not erase the background.
-}
-
 bool MainWindow::onCommand(UINT id)
 {
-    // T115: 处理按钮点击消息切换底部视图
+    // Handle button click messages to switch bottom view
     switch (id) {
     case ID_BTN_SWITCH1:
         setActiveBottomView(0);
@@ -514,19 +521,11 @@ void MainWindow::onCreate(LPCREATESTRUCT lpCreateStruct)
     _windowCreated = true;
 }
 
-// ============================================================================
-// T105: 实现createCefViews()创建顶部和底部视图
-// ============================================================================
-
 void MainWindow::createCefViews()
 {
     createTopView();
     createBottomViews();
 }
-
-// ============================================================================
-// T106-T108: 实现createTopView()创建窗口模式CefWebView
-// ============================================================================
 
 void MainWindow::createTopView()
 {
@@ -542,13 +541,21 @@ void MainWindow::createTopView()
     int availableHeight = clientHeight - buttonAreaHeight;
     int topHeight = availableHeight / 2;
 
+    // Build local index.html URL
+    std::string resourcePath = PathUtil::GetResourcePath("index.html");
+    std::string url = "file:///" + resourcePath;
+
     CefWebViewSetting settings;
     settings.offScreenRenderingEnabled = true;
     settings.x = 0;
     settings.y = 0;
     settings.width = clientWidth;
     settings.height = topHeight;
-    settings.url = "https://www.baidu.com";
+    settings.url = url;
+
+    // Enable transparent background for Acrylic effect
+    settings.transparentPaintingEnabled = true;
+    settings.backgroundColor = 0x00000000;  // Fully transparent
 
     _topView = std::make_shared<CefWebView>(settings, _hwnd);
 }
@@ -568,7 +575,7 @@ void MainWindow::createBottomViews()
     int topHeight = availableHeight / 2;
     int bottomHeight = availableHeight - topHeight;
 
-    // T080: Create 3 bottom views
+    // Create 3 bottom views
     const char* urls[] = {
         "https://www.bing.com",
         "https://www.google.com",
@@ -583,6 +590,9 @@ void MainWindow::createBottomViews()
         settings.height = bottomHeight;
         settings.url = urls[i];
 
+        settings.transparentPaintingEnabled = true;
+        settings.backgroundColor = 0x00000000;  // Fully transparent
+
         auto view = std::make_shared<CefWebView>(settings, _hwnd);
 
         if (i > 0) {
@@ -594,7 +604,7 @@ void MainWindow::createBottomViews()
 
     _activeBottomViewIndex = 0;
 
-    // T085-T086: 创建切换按钮
+    // Create switch buttons
     int buttonY = clientRect.bottom - BUTTON_HEIGHT - 10;
     int buttonSpacing = 10;
 
@@ -624,26 +634,22 @@ void MainWindow::setActiveBottomView(int index)
     }
 
     if (index == _activeBottomViewIndex) {
-        return;  // 已经是激活状态
+        return;  // Already active
     }
 
-    // 隐藏当前激活的视图
+    // Hide currently active view
     if (_activeBottomViewIndex >= 0 && _activeBottomViewIndex < static_cast<int>(_bottomViews.size())) {
         _bottomViews[_activeBottomViewIndex]->setVisible(false);
     }
 
-    // T083: 显示新选中的视图
+    // Show newly selected view
     _activeBottomViewIndex = index;
     _bottomViews[_activeBottomViewIndex]->setVisible(true);
 
-    // T084: 触发重绘
+    // Trigger redraw
     InvalidateRect(_hwnd, nullptr, TRUE);
     UpdateWindow(_hwnd);
 }
-
-// ============================================================================
-// T109-T113: 实现updateLayout()布局管理
-// ============================================================================
 
 void MainWindow::updateLayout()
 {
@@ -655,23 +661,23 @@ void MainWindow::updateLayout()
     int clientWidth = clientRect.right - clientRect.left;
     int clientHeight = clientRect.bottom - clientRect.top;
 
-    // T110: 计算顶部/底部区域矩形（各占50%高度，底部留出按钮空间）
-    int buttonAreaHeight = BUTTON_HEIGHT + 20;  // 按钮高度 + 边距
+    // Calculate top/bottom area rectangles (each 50% height, reserve space for buttons at bottom)
+    int buttonAreaHeight = BUTTON_HEIGHT + 20;
     int availableHeight = clientHeight - buttonAreaHeight;
     int topHeight = availableHeight / 2;
     int bottomHeight = availableHeight - topHeight;
 
-    // T111: 更新顶部视图布局
+    // Update top view layout
     if (_topView) {
         _topView->setBounds(0, 0, clientWidth, topHeight);
     }
 
-    // T112: 更新所有底部视图布局（叠加在同一区域）
+    // Update all bottom view layouts (overlaid in same area)
     for (auto& view : _bottomViews) {
         view->setBounds(0, topHeight, clientWidth, bottomHeight);
     }
 
-    // 更新按钮位置
+    // Update button positions
     int buttonY = clientHeight - BUTTON_HEIGHT - 10;
     int buttonSpacing = 10;
 
@@ -699,7 +705,7 @@ void MainWindow::updateLayout()
 
 bool MainWindow::onClose()
 {
-    // T125: 确保所有CefWebView正确销毁
+    // Ensure all CefWebView are properly destroyed
     if (_topView) {
         _topView.reset();
     }

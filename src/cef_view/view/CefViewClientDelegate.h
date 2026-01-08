@@ -34,6 +34,8 @@ protected:
                                           CefRefPtr<CefFrame> frame,
                                           CefProcessId sourceProcess,
                                           CefRefPtr<CefProcessMessage> message) override;
+
+    virtual void onFocusOnEditableFieldChanged(bool focusOnEditableField) override;
 #pragma endregion // CefClient
 
 #pragma region CefContextMenuHandler
@@ -162,6 +164,14 @@ protected:
         const CefRange& selectionRange,
         const CefRenderHandler::RectList& characterBounds) override;
 #pragma endregion // CefRenderHandler
+
+#pragma region CefPermissionHandler
+    virtual bool onShowPermissionPrompt(CefRefPtr<CefBrowser> browser,
+                                        uint64_t promptId,
+                                        const CefString& requestingOrigin,
+                                        uint32_t requestedPermissions,
+                                        CefRefPtr<CefPermissionPromptCallback> callback) override;
+#pragma endregion // CefPermissionHandler
 
 #pragma region CefRequestHandler
     virtual bool onBeforeBrowse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request, bool userGesture, bool isRedirect) override;

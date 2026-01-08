@@ -52,6 +52,16 @@ endif()
 # # Add the custom manifest files to the executable.
 # ADD_WINDOWS_MANIFEST("${CMAKE_CURRENT_SOURCE_DIR}/win" "${APP_TARGET}" "exe")
 
+# Add manifest file to executable
+add_custom_command(
+    TARGET ${APP_TARGET}
+    POST_BUILD
+    COMMAND "mt.exe" -nologo
+            -manifest "${CMAKE_CURRENT_SOURCE_DIR}/app.manifest"
+            -outputresource:"$<TARGET_FILE:${APP_TARGET}>"\;\#1
+    COMMENT "Adding manifest to executable..."
+)
+
 set_target_properties(${APP_TARGET} PROPERTIES
     WIN32_EXECUTABLE ON
 )
@@ -76,4 +86,8 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CEF_ROOT}/Resources"
         "$<TARGET_FILE_DIR:${APP_TARGET}>"
+    COMMAND ${CMAKE_COMMAND} -E echo "Copying app resources..."
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/../resource"
+        "$<TARGET_FILE_DIR:${APP_TARGET}>/resources"
 )

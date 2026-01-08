@@ -21,7 +21,7 @@ struct CefConfig
     // Macos is not supported, so we need to run messageloop
     bool multiThreadedMessageLoop = false;
     bool noSandbox = true;
-    bool disableGpu = true;
+    bool disableGpu = false;
     // Enable off-screen rendering (OSR) support globally.
     // Must be true if any CefWebView uses offScreenRenderingEnabled.
     bool windowlessRenderingEnabled = true;
@@ -30,6 +30,10 @@ struct CefConfig
     std::string cachePath;
     std::string resourcesDirPath;
     std::string localesDirPath;
+    // Locale setting for CEF (e.g., "zh-CN", "en-US")
+    std::string locale;
+    // Accept-Language header value (e.g., "zh-CN,en-US;q=0.9,en;q=0.8")
+    std::string acceptLanguageList;
     // Log configuration
     int logSeverity = 0; // LOGSEVERITY_DEFAULT
     std::string logFilePath;
