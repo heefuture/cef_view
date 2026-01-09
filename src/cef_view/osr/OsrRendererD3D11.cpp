@@ -139,9 +139,8 @@ static bool SaveTextureToBMP(ID3D11Device* device,
         uint8_t g = srcData[i * 4 + 1];
         uint8_t r = srcData[i * 4 + 2];
         uint8_t a = srcData[i * 4 + 3];
-        OutputDebugStringA(("Pixel[" + std::to_string(i) + "] BGRA=" +
-                            std::to_string(b) + "," + std::to_string(g) + "," +
-                            std::to_string(r) + "," + std::to_string(a) + "\n").c_str());
+        LOGD << "Pixel[" << i << "] BGRA=" << static_cast<int>(b) << "," 
+             << static_cast<int>(g) << "," << static_cast<int>(r) << "," << static_cast<int>(a);
     }
 
     return true;
@@ -389,7 +388,7 @@ bool OsrRendererD3D11::createShaderResource() {
                             errorBlob.GetAddressOf());
     if (FAILED(hr)) {
         if (errorBlob) {
-            OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+            LOGE << "Vertex shader compilation failed: " << (char*)errorBlob->GetBufferPointer();
         }
         return false;
     }
@@ -425,7 +424,7 @@ bool OsrRendererD3D11::createShaderResource() {
                     errorBlob.GetAddressOf());
     if (FAILED(hr)) {
         if (errorBlob) {
-            OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+            LOGE << "Pixel shader compilation failed: " << (char*)errorBlob->GetBufferPointer();
         }
         return false;
     }

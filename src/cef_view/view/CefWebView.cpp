@@ -663,6 +663,7 @@ void CefWebView::onPaint(CefRenderHandler::PaintElementType type,
                          int width,
                          int height)
 {
+    if (!_settings.offScreenRenderingEnabled || !_osrRenderer) return;
     // Update frame data from CPU memory buffer
     _osrRenderer->onPaint(type, dirtyRects, buffer, width, height);
 
@@ -674,6 +675,7 @@ void CefWebView::onAcceleratedPaint(CefRenderHandler::PaintElementType type,
                                     const CefRenderHandler::RectList& dirtyRects,
                                     const CefAcceleratedPaintInfo& info)
 {
+    if (!_settings.offScreenRenderingEnabled || !_osrRenderer) return;
     // Update renderer using the shared texture handle from CEF
     _osrRenderer->onAcceleratedPaint(type, dirtyRects, info);
 
@@ -1131,13 +1133,29 @@ bool CefWebView::handleShortcutKey(int keyCode, uint32_t modifiers) {
 }
 
 void CefWebView::onPaint() {
-    if (!_settings.offScreenRenderingEnabled || !_osrRenderer) return;
+    //if (!_settings.offScreenRenderingEnabled || !_osrRenderer) return;
     // Paint nothing here. Invalidate will cause OnPaint to be called for the
     //_osrRenderer->render();
 
     //if (_browser) {
     //    _browser->GetHost()->Invalidate(PET_VIEW);
     //}
+
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(_hwnd, &ps);
+
+    // For Acrylic effect to work properly, we need to draw something in the client area
+    // Even if it's just a transparent fill, it ensures the backdrop effect is applied
+    RECT clientRect;
+    GetClientRect(_hwnd, &clientRect);
+
+    // Fill with a semi-transparent color to demonstrate the Acrylic effect
+    // This will show through the Acrylic blur behind the window
+    HBRUSH hBrush = CreateSolidBrush(RGB(0, 0, 0));
+    FillRect(hdc, &clientRect, hBrush);
+    DeleteObject(hBrush);
+
+    EndPaint(_hwnd, &ps);
 }
 
 bool CefWebView::onTouchEvent(UINT message, WPARAM wParam, LPARAM lParam) {

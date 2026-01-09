@@ -16,17 +16,18 @@
 #include <list>
 #include <vector>
 
-#include <utils/AcrylicHelper.h>
+#include <utils/WinMaterial.h>
 
 namespace cefview {
 class CefWebView;
+class WinCompositionBackdrop;
 }
 
 using cefview::CefWebView;
 
 /**
  * @brief Windows implementation of a top-level native window in the browser process
- * 
+ *
  * The methods of this class must be called on the main thread unless otherwise indicated.
  */
 class MainWindow
@@ -67,18 +68,18 @@ public:
      * @param config Window configuration
      */
     void init(std::unique_ptr<Config> config);
-    
+
     /**
      * @brief Show the window with specified mode
      * @param mode Show mode
      */
     void show(ShowMode mode);
-    
+
     /**
      * @brief Hide the window
      */
     void hide();
-    
+
     /**
      * @brief Set window bounds
      * @param x X position
@@ -87,19 +88,19 @@ public:
      * @param height Window height
      */
     void setBounds(int x, int y, size_t width, size_t height);
-    
+
     /**
      * @brief Close the window
      * @param force Force close without prompting
      */
     void close(bool force);
-    
+
     /**
      * @brief Set device scale factor for DPI scaling
      * @param deviceScaleFactor Scale factor
      */
     void setDeviceScaleFactor(float deviceScaleFactor);
-    
+
     /**
      * @brief Get current device scale factor
      * @return Scale factor
@@ -116,18 +117,18 @@ public:
      * @brief Create top view browser
      */
     void createTopView();
-    
+
     /**
      * @brief Create bottom view browsers
      */
     void createBottomViews();
-    
+
     /**
      * @brief Set active bottom view
      * @param index View index
      */
     void setActiveBottomView(int index);
-    
+
     /**
      * @brief Update window layout
      */
@@ -181,7 +182,7 @@ private:
     HWND _btnSwitch2 = nullptr;                                  ///< Switch button 2
     HWND _btnSwitch3 = nullptr;                                  ///< Switch button 3
 
-    cefview::BackdropType _backdropType = cefview::BackdropType::kAcrylic;  ///< Acrylic effect type
+    std::unique_ptr<cefview::WinCompositionBackdrop> _backdrop;  ///< Composition backdrop effect
 
     HWND _hwnd = nullptr;                                        ///< Main window handle
     HRGN _draggableRegion = nullptr;                             ///< Draggable region
@@ -189,6 +190,9 @@ private:
     bool _windowDestroyed = false;
     bool _windowCreated = false;
     bool _calledEnableNonClientDpiScaling = false;
+
+    // GDI+ initialization token
+    ULONG_PTR _gdiplusToken = 0;
 };
 
 #endif //!MAINWINDOW_H

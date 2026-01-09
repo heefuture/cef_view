@@ -87,7 +87,7 @@ if(WIN32)
     endif()
 
     #  glu32.lib opengl32.lib
-    target_link_libraries(${CEFVIEW_TARGET} d3d11.lib dxgi.lib d3dcompiler.lib dcomp.lib imm32.lib)
+    target_link_libraries(${CEFVIEW_TARGET} d3d11.lib dxgi.lib d3dcompiler.lib dcomp.lib imm32.lib d2d1.lib windowsapp.lib)
 
     if (MSVC)
         target_compile_definitions(${CEFVIEW_TARGET} PRIVATE ${CEFVIEW_DEFINES})

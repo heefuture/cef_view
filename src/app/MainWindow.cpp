@@ -2,13 +2,21 @@
 #include <view/CefWebView.h>
 #include <view/CefWebViewSetting.h>
 #include <utils/WinUtil.h>
-#include <utils/AcrylicHelper.h>
+#include <utils/WinMaterial.h>
+#include <utils/WinCompositionBackdrop.h>
 #include <utils/PathUtil.h>
+#include <utils/LogUtil.h>
 
 #include <optional>
 #include <shellscalingapi.h>
+#include <gdiplus.h>
+#include <dwmapi.h>
+
+#pragma comment(lib, "gdiplus.lib")
+#pragma comment(lib, "dwmapi.lib")
 
 using namespace cefview;
+using namespace Gdiplus;
 
 #define MAX_URL_LENGTH 255
 
@@ -60,11 +68,21 @@ MainWindow::MainWindow()
 {
     // Create a HRGN representing the draggable window area.
     _draggableRegion = ::CreateRectRgn(0, 0, 0, 0);
+
+    // Initialize GDI+
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput = {};
+    Gdiplus::GdiplusStartup(&_gdiplusToken, &gdiplusStartupInput, nullptr);
 }
 
 MainWindow::~MainWindow()
 {
     ::DeleteObject(_draggableRegion);
+
+    // Shutdown GDI+
+    if (_gdiplusToken != 0) {
+        Gdiplus::GdiplusShutdown(_gdiplusToken);
+        _gdiplusToken = 0;
+    }
 
     // The window and browser should already have been destroyed.
     assert(_windowDestroyed);
@@ -80,8 +98,8 @@ void MainWindow::init(std::unique_ptr<Config> config)
 
     createRootWindow(config->initiallyHidden);
 
-    createCefViews();
-    updateLayout();
+    //createCefViews();
+    //updateLayout();
 
     _initialized = true;
 }
@@ -183,6 +201,12 @@ void MainWindow::createRootWindow(bool initiallyHidden)
 
     DWORD dwStyle = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN;
     DWORD dwExStyle = _alwaysOnTop ? WS_EX_TOPMOST : 0;
+
+    // CRITICAL: Enable WS_EX_NOREDIRECTIONBITMAP for BackdropBrush to capture desktop
+    // This prevents DWM from redirecting the window surface, allowing Composition API
+    // to access the actual desktop content behind the window
+    dwExStyle |= WS_EX_NOREDIRECTIONBITMAP;
+
     if (_initialShowMode == ShowMode::NO_ACTIVATE) {
         // Don't activate the browser window on creation.
         dwExStyle |= WS_EX_NOACTIVATE;
@@ -225,9 +249,82 @@ void MainWindow::createRootWindow(bool initiallyHidden)
         }
     }
 
-    // Apply Acrylic backdrop effect BEFORE showing window to avoid white flash
-    AcrylicHelper::ApplyBackdrop(_hwnd, _backdropType);
+    // Apply advanced Acrylic backdrop effect using WinRT Composition API
+    // BEFORE showing window to avoid white flash
 
+    // LOGI << "[MainWindow] Checking WinCompositionBackdrop support...";
+
+    // // Check if WinRT Composition API is supported
+    // if (WinCompositionBackdrop::IsSupported()) {
+    //     LOGI << "[MainWindow] WinCompositionBackdrop is supported, initializing...";
+
+    //     // Extend client area into title bar for full-window effect
+    //     MARGINS margins = { -1, -1, -1, -1 };
+    //     HRESULT hr = DwmExtendFrameIntoClientArea(_hwnd, &margins);
+    //     if (FAILED(hr)) {
+    //         LOGE << "[MainWindow] DwmExtendFrameIntoClientArea failed, HRESULT=0x"
+    //              << std::hex << hr;
+    //     } else {
+    //         LOGI << "[MainWindow] DwmExtendFrameIntoClientArea succeeded";
+    //     }
+
+    //     // Use high-quality WinRT Composition API
+    //     // Multiple configuration examples:
+
+    //     // Example 1: Light gray with 84% opacity (for production)
+    //     // auto config = BackdropConfig::FromARGB(
+    //     //     0xD6F3F3F5,  // 84% opacity (0xD6=214) + RGB(243, 243, 245)
+    //     //     30.0f,       // 30px blur radius
+    //     //     0.65f        // Luminosity opacity (0.65 = DWMBlurGlass default)
+    //     // );
+
+    //     // Example 2: Deep blue with 50% opacity (testing - more visible)
+    //     auto config = BackdropConfig::FromARGB(
+    //         0x800080FF,  // 50% opacity + Blue RGB(0, 128, 255)
+    //         40.0f,       // Stronger blur
+    //         0.75f        // Higher luminosity
+    //     );
+
+    //     LOGI << "[MainWindow] Creating WinCompositionBackdrop with config: "
+    //          << "tintColor=0x" << std::hex << config.tintColor
+    //          << ", blurAmount=" << config.blurAmount;
+
+    //     // Example 3: Dark theme with 70% opacity (uncomment to use)
+    //     // auto config = BackdropConfig::FromARGB(
+    //     //     0xB3202020,  // 70% opacity + Dark RGB(32, 32, 32)
+    //     //     25.0f,       // Moderate blur
+    //     //     0.65f
+    //     // );
+
+    //     // Example 4: Vivid magenta with 60% opacity (uncomment to use)
+    //     // auto config = BackdropConfig::FromARGB(
+    //     //     0x99FF00FF,  // 60% opacity + Magenta RGB(255, 0, 255)
+    //     //     35.0f,
+    //     //     0.70f
+    //     // );
+
+    //     _backdrop = WinCompositionBackdrop::Create(
+    //         _hwnd,
+    //         CompositionBackdropType::kAcrylic,
+    //         config
+    //     );
+
+    //     if (!_backdrop) {
+    //         LOGE << "[MainWindow] WinCompositionBackdrop::Create failed, trying fallback";
+    //         // Fallback to legacy API if creation failed
+    //         DWORD acrylicColor = MAKE_ABGR(214, 243, 243, 245);
+    //         WinMaterial::ApplyAcrylicWithColor(_hwnd, acrylicColor);
+    //     } else {
+    //         LOGI << "[MainWindow] WinCompositionBackdrop created successfully";
+    //     }
+    // } else {
+    //     LOGW << "[MainWindow] WinCompositionBackdrop not supported, using fallback";
+    //     // Fallback to legacy Win32 API for older systems
+    //     DWORD acrylicColor = MAKE_ABGR(214, 243, 243, 245);
+    //     WinMaterial::ApplyAcrylicWithColor(_hwnd, acrylicColor);
+    // }
+
+     WinMaterial::ApplyMaterial(_hwnd, MaterialType::kAcrylic);
     if (!initiallyHidden) {
         // Show this window.
         show(_initialShowMode);
@@ -315,7 +412,8 @@ LRESULT CALLBACK MainWindow::RootWndProc(HWND hWnd,
         self->onDpiChanged(wParam, lParam); break;
 
     case WM_ERASEBKGND:
-        break;
+        // Return non-zero to prevent default erase, avoiding white background flash
+        return 1;
 
     // case WM_ENTERMENULOOP:
     //     if (!wParam)
@@ -383,16 +481,34 @@ void MainWindow::onPaint()
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(_hwnd, &ps);
 
-    // For Acrylic effect to work properly, we need to draw something in the client area
-    // Even if it's just a transparent fill, it ensures the backdrop effect is applied
-    RECT clientRect;
-    GetClientRect(_hwnd, &clientRect);
+    //RECT clientRect = {};
+    //GetClientRect(_hwnd, &clientRect);
 
-    // Fill with a semi-transparent color to demonstrate the Acrylic effect
-    // This will show through the Acrylic blur behind the window
-    HBRUSH hBrush = CreateSolidBrush(RGB(40, 40, 40));
-    FillRect(hdc, &clientRect, hBrush);
-    DeleteObject(hBrush);
+    //// Fill with a semi-transparent color to demonstrate the Acrylic effect
+    //// This will show through the Acrylic blur behind the window
+    //HBRUSH hBrush = CreateSolidBrush(RGB(0, 0, 0));
+    //FillRect(hdc, &clientRect, hBrush);
+    //DeleteObject(hBrush);
+
+    // // Use GDI+ to draw semi-transparent background
+    // // This supports alpha channel for true transparency
+    // Graphics graphics(hdc);
+
+    // // Set high quality rendering
+    // graphics.SetSmoothingMode(SmoothingModeHighQuality);
+    // graphics.SetCompositingMode(CompositingModeSourceOver);
+    // graphics.SetCompositingQuality(CompositingQualityHighQuality);
+
+    // // Create semi-transparent brush
+    // Color bgColor(0, 0, 0, 0);
+    // SolidBrush brush(bgColor);
+
+    // // Fill the entire client area with semi-transparent color
+    // graphics.FillRectangle(&brush,
+    //                       clientRect.left,
+    //                       clientRect.top,
+    //                       clientRect.right - clientRect.left,
+    //                       clientRect.bottom - clientRect.top);
 
     EndPaint(_hwnd, &ps);
 }
@@ -420,6 +536,11 @@ void MainWindow::onSize(bool minimized)
             view->setVisible(false);
         }
         return;
+    }
+
+    // Update backdrop for window size change
+    if (_backdrop) {
+        _backdrop->Update();
     }
 
     // Update layout when window size changes
@@ -705,6 +826,12 @@ void MainWindow::updateLayout()
 
 bool MainWindow::onClose()
 {
+    // Clean up backdrop effect
+    if (_backdrop) {
+        _backdrop->Remove();
+        _backdrop.reset();
+    }
+
     // Ensure all CefWebView are properly destroyed
     if (_topView) {
         _topView.reset();
