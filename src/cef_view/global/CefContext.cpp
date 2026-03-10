@@ -21,7 +21,7 @@ namespace cefview {
 static CefSettings getCefSettings(const CefConfig& config) {
     CefSettings settings;
     settings.multi_threaded_message_loop = config.multiThreadedMessageLoop;
-    settings.log_severity = LOGSEVERITY_WARNING;
+    settings.log_severity = LOGSEVERITY_INFO;
 
     CefString(&settings.cookieable_schemes_list) = config.cookieableSchemesList;
 
