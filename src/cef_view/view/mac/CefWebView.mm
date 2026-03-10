@@ -1204,50 +1204,6 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     [self sendScrollWheelEvent:event];
 }
 
-#pragma mark - Edit Menu Commands
-
-- (void)cut:(id)sender
-{
-    if (!_browser) return;
-    _browser->GetFocusedFrame()->Cut();
-}
-
-- (void)copy:(id)sender
-{
-    if (!_browser) return;
-    _browser->GetFocusedFrame()->Copy();
-}
-
-- (void)paste:(id)sender
-{
-    if (!_browser) return;
-    _browser->GetFocusedFrame()->Paste();
-}
-
-- (void)selectAll:(id)sender
-{
-    if (!_browser) return;
-    _browser->GetFocusedFrame()->SelectAll();
-}
-
-- (void)undo:(id)sender
-{
-    if (!_browser) return;
-    _browser->GetFocusedFrame()->Undo();
-}
-
-- (void)redo:(id)sender
-{
-    if (!_browser) return;
-    _browser->GetFocusedFrame()->Redo();
-}
-
-- (void)delete:(id)sender
-{
-    if (!_browser) return;
-    _browser->GetFocusedFrame()->Delete();
-}
-
 #pragma mark - Keyboard Events
 
 - (void)keyDown:(NSEvent*)event
