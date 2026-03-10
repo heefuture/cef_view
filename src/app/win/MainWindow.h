@@ -22,7 +22,6 @@
 
 namespace cefview {
 class CefWebView;
-class WinCompositionBackdrop;
 }
 
 using cefview::CefWebView;
@@ -183,8 +182,6 @@ private:
     HWND _btnSwitch1 = nullptr;                                  ///< Switch button 1
     HWND _btnSwitch2 = nullptr;                                  ///< Switch button 2
     HWND _btnSwitch3 = nullptr;                                  ///< Switch button 3
-
-    std::unique_ptr<cefview::WinCompositionBackdrop> _backdrop;  ///< Composition backdrop effect
 
     HWND _hwnd = nullptr;                                        ///< Main window handle
     HRGN _draggableRegion = nullptr;                             ///< Draggable region

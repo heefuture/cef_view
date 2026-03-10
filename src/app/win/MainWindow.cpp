@@ -7,7 +7,6 @@
 #include <optional>
 
 #include "CefWebView.h"
-#include "WinCompositionBackdrop.h"
 #include "WinMaterial.h"
 #include "WinUtil.h"
 #include "utils/LogUtil.h"
@@ -540,11 +539,6 @@ void MainWindow::onSize(bool minimized)
         return;
     }
 
-    // Update backdrop for window size change
-    if (_backdrop) {
-        _backdrop->Update();
-    }
-
     // Update layout when window size changes
     updateLayout();
 
@@ -828,12 +822,6 @@ void MainWindow::updateLayout()
 
 bool MainWindow::onClose()
 {
-    // Clean up backdrop effect
-    if (_backdrop) {
-        _backdrop->Remove();
-        _backdrop.reset();
-    }
-
     // Ensure all CefWebView are properly destroyed
     if (_topView) {
         _topView.reset();
