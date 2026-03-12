@@ -402,9 +402,9 @@ public:
 
     /**
      * @brief Called when focus on editable field changes
-     * @param[in] focusOnEditableField true if focus is on an editable field
+     * @param[in] message The process message containing editable field state
      */
-    virtual void onFocusOnEditableFieldChanged(bool focusOnEditableField);
+    virtual void onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message);
 
     /**
      * @brief Check if focus is on an editable field

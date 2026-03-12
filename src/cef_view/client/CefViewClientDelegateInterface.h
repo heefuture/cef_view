@@ -31,9 +31,9 @@ public:
 
     /**
      * @brief Called when focus on editable field changes
-     * @param[in] focusOnEditableField true if focus is on an editable field
+     * @param[in] message The process message containing focus state arguments
      */
-    virtual void onFocusOnEditableFieldChanged(bool focusOnEditableField) {}
+    virtual void onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message) {}
 #pragma endregion // CefClient
 
 #pragma region CefContextMenuHandler

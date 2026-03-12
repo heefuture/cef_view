@@ -66,7 +66,7 @@ class CefJsBridgeBrowser;
                               characterBounds:(const CefRenderHandler::RectList&)characterBounds;
 
 /// Called when focus on editable field changes
-- (void)onFocusOnEditableFieldChanged:(BOOL)focusOnEditableField;
+- (void)onFocusOnEditableFieldChanged:(CefRefPtr<CefProcessMessage>)message;
 
 /// Handle shortcut key events (Cmd+R, F12, etc.)
 - (BOOL)handleShortcutKeyWithKeyCode:(int)keyCode modifiers:(uint32_t)modifiers;
@@ -131,7 +131,7 @@ protected:
                                           CefProcessId sourceProcess,
                                           CefRefPtr<CefProcessMessage> message) override;
 
-    virtual void onFocusOnEditableFieldChanged(bool focusOnEditableField) override;
+    virtual void onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message) override;
 #pragma endregion // CefClient
 
 #pragma region CefContextMenuHandler

@@ -71,9 +71,9 @@ bool CefViewClientDelegate::onProcessMessageReceived(CefRefPtr<CefBrowser> brows
     return false;
 }
 
-void CefViewClientDelegate::onFocusOnEditableFieldChanged(bool focusOnEditableField)
+void CefViewClientDelegate::onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message)
 {
-    _view->onFocusOnEditableFieldChanged(focusOnEditableField);
+    _view->onFocusOnEditableFieldChanged(message);
 }
 #pragma endregion // CefClient
 
@@ -90,17 +90,21 @@ void CefViewClientDelegate::onBeforeContextMenu(CefRefPtr<CefBrowser> browser,
     if (model->GetCount() > 0) {
         model->AddSeparator();
     }
-    
+
     // Add "Open DevTools" menu item
     // Use MENU_ID_USER_FIRST as custom command ID to avoid conflicts
     constexpr int kShowDevToolsMenuId = MENU_ID_USER_FIRST + 1;
     model->AddItem(kShowDevToolsMenuId, "Open DevTools");
 #else
-    // In release mode, disable context menu
-    // Only disable context menu for page or frame areas
+    // Preserve default context menu for DevTools pages (enables copy, etc.)
+    std::string url = frame->GetURL().ToString();
+    if (url.find("devtools://") == 0) {
+        return;
+    }
+
+    // In release mode, disable context menu for page/frame areas
     if ((params->GetTypeFlags() & (CM_TYPEFLAG_PAGE | CM_TYPEFLAG_FRAME)) != 0) {
         if (model->GetCount() > 0) {
-            // Clear all menu items to disable the context menu
             model->Clear();
         }
     }

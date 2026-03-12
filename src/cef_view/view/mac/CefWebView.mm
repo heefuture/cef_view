@@ -1064,9 +1064,10 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     }
 }
 
-- (void)onFocusOnEditableFieldChanged:(BOOL)focusOnEditableField
+- (void)onFocusOnEditableFieldChanged:(CefRefPtr<CefProcessMessage>)message
 {
-    _focusOnEditableField = focusOnEditableField;
+    CefRefPtr<CefListValue> args = message->GetArgumentList();
+    _focusOnEditableField = args->GetBool(0);
 }
 
 - (BOOL)isFocusOnEditableField

@@ -947,13 +947,13 @@ void CefWebView::onProcessMessageReceived(int browserId, const std::string& mess
     // Process message handling (extensible)
 }
 
-void CefWebView::onFocusOnEditableFieldChanged(bool focusOnEditableField)
+void CefWebView::onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message)
 {
     // A message is sent from ClientRenderDelegate to tell us whether the
     // currently focused DOM node is editable. Use of |m_bFocusOnEditableField|
     // is redundant with CefKeyEvent.focus_on_editable_field in OnPreKeyEvent
     // but is useful for demonstration purposes.
-    _focusOnEditableField = focusOnEditableField;
+    _focusOnEditableField = message->GetArgumentList()->GetBool(0);
 }
 
 #pragma region windowProchandler

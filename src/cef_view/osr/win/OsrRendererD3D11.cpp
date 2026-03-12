@@ -448,10 +448,10 @@ bool OsrRendererD3D11::createShaderResource() {
         // Initialize with transparent black data if in transparent mode
         D3D11_SUBRESOURCE_DATA* pInitialData = nullptr;
         std::vector<uint32_t> transparentData;
+        D3D11_SUBRESOURCE_DATA initialData = {};
         if (_transparent) {
             // Create transparent black pixels (BGRA format: 0x00000000)
             transparentData.resize(_viewWidth * _viewHeight, 0x00000000);
-            D3D11_SUBRESOURCE_DATA initialData = {};
             initialData.pSysMem = transparentData.data();
             initialData.SysMemPitch = _viewWidth * 4;  // 4 bytes per pixel
             initialData.SysMemSlicePitch = 0;
