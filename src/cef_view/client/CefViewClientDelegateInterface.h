@@ -51,6 +51,18 @@ public:
                                       CefContextMenuHandler::EventFlags eventFlags) = 0;
 #pragma endregion // CefContextMenuHandler
 
+#pragma region CefDialogHandler
+    /// Handle file dialog requests from the browser
+    virtual bool onFileDialog(CefRefPtr<CefBrowser> browser,
+                              CefDialogHandler::FileDialogMode mode,
+                              const CefString& title,
+                              const CefString& defaultFilePath,
+                              const std::vector<CefString>& acceptFilters,
+                              const std::vector<CefString>& acceptExtensions,
+                              const std::vector<CefString>& acceptDescriptions,
+                              CefRefPtr<CefFileDialogCallback> callback) { return false; }
+#pragma endregion // CefDialogHandler
+
 #pragma region CefDisplayHandler
         virtual void onAddressChange(CefRefPtr<CefBrowser> browser,	CefRefPtr<CefFrame> frame, const CefString& url) = 0;
 
