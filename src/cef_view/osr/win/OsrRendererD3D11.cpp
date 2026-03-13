@@ -630,71 +630,47 @@ void OsrRendererD3D11::onAcceleratedPaint(CefRenderHandler::PaintElementType typ
         return;
     }
 
-    // Check if shared texture handle changed
-    if (_sharedTexture && _sharedTextureHandle) {
-        if (sharedHandle != _sharedTextureHandle) {
-            _sharedTexture.Reset();
-            _sharedTextureSRV.Reset();
-            _sharedTextureHandle = nullptr;
-        }
+    // If handle hasn't changed, nothing to do
+    if (_sharedTextureHandle == sharedHandle && _sharedTexture && _sharedTextureSRV) {
+        return;
     }
 
-    // Open shared texture if not already opened for this handle
-    if (!_sharedTexture) {
-        ComPtr<ID3D11Device1> device1;
-        HRESULT hr = _d3dDevice.As(&device1);
-        if (FAILED(hr)) {
-            LOGE << "onAcceleratedPaint() QueryInterface ID3D11Device1 FAILED hr=0x" << std::hex << hr;
-            return;
-        }
-
-        hr = device1->OpenSharedResource1(sharedHandle, IID_PPV_ARGS(&_sharedTexture));
-        if (FAILED(hr)) {
-            LOGE << "onAcceleratedPaint() OpenSharedResource1 FAILED hr=0x" << std::hex << hr;
-            return;
-        }
-
-        D3D11_TEXTURE2D_DESC sharedDesc;
-        _sharedTexture->GetDesc(&sharedDesc);
-
-        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-        srvDesc.Format = sharedDesc.Format;
-        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Texture2D.MipLevels = 1;
-
-        hr = _d3dDevice->CreateShaderResourceView(_sharedTexture.Get(), &srvDesc, _sharedTextureSRV.GetAddressOf());
-        if (FAILED(hr)) {
-            LOGE << "onAcceleratedPaint() CreateShaderResourceView FAILED hr=0x" << std::hex << hr;
-            _sharedTexture.Reset();
-            _sharedTextureHandle = nullptr;
-            return;
-        }
-
-        // Save the handle for comparison in next paint
-        _sharedTextureHandle = sharedHandle;
-
-        //// DEBUG: Save shared texture for debugging (keep last 60 frames)
-        //static int debugTextureCounter = 0;
-        //std::string cacheDir = cefview::PathUtil::GetAppCacheDirectory("TencentDesign");
-        //if (!cacheDir.empty()) {
-        //    std::string debugFolder = cacheDir + "\\DebugTextures";
-
-        //    // Create directory if it doesn't exist
-        //    cefview::PathUtil::CreatePath(debugFolder);
-
-        //    // Circular buffer: save frames 0-59, then wrap around
-        //    std::string filePath = debugFolder + "\\cef_frame_" +
-        //                           std::to_string(debugTextureCounter) + ".bmp";
-
-        //    std::wstring wFilePath(filePath.begin(), filePath.end());
-        //    if (SaveTextureToBMP(_d3dDevice.Get(), _d3dContext.Get(), _sharedTexture.Get(), wFilePath.c_str())) {
-        //        LOGD << "Saved CEF texture frame " << debugTextureCounter << " to: " << filePath;
-        //    }
-
-        //    // Increment counter and wrap at 60
-        //    debugTextureCounter = (debugTextureCounter + 1) % 60;
-        //}
+    // Handle changed - create new texture FIRST, then release old one
+    // This prevents flickering when render() is called during texture switch
+    ComPtr<ID3D11Device1> device1;
+    HRESULT hr = _d3dDevice.As(&device1);
+    if (FAILED(hr)) {
+        LOGE << "onAcceleratedPaint() QueryInterface ID3D11Device1 FAILED hr=0x" << std::hex << hr;
+        return;
     }
+
+    ComPtr<ID3D11Texture2D> newTexture;
+    hr = device1->OpenSharedResource1(sharedHandle, IID_PPV_ARGS(&newTexture));
+    if (FAILED(hr)) {
+        LOGE << "onAcceleratedPaint() OpenSharedResource1 FAILED hr=0x" << std::hex << hr;
+        return;
+    }
+
+    D3D11_TEXTURE2D_DESC sharedDesc;
+    newTexture->GetDesc(&sharedDesc);
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Format = sharedDesc.Format;
+    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = 1;
+
+    ComPtr<ID3D11ShaderResourceView> newSRV;
+    hr = _d3dDevice->CreateShaderResourceView(newTexture.Get(), &srvDesc, newSRV.GetAddressOf());
+    if (FAILED(hr)) {
+        LOGE << "onAcceleratedPaint() CreateShaderResourceView FAILED hr=0x" << std::hex << hr;
+        return;
+    }
+
+    // New texture created successfully - now atomically swap to new resources
+    // Old resources will be released when ComPtr goes out of scope
+    _sharedTexture = std::move(newTexture);
+    _sharedTextureSRV = std::move(newSRV);
+    _sharedTextureHandle = sharedHandle;
 }
 
 void OsrRendererD3D11::render() {
