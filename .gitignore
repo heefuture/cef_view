@@ -39,3 +39,15 @@
 
 # debug information files
 *.dwo
+
+.vscode
+.codebuddy/designs
+nul
+build
+build_mac
+build_vc
+build_vscode
+build_xcode
+
+
+libcef
