@@ -131,6 +131,24 @@ bool CefViewClient::OnContextMenuCommand(CefRefPtr<CefBrowser> browser, CefRefPt
 }
 #pragma endregion // CefContextMenuHandler
 
+#pragma region CefDialogHandler
+bool CefViewClient::OnFileDialog(CefRefPtr<CefBrowser> browser,
+                                 FileDialogMode mode,
+                                 const CefString& title,
+                                 const CefString& default_file_path,
+                                 const std::vector<CefString>& accept_filters,
+                                 const std::vector<CefString>& accept_extensions,
+                                 const std::vector<CefString>& accept_descriptions,
+                                 CefRefPtr<CefFileDialogCallback> callback) {
+    if (auto clientDelegate = _clientDelegate.lock()) {
+        return clientDelegate->onFileDialog(browser, mode, title, default_file_path,
+                                            accept_filters, accept_extensions,
+                                            accept_descriptions, callback);
+    }
+    return false;
+}
+#pragma endregion // CefDialogHandler
+
 #pragma region CefDisplayHandler
 // CefDisplayHandler methods
 void CefViewClient::OnAddressChange(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, const CefString& url)

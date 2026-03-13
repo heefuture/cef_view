@@ -22,6 +22,7 @@ namespace cefview {
 // CefViewClient implements CefClient and a number of other interfaces.
 class CefViewClient : public CefClient,
                       public CefContextMenuHandler,
+                      public CefDialogHandler,
                       public CefDisplayHandler,
                       public CefDownloadHandler,
                       public CefDragHandler,
@@ -54,6 +55,7 @@ public:
 public:
 #pragma region CefClient
     virtual CefRefPtr<CefContextMenuHandler> GetContextMenuHandler() override { return this; }
+    virtual CefRefPtr<CefDialogHandler> GetDialogHandler() override { return this; }
     virtual CefRefPtr<CefDisplayHandler> GetDisplayHandler() override { return this; }
     virtual CefRefPtr<CefDownloadHandler> GetDownloadHandler() override { return this; }
     virtual CefRefPtr<CefDragHandler> GetDragHandler() override { return this; }
@@ -81,6 +83,17 @@ public:
                                       int command_id,
                                       EventFlags event_flags) override;
 #pragma endregion // CefContextMenuHandler
+
+#pragma region CefDialogHandler
+    virtual bool OnFileDialog(CefRefPtr<CefBrowser> browser,
+                              FileDialogMode mode,
+                              const CefString& title,
+                              const CefString& default_file_path,
+                              const std::vector<CefString>& accept_filters,
+                              const std::vector<CefString>& accept_extensions,
+                              const std::vector<CefString>& accept_descriptions,
+                              CefRefPtr<CefFileDialogCallback> callback) override;
+#pragma endregion // CefDialogHandler
 
 #pragma region CefDisplayHandler
     virtual void OnAddressChange(CefRefPtr<CefBrowser> browser,
