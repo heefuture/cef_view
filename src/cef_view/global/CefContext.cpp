@@ -18,6 +18,15 @@
 
 namespace cefview {
 
+CefContext* CefContext::sInstance = nullptr;
+
+CefContext& CefContext::instance() {
+    if (!sInstance) {
+        sInstance = new CefContext();
+    }
+    return *sInstance;
+}
+
 static CefSettings getCefSettings(const CefConfig& config) {
     CefSettings settings;
     settings.multi_threaded_message_loop = config.multiThreadedMessageLoop;
@@ -105,27 +114,30 @@ std::string CefContext::GetProcessType(int argc, char* argv[]) {
 }
 
 
-CefContext::CefContext(const CefConfig& config)
-    : _config(config) {
-}
+CefContext::CefContext() = default;
 
 CefContext::~CefContext() {
     CefShutdown();
+    sInstance = nullptr;
 }
 
 #if defined(WIN32)
-int CefContext::initialize(std::shared_ptr<CefViewAppDelegateInterface> browserAppDelegate,
+int CefContext::initialize(const CefConfig& config,
+                           std::shared_ptr<CefViewAppDelegateInterface> browserAppDelegate,
                            std::shared_ptr<CefViewAppDelegateInterface> rendererAppDelegate,
                            std::shared_ptr<CefViewAppDelegateInterface> schemeAppDelegate) {
+    _config = config;
     HINSTANCE hInstance = (HINSTANCE)GetModuleHandle(NULL);
     CefMainArgs mainArgs(hInstance);
     std::string processType = GetProcessType();
 #else
 int CefContext::initialize(int argc,
                            char* argv[],
+                           const CefConfig& config,
                            std::shared_ptr<CefViewAppDelegateInterface> browserAppDelegate,
                            std::shared_ptr<CefViewAppDelegateInterface> rendererAppDelegate,
                            std::shared_ptr<CefViewAppDelegateInterface> schemeAppDelegate) {
+    _config = config;
     CefMainArgs mainArgs(argc, argv);
     std::string processType = GetProcessType(argc, argv);
 #endif
@@ -173,11 +185,16 @@ void CefContext::runMessageLoop() {
     if (_config.multiThreadedMessageLoop) {
         return;
     }
+    _messageLoopRunning = true;
     CefRunMessageLoop();
+    _messageLoopRunning = false;
 }
 
 void CefContext::quitMessageLoop() {
     if (_config.multiThreadedMessageLoop) {
+        return;
+    }
+    if (!_messageLoopRunning) {
         return;
     }
     CefQuitMessageLoop();

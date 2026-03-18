@@ -6,7 +6,7 @@
  *              CefScopedLibraryLoader instead of linking directly.
  * @version     1.0
  * @date        2026.02.10
- * @copyright   Copyright (C) 2026 Tencent. All rights reserved.
+ * @copyright
  */
 
 #include <string>

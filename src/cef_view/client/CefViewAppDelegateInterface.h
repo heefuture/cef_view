@@ -72,6 +72,7 @@ public:
     // should check for unique message names to avoid interfering with each
     // other.
     virtual bool onProcessMessageReceived(CefRefPtr<CefBrowser> browser,
+                                          CefRefPtr<CefFrame> frame,
                                           CefProcessId sourceProcess,
                                           CefRefPtr<CefProcessMessage> message) { return false; }
 

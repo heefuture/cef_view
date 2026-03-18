@@ -1,5 +1,7 @@
 #include "CefViewClient.h"
 
+#include <global/CefContext.h>
+#include <utils/CefSwitches.h>
 #include <utils/util.h>
 
 #include <include/cef_app.h>
@@ -7,8 +9,6 @@
 #include <include/base/cef_bind.h>
 #include <include/base/cef_callback.h>
 #include <include/wrapper/cef_closure_task.h>
-
-#include <utils/CefSwitches.h>
 
 namespace cefview{
 
@@ -363,10 +363,8 @@ void CefViewClient::OnBeforeClose(CefRefPtr<CefBrowser> browser)
     }
 
     if (--sBrowserCount == 0) {
-#if defined(__APPLE__)
-        // On macOS, quit the CEF message loop so that main() can proceed to CefShutdown.
-        CefQuitMessageLoop();
-#endif
+        // Quit the CEF message loop so that main() can proceed to CefShutdown.
+        CefContext::instance().quitMessageLoop();
     }
 }
 #pragma endregion // CefLifeSpanHandler

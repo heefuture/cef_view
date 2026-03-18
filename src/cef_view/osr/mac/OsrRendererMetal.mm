@@ -2,7 +2,7 @@
  * @file OsrRendererMetal.mm
  * @brief Metal hardware-accelerated off-screen renderer implementation
  *
- * Copyright (C) 2026 Tencent
+ * Copyright
  * Licensed under BSD-style license.
  */
 #import "OsrRendererMetal.h"

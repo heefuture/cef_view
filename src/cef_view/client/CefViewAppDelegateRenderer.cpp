@@ -106,6 +106,7 @@ void CefViewAppDelegateRenderer::onUncaughtException(CefRefPtr<CefBrowser> brows
 }
 
 bool CefViewAppDelegateRenderer::onProcessMessageReceived(CefRefPtr<CefBrowser> browser,
+                                                          CefRefPtr<CefFrame> frame,
                                                           CefProcessId sourceProcess,
                                                           CefRefPtr<CefProcessMessage> message) {
     assert(sourceProcess == PID_BROWSER);

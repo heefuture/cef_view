@@ -10,38 +10,43 @@
 #define CEFCONFIG_H
 #pragma once
 
-#include <string>
 #include <cstdint>
+#include <string>
 
 namespace cefview {
 
-struct CefConfig
-{
-    // Make browser process message loop run in a separate thread.
-    // Macos is not supported, so we need to run messageloop
+// Configuration for CefContext initialization.
+struct CefConfig {
+    // Run browser UI thread on a separate thread (Windows/Linux only).
+    // NOTE: Must be false in the following cases:
+    //   - macOS: multi-threaded message loop is not supported by CEF.
+    //   - OSR mode: breaks drag-and-drop (confirmed by CEF official docs).
+    // When false, the caller must drive the loop via CefRunMessageLoop()
+    // or CefDoMessageLoopWork().
     bool multiThreadedMessageLoop = false;
-    bool noSandbox = true;
-    bool disableGpu = false;
-    // Enable off-screen rendering (OSR) support globally.
-    // Must be true if any CefWebView uses offScreenRenderingEnabled.
+
+    // Enable off-screen rendering (OSR) globally. Must be true if any CefWebView uses OSR.
     bool windowlessRenderingEnabled = true;
-    int remoteDebuggingPort = 18432;
-    std::string cookieableSchemesList = "http,https";
+    bool disableGpu = false;
+    uint32_t backgroundColor = 0xFFFFFFFF;  // ARGB format
+
     std::string cachePath;
     std::string resourcesDirPath;
     std::string localesDirPath;
+    std::string subProcessPath;  // Windows only
     // Locale setting for CEF (e.g., "zh-CN", "en-US")
     std::string locale;
     // Accept-Language header value (e.g., "zh-CN,en-US;q=0.9,en;q=0.8")
     std::string acceptLanguageList;
+
+    std::string cookieableSchemesList = "http,https";
+
+    int remoteDebuggingPort = 18432;  // 0 to disable
     // Log configuration
-    int logSeverity = 0; // LOGSEVERITY_DEFAULT
+    int logSeverity = 0;              // Maps to cef_log_severity_t
     std::string logFilePath;
-    // Subprocess path, only valid on Windows
-    std::string subProcessPath;
-    // Background color for CEF browser (ARGB format: 0xAARRGGBB)
-    // Default is white (0xFFFFFFFF)
-    uint32_t backgroundColor = 0xFFFFFFFF;
+
+    bool noSandbox = true;
 };
 
 } // namespace cefview
