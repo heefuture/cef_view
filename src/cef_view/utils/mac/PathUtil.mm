@@ -3,7 +3,7 @@
  * @brief       macOS platform implementation of PathUtil
  * @version     1.0
  * @date        2026.02.10
- * @copyright   Copyright (C) 2026 Tencent
+ * @copyright
  */
 #include "utils/PathUtil.h"
 

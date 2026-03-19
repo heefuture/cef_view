@@ -12,6 +12,7 @@
 #include "utils/LogUtil.h"
 #include "utils/PathUtil.h"
 #include "view/CefWebViewSetting.h"
+#include "global/CefContext.h"
 
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "dwmapi.lib")
@@ -839,6 +840,9 @@ bool MainWindow::onClose()
 void MainWindow::onDestroyed()
 {
     _windowDestroyed = true;
-    ::PostQuitMessage(0);
+
+    // Fallback: quit CEF message loop in case all browsers have already closed
+    // before this point. Safe to call multiple times (guarded by _messageLoopRunning).
+    CefContext::instance().quitMessageLoop();
 }
 

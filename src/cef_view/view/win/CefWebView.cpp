@@ -364,26 +364,24 @@ void CefWebView::setBounds(int left, int top, int width, int height)
         _osrRenderer->setBounds(0, 0, width, height);
     }
 
-    // Notify CEF that the window was resized
-    if (_browser) {
-        _browser->GetHost()->WasResized();
-        // Force full repaint only when size actually changed
-        if (sizeChanged) {
-            _browser->GetHost()->Invalidate(PET_VIEW);
+    if (_settings.offScreenRenderingEnabled) {
+        // OSR mode: notify CEF about the resize so it can re-render
+        if (_browser) {
+            _browser->GetHost()->WasResized();
+            if (sizeChanged) {
+                _browser->GetHost()->Invalidate(PET_VIEW);
+            }
+        }
+    } else {
+        // Windowed mode: resize the CEF child window directly
+        HWND cefHwnd = getBrowserWindowHandle();
+        if (cefHwnd && cefHwnd != _hwnd) {
+            ::SetWindowPos(cefHwnd, nullptr, 0, 0, width, height, SWP_NOZORDER | SWP_NOMOVE);
         }
     }
 
-    // Force window repaint only when size changed
     if (sizeChanged) {
         ::InvalidateRect(_hwnd, nullptr, TRUE);
-    }
-
-    // For native window mode, resize CEF's child window
-    HWND cefHwnd = getBrowserWindowHandle();
-    if (cefHwnd && cefHwnd != _hwnd) {
-        // CEF child window coordinates are relative to _hwnd (not the main window)
-        // So position is always (0, 0) and only size needs to be updated
-        ::SetWindowPos(cefHwnd, nullptr, 0, 0, width, height, SWP_NOZORDER | SWP_NOMOVE);
     }
 }
 
@@ -392,23 +390,22 @@ void CefWebView::setVisible(bool bVisible /*= true*/)
     if (bVisible) {
         ::ShowWindow(_hwnd, SW_SHOW);
         ::UpdateWindow(_hwnd);
-    }
-    else {
+    } else {
         ::ShowWindow(_hwnd, SW_HIDE);
     }
 
     if (!_browser) return;
 
-    _browser->GetHost()->WasHidden(!bVisible);
-
-    HWND hwnd = getBrowserWindowHandle();
-    if (hwnd && hwnd != _hwnd) {
-        int cmdShow = bVisible ? SW_SHOW : SW_HIDE;
-        ::ShowWindow(hwnd, cmdShow);
-        //if (!bVisible) {
-        //    ::SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE);
-        //}
-        ::UpdateWindow(hwnd);
+    if (_settings.offScreenRenderingEnabled) {
+        // WasHidden is only valid for windowless (OSR) browsers.
+        _browser->GetHost()->WasHidden(!bVisible);
+    } else {
+        // For windowed browsers, show/hide the CEF child window directly.
+        HWND hwnd = getBrowserWindowHandle();
+        if (hwnd && hwnd != _hwnd) {
+            ::ShowWindow(hwnd, bVisible ? SW_SHOW : SW_HIDE);
+            ::UpdateWindow(hwnd);
+        }
     }
 }
 

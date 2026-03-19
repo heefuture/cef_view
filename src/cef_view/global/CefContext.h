@@ -10,19 +10,28 @@
 #define CEFCONTEXT_H
 #pragma once
 
-#include <global/CefConfig.h>
-#include <include/cef_scheme.h>
 #include <memory>
 #include <string>
+
+#include <global/CefConfig.h>
+#include <include/cef_scheme.h>
 
 namespace cefview {
 
 class CefViewAppDelegateInterface;
 
+/**
+ * Singleton that owns the CEF lifecycle (init / message-loop / shutdown).
+ * Access via CefContext::instance(). Call initialize() before using other methods.
+ */
 class CefContext {
 public:
-    explicit CefContext(const CefConfig& config);
-    ~CefContext();
+    static CefContext& instance();
+
+    CefContext(const CefContext&) = delete;
+    CefContext& operator=(const CefContext&) = delete;
+    CefContext(CefContext&&) = delete;
+    CefContext& operator=(CefContext&&) = delete;
 
     /**
      * Initialize CEF with optional delegates for browser, renderer processes and scheme registration.
@@ -34,12 +43,14 @@ public:
      *         >= 0: Sub-process completed, should exit immediately with this code
      */
 #if defined(WIN32)
-    int initialize(std::shared_ptr<CefViewAppDelegateInterface> browserAppDelegate = nullptr,
+    int initialize(const CefConfig& config,
+                   std::shared_ptr<CefViewAppDelegateInterface> browserAppDelegate = nullptr,
                    std::shared_ptr<CefViewAppDelegateInterface> rendererAppDelegate = nullptr,
                    std::shared_ptr<CefViewAppDelegateInterface> schemeAppDelegate = nullptr);
 #else
     int initialize(int argc,
                    char* argv[],
+                   const CefConfig& config,
                    std::shared_ptr<CefViewAppDelegateInterface> browserAppDelegate = nullptr,
                    std::shared_ptr<CefViewAppDelegateInterface> rendererAppDelegate = nullptr,
                    std::shared_ptr<CefViewAppDelegateInterface> schemeAppDelegate = nullptr);
@@ -69,6 +80,12 @@ public:
     void quitMessageLoop();
 
     /**
+     * Explicitly shut down CEF. Must be called on the main thread after
+     * runMessageLoop() returns.
+     */
+    void shutdown();
+
+    /**
      * Process CEF message loop work. Only call in single-threaded mode.
      */
     void doMessageLoopWork();
@@ -91,7 +108,13 @@ public:
 #endif
 
 private:
+    CefContext();
+    ~CefContext();
+
+    static CefContext* sInstance;
+
     CefConfig _config;
+    bool _messageLoopRunning = {false};
 };
 
 }  // namespace cefview

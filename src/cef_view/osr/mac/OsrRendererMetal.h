@@ -2,7 +2,7 @@
  * @file OsrRendererMetal.h
  * @brief Metal hardware-accelerated off-screen renderer for CEF on macOS
  *
- * Copyright (C) 2026 Tencent
+ * Copyright
  * Licensed under BSD-style license.
  */
 #ifndef OSRRENDERERMETAL_H

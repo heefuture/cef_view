@@ -20,7 +20,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Initialize CEF context
     cefview::CefConfig cefConfig;
     cefConfig.backgroundColor = 0x00000000;  // Fully transparent background
-    cefConfig.multiThreadedMessageLoop = true;
+    cefConfig.multiThreadedMessageLoop = false;
 
     // Follow system language settings
     wchar_t localeName[LOCALE_NAME_MAX_LENGTH];
@@ -38,9 +38,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
     }
 
-    cefview::CefContext context(cefConfig);
-
-    int initResult = context.initialize(browserDelegate, rendererDelegate);
+    auto& context = cefview::CefContext::instance();
+    int initResult = context.initialize(cefConfig, browserDelegate, rendererDelegate);
     if (initResult >= 0) {
         // This is a sub-process, exit immediately with the returned code
         return initResult;
@@ -60,15 +59,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     auto mainWindow = std::make_unique<MainWindow>();
     mainWindow->init(std::move(config));
 
-    // Run Windows message loop
-    // Note: When multi_threaded_message_loop is enabled, CEF runs its own message loop
-    // on a separate thread, so we only need to run the standard Windows message loop here.
-    // DO NOT call context.doMessageLoopWork() in multi-threaded mode.
-    MSG msg = {};
-    while (GetMessage(&msg, nullptr, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
+    // Run CEF message loop (single-threaded mode).
+    // CefRunMessageLoop integrates with the Windows message loop internally,
+    // so no separate GetMessage loop is needed.
+    // This blocks until CefQuitMessageLoop() is called.
+    context.runMessageLoop();
+
+    // Explicitly shut down CEF. This must happen on the main thread
+    // after the message loop has exited and before the process exits.
+    context.shutdown();
 
     return 0;
 }

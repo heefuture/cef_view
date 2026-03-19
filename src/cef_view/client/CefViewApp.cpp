@@ -179,7 +179,7 @@ bool CefViewApp::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser,
     bool handled = false;
     for (auto& weakDelegate : _viewAppDelegates) {
         if (auto delegate = weakDelegate.lock()) {
-            handled = delegate->onProcessMessageReceived(browser, source_process, message);
+            handled = delegate->onProcessMessageReceived(browser, frame, source_process, message);
         }
     }
 
