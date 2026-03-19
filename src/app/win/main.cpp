@@ -65,5 +65,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // This blocks until CefQuitMessageLoop() is called.
     context.runMessageLoop();
 
+    // Explicitly shut down CEF. This must happen on the main thread
+    // after the message loop has exited and before the process exits.
+    context.shutdown();
+
     return 0;
 }

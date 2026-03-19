@@ -116,9 +116,10 @@ std::string CefContext::GetProcessType(int argc, char* argv[]) {
 
 CefContext::CefContext() = default;
 
-CefContext::~CefContext() {
+CefContext::~CefContext() = default;
+
+void CefContext::shutdown() {
     CefShutdown();
-    sInstance = nullptr;
 }
 
 #if defined(WIN32)

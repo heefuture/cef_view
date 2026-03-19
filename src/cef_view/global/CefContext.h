@@ -80,6 +80,12 @@ public:
     void quitMessageLoop();
 
     /**
+     * Explicitly shut down CEF. Must be called on the main thread after
+     * runMessageLoop() returns.
+     */
+    void shutdown();
+
+    /**
      * Process CEF message loop work. Only call in single-threaded mode.
      */
     void doMessageLoopWork();
