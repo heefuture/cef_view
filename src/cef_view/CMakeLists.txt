@@ -25,8 +25,13 @@ endif (MSVC)
 # Logical target used to link the libcef library.
 # macOS loads CEF framework at runtime via cef_library_loader, no libcef_lib needed.
 if(NOT APPLE)
-    # Only Release CEF binaries are available, use Release lib for all configurations.
-    ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_RELEASE}" "${CEF_LIB_RELEASE}")
+    if(CEF_USE_DEBUG)
+        # Standard distribution: use matching Debug/Release CEF libs.
+        ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
+    else()
+        # Minimal distribution: only Release CEF lib available, use for all configurations.
+        ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_RELEASE}" "${CEF_LIB_RELEASE}")
+    endif()
 endif()
 
 if(WEBVIEW_BUILD_STATIC)

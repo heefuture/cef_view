@@ -4,7 +4,13 @@ cmake_minimum_required(VERSION 3.14)
 set(CEFVIEWDIR ${CMAKE_CURRENT_SOURCE_DIR}/../cef_view)
 
 # Logical target used to link the libcef library.
-ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
+if(CEF_USE_DEBUG)
+    # Standard distribution: use matching Debug/Release CEF libs.
+    ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
+else()
+    # Minimal distribution: only Release CEF lib available, use for all configurations.
+    ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_RELEASE}" "${CEF_LIB_RELEASE}")
+endif()
 
 if(WIN32)
     # Windows: Build separate browser.exe subprocess
