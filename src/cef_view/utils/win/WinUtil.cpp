@@ -251,8 +251,30 @@ float WinUtil::GetDeviceScaleFactor() {
 }
 
 CefRect WinUtil::GetWindowRect(HWND hwnd, float deviceScaleFactor) {
+    RECT windowRect;
+    ::GetWindowRect(hwnd, &windowRect);
+
+    CefRect rect = ScreenUtil::DeviceToLogical(
+        {windowRect.left, windowRect.top, windowRect.right - windowRect.left,
+         windowRect.bottom - windowRect.top},
+        deviceScaleFactor);
+
+    if (rect.width == 0) {
+        rect.width = 1;
+    }
+
+    if (rect.height == 0) {
+        rect.height = 1;
+    }
+    // ::ClientToScreen(hwnd, (LPPOINT)&clientRect.left);
+    // ::ClientToScreen(hwnd, (LPPOINT)&clientRect.right);
+    // return CefRect(clientRect.left, clientRect.top, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
+    return rect;
+}
+
+CefRect WinUtil::GetClientRect(HWND hwnd, float deviceScaleFactor) {
     RECT clientRect;
-    ::GetWindowRect(hwnd, &clientRect);
+    ::GetClientRect(hwnd, &clientRect);
 
     CefRect rect = ScreenUtil::DeviceToLogical(
         {clientRect.left, clientRect.top, clientRect.right - clientRect.left,
@@ -268,9 +290,6 @@ CefRect WinUtil::GetWindowRect(HWND hwnd, float deviceScaleFactor) {
     }
 
     return rect;
-    // ::ClientToScreen(hwnd, (LPPOINT)&clientRect.left);
-    // ::ClientToScreen(hwnd, (LPPOINT)&clientRect.right);
-    // return CefRect(clientRect.left, clientRect.top, clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
 }
 
 }  // namespace cefview
