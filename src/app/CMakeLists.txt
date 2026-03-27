@@ -16,7 +16,13 @@ else()
 endif()
 
 # Logical target used to link the libcef library.
-ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
+if(CEF_USE_DEBUG)
+    # Standard distribution: use matching Debug/Release CEF libs.
+    ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
+else()
+    # Minimal distribution: only Release CEF lib available, use for all configurations.
+    ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_RELEASE}" "${CEF_LIB_RELEASE}")
+endif()
 
 set(CEFVIEWDIR ${CMAKE_CURRENT_SOURCE_DIR}/../cef_view)
 include_directories(${CEFVIEWDIR})
@@ -66,21 +72,41 @@ if(WIN32)
     )
 
     # Copy CEF libraries and resources for Windows (flat directory layout).
-    add_custom_command(
-        TARGET ${APP_TARGET}
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E echo "Copying CEF lib..."
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CEF_ROOT}/${CMAKE_BUILD_TYPE}"
-            "$<TARGET_FILE_DIR:${APP_TARGET}>"
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CEF_ROOT}/Resources"
-            "$<TARGET_FILE_DIR:${APP_TARGET}>"
-        COMMAND ${CMAKE_COMMAND} -E echo "Copying app resources..."
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/../resource"
-            "$<TARGET_FILE_DIR:${APP_TARGET}>/resources"
-    )
+    if(CEF_USE_DEBUG)
+        # Standard distribution: copy Debug or Release CEF binaries based on build configuration.
+        add_custom_command(
+            TARGET ${APP_TARGET}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E echo "Copying CEF binaries ($<CONFIGURATION>)..."
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CEF_ROOT}/$<CONFIGURATION>"
+                "$<TARGET_FILE_DIR:${APP_TARGET}>"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CEF_ROOT}/Resources"
+                "$<TARGET_FILE_DIR:${APP_TARGET}>"
+            COMMAND ${CMAKE_COMMAND} -E echo "Copying app resources..."
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/../resource"
+                "$<TARGET_FILE_DIR:${APP_TARGET}>/resources"
+        )
+    else()
+        # Minimal distribution: only Release CEF binaries available.
+        add_custom_command(
+            TARGET ${APP_TARGET}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E echo "Copying CEF binaries (Release only)..."
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CEF_ROOT}/Release"
+                "$<TARGET_FILE_DIR:${APP_TARGET}>"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CEF_ROOT}/Resources"
+                "$<TARGET_FILE_DIR:${APP_TARGET}>"
+            COMMAND ${CMAKE_COMMAND} -E echo "Copying app resources..."
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/../resource"
+                "$<TARGET_FILE_DIR:${APP_TARGET}>/resources"
+        )
+    endif()
 
 elseif(APPLE)
     # Variables referenced from the main Info.plist file.

@@ -125,13 +125,10 @@ bool WinMaterial::applyAcrylic(HWND hwnd, DWORD colorABGR) {
 
     // Configure accent policy for Acrylic effect
     // GradientColor format: AABBGGRR (alpha in high byte, then BGR)
-    //ACCENT_POLICY accent = {};
-    //accent.AccentState = ACCENT_ENABLE_ACRYLICBLURBEHIND;
-    //accent.AccentFlags = 2;  // Draw all borders
-    //accent.GradientColor = colorABGR;
-
-
-    ACCENT_POLICY accent = { ACCENT_ENABLE_BLURBEHIND, 0, 0, 0 };
+    ACCENT_POLICY accent = {};
+    accent.AccentState = ACCENT_ENABLE_ACRYLICBLURBEHIND;
+    accent.AccentFlags = 2;  // Draw all borders
+    accent.GradientColor = colorABGR;
 
     WINDOWCOMPOSITIONATTRIBDATA data = {};
     data.Attrib = WCA_ACCENT_POLICY;

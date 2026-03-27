@@ -5,8 +5,27 @@ rem ============================================================================
 rem CEF download configuration - modify these variables to upgrade CEF version
 rem ============================================================================
 set CEF_VERSION=142.0.17+g60aac24+chromium-142.0.7444.176
-set CEF_ARCHIVE_NAME=cef_binary_%CEF_VERSION%_windows64_minimal
-set CEF_URL=https://cef-builds.spotifycdn.com/cef_binary_142.0.17%%2Bg60aac24%%2Bchromium-142.0.7444.176_windows64_minimal.tar.bz2
+set CEF_URL_BASE=https://cef-builds.spotifycdn.com/cef_binary_142.0.17%%2Bg60aac24%%2Bchromium-142.0.7444.176_windows64
+
+rem ============================================================================
+rem Parse command line arguments
+rem ============================================================================
+set USE_DEBUG_CEF=0
+for %%a in (%*) do (
+    if "%%a"=="--debug-cef" set USE_DEBUG_CEF=1
+    if "%%a"=="--help" goto :usage
+    if "%%a"=="-h" goto :usage
+)
+
+if %USE_DEBUG_CEF%==1 (
+    echo [INFO] Debug CEF mode enabled - will download standard distribution with Debug binaries.
+    set CEF_ARCHIVE_NAME=cef_binary_%CEF_VERSION%_windows64
+    set CEF_URL=%CEF_URL_BASE%.tar.bz2
+) else (
+    echo [INFO] Release CEF mode ^(default^) - will download minimal distribution.
+    set CEF_ARCHIVE_NAME=cef_binary_%CEF_VERSION%_windows64_minimal
+    set CEF_URL=%CEF_URL_BASE%_minimal.tar.bz2
+)
 
 pushd "%~dp0"
 
@@ -15,16 +34,17 @@ rem Step 1: Check if CEF is already downloaded
 rem ============================================================================
 if exist "libcef\include" (
     echo [INFO] CEF library already exists, skipping download.
+    echo [INFO] To re-download, delete the libcef directory first.
     goto :generate
 )
 
 rem ============================================================================
-rem Step 2: Download CEF minimal distribution
+rem Step 2: Download CEF distribution
 rem ============================================================================
-echo [INFO] Downloading CEF minimal distribution...
+echo [INFO] Downloading CEF distribution...
 echo [INFO] URL: %CEF_URL%
 
-curl -L -o "cef_minimal.tar.bz2" "%CEF_URL%"
+curl -L -o "cef_download.tar.bz2" "%CEF_URL%"
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to download CEF. Please check your network connection.
     goto :error
@@ -35,10 +55,10 @@ rem Step 3: Extract and rename
 rem ============================================================================
 echo [INFO] Extracting CEF archive...
 
-tar -xjf "cef_minimal.tar.bz2"
+tar -xjf "cef_download.tar.bz2"
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to extract CEF archive.
-    del /q "cef_minimal.tar.bz2" 2>nul
+    del /q "cef_download.tar.bz2" 2>nul
     goto :error
 )
 
@@ -50,11 +70,11 @@ if exist "libcef" (
 rename "%CEF_ARCHIVE_NAME%" libcef
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to rename extracted directory.
-    del /q "cef_minimal.tar.bz2" 2>nul
+    del /q "cef_download.tar.bz2" 2>nul
     goto :error
 )
 
-del /q "cef_minimal.tar.bz2" 2>nul
+del /q "cef_download.tar.bz2" 2>nul
 echo [INFO] CEF extracted to libcef
 
 rem ============================================================================
@@ -63,7 +83,11 @@ rem ============================================================================
 :generate
 echo [INFO] Generating Visual Studio 2022 project...
 
-cmake -G "Visual Studio 17 2022" -A x64 -S . -B build
+if %USE_DEBUG_CEF%==1 (
+    cmake -G "Visual Studio 17 2022" -A x64 -S . -B build -DCEF_USE_DEBUG=ON
+) else (
+    cmake -G "Visual Studio 17 2022" -A x64 -S . -B build
+)
 if %errorlevel% neq 0 (
     echo [ERROR] CMake generation failed.
     goto :error
@@ -71,6 +95,19 @@ if %errorlevel% neq 0 (
 
 echo [INFO] Project generated successfully at build\
 echo [INFO] Open build\CefView.sln in Visual Studio to start developing.
+goto :done
+
+:usage
+echo Usage: GenerateProject.bat [options]
+echo.
+echo Options:
+echo   --debug-cef    Download standard (full) CEF distribution with Debug binaries.
+echo                  Without this flag, downloads the minimal distribution (Release only).
+echo   --help, -h     Show this help message.
+echo.
+echo Examples:
+echo   GenerateProject.bat                  Release mode (default, minimal package)
+echo   GenerateProject.bat --debug-cef      Debug mode (standard package with Debug DLLs)
 goto :done
 
 :error

@@ -112,12 +112,20 @@ public:
     static float GetDeviceScaleFactor();
 
     /**
-     * @brief Get window client rectangle in logical coordinates
+     * @brief Get window rectangle in logical coordinates
      * @param hwnd Window handle
      * @param deviceScaleFactor Device scale factor
-     * @return Window rectangle in logical coordinates
+     * @return Window rectangle in logical coordinates (includes non-client area)
      */
     static CefRect GetWindowRect(HWND hwnd, float deviceScaleFactor);
+
+    /**
+     * @brief Get client rectangle in logical coordinates
+     * @param hwnd Window handle
+     * @param deviceScaleFactor Device scale factor
+     * @return Client rectangle in logical coordinates (client area only)
+     */
+    static CefRect GetClientRect(HWND hwnd, float deviceScaleFactor);
 
 private:
     WinUtil() = delete;

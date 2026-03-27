@@ -12,6 +12,11 @@ message(STATUS "Current build type: ${CMAKE_BUILD_TYPE}")
 set(CEF_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/libcef")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CEF_ROOT}/cmake")
 
+# CEF Debug mode: requires standard (full) CEF distribution with Debug/ directory.
+# Default OFF: uses minimal distribution, Release CEF binaries for all build configurations.
+option(CEF_USE_DEBUG "Use CEF Debug binaries (requires standard distribution)" OFF)
+message(STATUS "CEF_USE_DEBUG: ${CEF_USE_DEBUG}")
+
 # 查找 CEF 包
 find_package(CEF REQUIRED)
 add_subdirectory(${CEF_LIBCEF_DLL_WRAPPER_PATH} libcef_dll_wrapper)

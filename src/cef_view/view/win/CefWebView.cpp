@@ -159,7 +159,7 @@ void CefWebView::init(HWND parentHwnd) {
 
     if (_settings.width <= 0 || _settings.height <= 0) {
         RECT parentRect = {};
-        ::GetWindowRect(parentHwnd, &parentRect);
+        ::GetClientRect(parentHwnd, &parentRect);
 
         _settings.x = 0;
         _settings.y = 0;
@@ -294,6 +294,11 @@ void CefWebView::initOsrRenderer() {
     (void)registerRes;
 
     _imeHandler = std::make_unique<OsrImeHandlerWin>(_hwnd);
+
+    // Disable IME by default since focus is not on an editable field initially.
+    // IME will be re-enabled when the user focuses on an editable element
+    // (via onFocusOnEditableFieldChanged).
+    _imeHandler->disableIME();
 }
 
 std::unique_ptr<OsrRenderer> CefWebView::createOsrRenderer() {
@@ -951,6 +956,17 @@ void CefWebView::onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> mess
     // is redundant with CefKeyEvent.focus_on_editable_field in OnPreKeyEvent
     // but is useful for demonstration purposes.
     _focusOnEditableField = message->GetArgumentList()->GetBool(0);
+
+    // Enable/disable IME based on whether the focused element is editable.
+    // In CEF OSR mode, the host application must manage IME state explicitly,
+    // unlike in Chrome where Chromium handles this internally.
+    if (_imeHandler) {
+        if (_focusOnEditableField) {
+            _imeHandler->enableIME();
+        } else {
+            _imeHandler->disableIME();
+        }
+    }
 }
 
 #pragma region windowProchandler
@@ -1159,11 +1175,10 @@ bool CefWebView::onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam) {
 void CefWebView::onSize() {
     if (!_settings.offScreenRenderingEnabled) return;
 
-    RECT clientRect = {};
-    ::GetClientRect(_hwnd, &clientRect);
+    ::GetClientRect(_hwnd, &_clientRect);
 
-    int width = clientRect.right - clientRect.left;
-    int height = clientRect.bottom - clientRect.top;
+    int width = _clientRect.right - _clientRect.left;
+    int height = _clientRect.bottom - _clientRect.top;
 
     // Update renderer size (physical pixel dimensions)
     if (_osrRenderer && width > 0 && height > 0) {
