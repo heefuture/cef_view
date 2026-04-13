@@ -654,6 +654,19 @@ void OsrRendererD3D11::onAcceleratedPaint(CefRenderHandler::PaintElementType typ
     D3D11_TEXTURE2D_DESC sharedDesc;
     newTexture->GetDesc(&sharedDesc);
 
+    // During resize, skip textures whose size doesn't match the current view.
+    // CEF may output a texture with black borders when content hasn't reflowed.
+    // Keep the old texture (stretched by sampler) until a matching one arrives.
+    static constexpr int kSizeTolerance = 2;
+    if (_sharedTexture) {
+        int widthDiff = static_cast<int>(sharedDesc.Width) - _viewWidth;
+        int heightDiff = static_cast<int>(sharedDesc.Height) - _viewHeight;
+        if (widthDiff < -kSizeTolerance || widthDiff > kSizeTolerance ||
+            heightDiff < -kSizeTolerance || heightDiff > kSizeTolerance) {
+            return;
+        }
+    }
+
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Format = sharedDesc.Format;
     srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;

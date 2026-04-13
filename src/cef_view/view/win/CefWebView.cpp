@@ -1017,34 +1017,27 @@ bool CefWebView::onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam) {
         ::SetFocus(_hwnd);
         int x = GET_X_LPARAM(lParam);
         int y = GET_Y_LPARAM(lParam);
-        if (wParam & MK_SHIFT) {
-            // Start rotation effect.
-            _lastMousePos.x = _currentMousePos.x = x;
-            _lastMousePos.y = _currentMousePos.y = y;
-            _mouseRotation = true;
+        CefBrowserHost::MouseButtonType btnType = (message == WM_LBUTTONDOWN ? MBT_LEFT : (message == WM_RBUTTONDOWN ? MBT_RIGHT : MBT_MIDDLE));
+        if (!cancelPreviousClick && (btnType == _lastClickButton)) {
+            ++_lastClickCount;
         } else {
-            CefBrowserHost::MouseButtonType btnType = (message == WM_LBUTTONDOWN ? MBT_LEFT : (message == WM_RBUTTONDOWN ? MBT_RIGHT : MBT_MIDDLE));
-            if (!cancelPreviousClick && (btnType == _lastClickButton)) {
-                ++_lastClickCount;
-            } else {
-                _lastClickCount = 1;
-                _lastClickX = x;
-                _lastClickY = y;
-            }
-            _lastClickTime = currentTime;
-            _lastClickButton = btnType;
+            _lastClickCount = 1;
+            _lastClickX = x;
+            _lastClickY = y;
+        }
+        _lastClickTime = currentTime;
+        _lastClickButton = btnType;
 
-            if (browserHost) {
-                CefMouseEvent mouseEvent;
-                mouseEvent.x = x;
-                mouseEvent.y = y;
-                ScreenUtil::DeviceToLogical(mouseEvent, _deviceScaleFactor);
-                mouseEvent.modifiers = WinUtil::GetCefMouseModifiers(wParam);
-                // Limit clickCount to maximum 3 to prevent crash
-                // Verified by testing: clickCount=4 causes crash in cefclient
-                int clickCount = (_lastClickCount > 3) ? 3 : _lastClickCount;
-                browserHost->SendMouseClickEvent(mouseEvent, btnType, false, clickCount);
-            }
+        if (browserHost) {
+            CefMouseEvent mouseEvent;
+            mouseEvent.x = x;
+            mouseEvent.y = y;
+            ScreenUtil::DeviceToLogical(mouseEvent, _deviceScaleFactor);
+            mouseEvent.modifiers = WinUtil::GetCefMouseModifiers(wParam);
+            // Limit clickCount to maximum 3 to prevent crash
+            // Verified by testing: clickCount=4 causes crash in cefclient
+            int clickCount = (_lastClickCount > 3) ? 3 : _lastClickCount;
+            browserHost->SendMouseClickEvent(mouseEvent, btnType, false, clickCount);
         }
     }
     break;
@@ -1052,61 +1045,48 @@ bool CefWebView::onMouseEvent(UINT message, WPARAM wParam, LPARAM lParam) {
     case WM_LBUTTONUP:
     case WM_RBUTTONUP:
     case WM_MBUTTONUP:
+    {
         if (::GetCapture() == _hwnd) {
             ::ReleaseCapture();
         }
-        if (_mouseRotation) {
-            // End rotation effect.
-            _mouseRotation = false;
+        int x = GET_X_LPARAM(lParam);
+        int y = GET_Y_LPARAM(lParam);
+        CefBrowserHost::MouseButtonType btnType = (message == WM_LBUTTONUP ? MBT_LEFT : (message == WM_RBUTTONUP ? MBT_RIGHT : MBT_MIDDLE));
+        if (browserHost) {
+            CefMouseEvent mouseEvent;
+            mouseEvent.x = x;
+            mouseEvent.y = y;
+            ScreenUtil::DeviceToLogical(mouseEvent, _deviceScaleFactor);
+            mouseEvent.modifiers = WinUtil::GetCefMouseModifiers(wParam);
+            // Limit clickCount to maximum 3 to prevent crash
+            // Verified by testing: clickCount=4 causes crash in cefclient
+            int clickCount = (_lastClickCount > 3) ? 3 : _lastClickCount;
+            browserHost->SendMouseClickEvent(mouseEvent, btnType, true, clickCount);
         }
-        else {
-            int x = GET_X_LPARAM(lParam);
-            int y = GET_Y_LPARAM(lParam);
-            CefBrowserHost::MouseButtonType btnType = (message == WM_LBUTTONUP ? MBT_LEFT : (message == WM_RBUTTONUP ? MBT_RIGHT : MBT_MIDDLE));
-            if (browserHost) {
-                CefMouseEvent mouseEvent;
-                mouseEvent.x = x;
-                mouseEvent.y = y;
-                ScreenUtil::DeviceToLogical(mouseEvent, _deviceScaleFactor);
-                mouseEvent.modifiers = WinUtil::GetCefMouseModifiers(wParam);
-                // Limit clickCount to maximum 3 to prevent crash
-                // Verified by testing: clickCount=4 causes crash in cefclient
-                int clickCount = (_lastClickCount > 3) ? 3 : _lastClickCount;
-                browserHost->SendMouseClickEvent(mouseEvent, btnType, true, clickCount);
-            }
-        }
-        break;
+    }
+    break;
 
     case WM_MOUSEMOVE: {
         int x = GET_X_LPARAM(lParam);
         int y = GET_Y_LPARAM(lParam);
-        if (_mouseRotation) {
-            // Apply rotation effect.
-            _currentMousePos.x = x;
-            _currentMousePos.y = y;
-            _lastMousePos.x = _currentMousePos.x;
-            _lastMousePos.y = _currentMousePos.y;
+        if (!_mouseTracking) {
+            // Start tracking mouse leave. Required for the WM_MOUSELEAVE event to
+            // be generated.
+            TRACKMOUSEEVENT tme;
+            tme.cbSize = sizeof(TRACKMOUSEEVENT);
+            tme.dwFlags = TME_LEAVE;
+            tme.hwndTrack = _hwnd;
+            ::TrackMouseEvent(&tme);
+            _mouseTracking = true;
         }
-        else {
-            if (!_mouseTracking) {
-                // Start tracking mouse leave. Required for the WM_MOUSELEAVE event to
-                // be generated.
-                TRACKMOUSEEVENT tme;
-                tme.cbSize = sizeof(TRACKMOUSEEVENT);
-                tme.dwFlags = TME_LEAVE;
-                tme.hwndTrack = _hwnd;
-                ::TrackMouseEvent(&tme);
-                _mouseTracking = true;
-            }
 
-            if (browserHost) {
-                CefMouseEvent mouseEvent;
-                mouseEvent.x = x;
-                mouseEvent.y = y;
-                ScreenUtil::DeviceToLogical(mouseEvent, _deviceScaleFactor);
-                mouseEvent.modifiers = WinUtil::GetCefMouseModifiers(wParam);
-                browserHost->SendMouseMoveEvent(mouseEvent, false);
-            }
+        if (browserHost) {
+            CefMouseEvent mouseEvent;
+            mouseEvent.x = x;
+            mouseEvent.y = y;
+            ScreenUtil::DeviceToLogical(mouseEvent, _deviceScaleFactor);
+            mouseEvent.modifiers = WinUtil::GetCefMouseModifiers(wParam);
+            browserHost->SendMouseMoveEvent(mouseEvent, false);
         }
         break;
     }
@@ -1206,10 +1186,6 @@ void CefWebView::onFocus(bool setFocus) {
 
 void CefWebView::onCaptureLost() {
     if (!_settings.offScreenRenderingEnabled) return;
-
-    if (_mouseRotation) {
-        return;
-    }
 
     if (_browser) {
         _browser->GetHost()->SendCaptureLostEvent();

@@ -47,7 +47,7 @@ void CefJsBridgeRender::removeCallbackFuncWithFrame(CefRefPtr<CefFrame> frame) {
     }
 }
 
-bool CefJsBridgeRender::executeJSCallbackFunc(int jsCallbackId, bool hasError, const CefString& jsonString) {
+bool CefJsBridgeRender::executeJSCallbackFunc(int jsCallbackId, const CefString& jsonString) {
     auto it = _renderCallback.find(jsCallbackId);
     if (it != _renderCallback.cend()) {
         auto context = it->second.first;
@@ -57,23 +57,16 @@ bool CefJsBridgeRender::executeJSCallbackFunc(int jsCallbackId, bool hasError, c
             context->Enter();
 
             CefV8ValueList arguments;
-            // First parameter indicates whether function execution succeeded
-            arguments.push_back(CefV8Value::CreateBool(hasError));
+            // Pass jsonString directly as string, JS side calls JSON.parse() itself.
+            // CefV8ValueList jsonParseArgs;
+            // jsonParseArgs.push_back(CefV8Value::CreateString(jsonString));
+            // CefRefPtr<CefV8Value> jsonParse = context->GetGlobal()->GetValue("JSON")->GetValue("parse");
+            // CefRefPtr<CefV8Value> jsonObject = jsonParse->ExecuteFunction(nullptr, jsonParseArgs);
+            // arguments.push_back(jsonObject);
+            arguments.push_back(CefV8Value::CreateString(jsonString));
 
-            // Second parameter carries data returned after function execution
-            CefV8ValueList jsonParseArgs;
-            jsonParseArgs.push_back(CefV8Value::CreateString(jsonString));
-            CefRefPtr<CefV8Value> jsonParse = context->GetGlobal()->GetValue("JSON")->GetValue("parse");
-            CefRefPtr<CefV8Value> jsonObject = jsonParse->ExecuteFunction(nullptr, jsonParseArgs);
-            arguments.push_back(jsonObject);
-
-            // Execute JS method
+            // Execute JS callback
             CefRefPtr<CefV8Value> retval = callback->ExecuteFunction(nullptr, arguments);
-            if (retval.get()) {
-                if (retval->IsBool()) {
-                    retval->GetBoolValue();
-                }
-            }
 
             context->Exit();
 
@@ -142,15 +135,15 @@ bool CefJsBridgeRender::executeJSFunc(const CefString& functionName, const CefSt
         if (context.get() && function.get()) {
             context->Enter();
 
-            CefV8ValueList arguments;
-            // Convert JSON passed from C++ to Object
             CefV8ValueList jsonParseArgs;
             jsonParseArgs.push_back(CefV8Value::CreateString(functionName));
             jsonParseArgs.push_back(CefV8Value::CreateString(jsonParams));
 
-            CefRefPtr<CefV8Value> jsonObject = context->GetGlobal()->GetValue("JSON");
+            // CefV8ValueList arguments;
+            // Convert JSON passed from C++ to Object
+            // CefRefPtr<CefV8Value> jsonObject = context->GetGlobal()->GetValue("JSON");
+            // CefRefPtr<CefV8Value> jsonStringify = jsonObject->GetValue("stringify");
             // CefRefPtr<CefV8Value> jsonParse = jsonObject->GetValue("parse");
-            CefRefPtr<CefV8Value> jsonStringify = jsonObject->GetValue("stringify");
             // CefRefPtr<CefV8Value> jsonObjectArgs = jsonParse->ExecuteFunction(nullptr, jsonParseArgs);
             // arguments.push_back(jsonObjectArgs);
 
@@ -160,8 +153,9 @@ bool CefJsBridgeRender::executeJSFunc(const CefString& functionName, const CefSt
                 // Reply with return value after calling JS
                 CefV8ValueList jsonStringifyArgs;
                 jsonStringifyArgs.push_back(retval);
+                CefRefPtr<CefV8Value> jsonObject = context->GetGlobal()->GetValue("JSON");
+                CefRefPtr<CefV8Value> jsonStringify = jsonObject->GetValue("stringify");
                 CefRefPtr<CefV8Value> jsonString = jsonStringify->ExecuteFunction(nullptr, jsonStringifyArgs);
-                CefString str = jsonString->GetStringValue();
 
                 CefRefPtr<CefProcessMessage> message = CefProcessMessage::Create(kExecuteCppCallbackMessage);
                 CefRefPtr<CefListValue> args = message->GetArgumentList();

@@ -484,9 +484,6 @@ protected:
     float _deviceScaleFactor = 0.f;
 
     // Mouse state tracking.
-    POINT _lastMousePos;
-    POINT _currentMousePos;
-    bool _mouseRotation = false;
     bool _mouseTracking = false;
     int _lastClickX = 0;
     int _lastClickY = 0;
