@@ -71,6 +71,14 @@ bool CefViewClientDelegate::onProcessMessageReceived(CefRefPtr<CefBrowser> brows
     return false;
 }
 
+void CefViewClientDelegate::callJSFunction(const CefString& functionName,
+                                                      const CefString& params,
+                                                      CefRefPtr<CefFrame> frame) {
+    if (_jsBridgeBrowser && frame) {
+        _jsBridgeBrowser->callJSFunction(functionName, params, frame, nullptr);
+    }
+}
+
 void CefViewClientDelegate::onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message)
 {
     _view->onFocusOnEditableFieldChanged(message);

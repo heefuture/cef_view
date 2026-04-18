@@ -181,6 +181,19 @@ protected:
 
     //enum WebState { kNone, kCreating, kCreated };
     //WebState _webstate;
+
+public:
+    /**
+     * @brief Call a JS function through the JS bridge.
+     * This invokes a function previously via setMessageCallback on the JS side.
+     * @param functionName The function name (e.g. "getWindowState")
+     * @param params JSON string parameters to pass
+     * @param frame The frame to execute in
+     */
+    void callJSFunction(const CefString& functionName,
+                                  const CefString& params,
+                                  CefRefPtr<CefFrame> frame);
+
 protected:
     CefWebView*                             _view{nullptr};
     CefString                               _url;

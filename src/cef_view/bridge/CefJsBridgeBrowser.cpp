@@ -92,8 +92,7 @@ bool CefJsBridgeBrowser::executeCppFunc(const CefString& functionName,
         auto function = it->second;
         std::string& result = function(params);
         args->SetInt(0, jsCallbackId);
-        args->SetBool(1, true);
-        args->SetString(2, result);
+        args->SetString(1, result);
         browser->GetMainFrame()->SendProcessMessage(PID_RENDERER, message);
 
         return true;
@@ -104,14 +103,12 @@ bool CefJsBridgeBrowser::executeCppFunc(const CefString& functionName,
         auto function = it->second;
         std::string& result = function(params);
         args->SetInt(0, jsCallbackId);
-        args->SetBool(1, true);
-        args->SetString(2, result);
+        args->SetString(1, result);
         browser->GetMainFrame()->SendProcessMessage(PID_RENDERER, message);
         return true;
     } else {
         args->SetInt(0, jsCallbackId);
-        args->SetBool(1, true);
-        args->SetString(2, R"({"message":"Function does not exist."})");
+        args->SetString(1, R"({"message":"Function does not exist."})");
         browser->GetMainFrame()->SendProcessMessage(PID_RENDERER, message);
         return false;
     }

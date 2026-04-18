@@ -114,11 +114,9 @@ bool CefViewAppDelegateRenderer::onProcessMessageReceived(CefRefPtr<CefBrowser> 
     const CefString& messageName = message->GetName();
     if (messageName == kExecuteJsCallbackMessage) {
         int callbackId = message->GetArgumentList()->GetInt(0);
-        bool hasError = message->GetArgumentList()->GetBool(1);
-        CefString jsonString = message->GetArgumentList()->GetString(2);
+        CefString jsonString = message->GetArgumentList()->GetString(1);
 
-        // Pass received parameters to callback function via manager
-        _renderJsBridge->executeJSCallbackFunc(callbackId, hasError, jsonString);
+        _renderJsBridge->executeJSCallbackFunc(callbackId, jsonString);
     } else if (messageName == kCallJsFunctionMessage) {
         CefString functionName = message->GetArgumentList()->GetString(0);
         CefString jsonString = message->GetArgumentList()->GetString(1);

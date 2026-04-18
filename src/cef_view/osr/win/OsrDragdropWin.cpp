@@ -304,6 +304,10 @@ CefRefPtr<CefDragData> DataObjectToDragData(IDataObject* dataObject) {
     enumFormats->Reset();
     const int kCelt = 10;
 
+  // Guard against duplicate CF_HDROP entries in IDataObject (e.g. WeCom/WeChat Work
+  // registers multiple CF_HDROP formats, causing the same files to be added twice).
+  bool hdropProcessed = false;
+
   ULONG celtFetched;
   do {
     celtFetched = kCelt;
@@ -315,6 +319,9 @@ CefRefPtr<CefDragData> DataObjectToDragData(IDataObject* dataObject) {
             format == mozUrlFormat || format == htmlFormat ||
             format == CF_HDROP) ||
           rgelt[i].tymed != TYMED_HGLOBAL) {
+        continue;
+      }
+      if (format == CF_HDROP && hdropProcessed) {
         continue;
       }
       STGMEDIUM medium;
@@ -364,6 +371,7 @@ CefRefPtr<CefDragData> DataObjectToDragData(IDataObject* dataObject) {
             WCHAR* name = wcsrchr(filename, '\\');
             dragData->AddFile(filename, (name ? name + 1 : filename));
           }
+          hdropProcessed = true;
         }
         if (medium.hGlobal) {
           GlobalUnlock(medium.hGlobal);

@@ -40,11 +40,10 @@ public:
     /**
      * @brief Execute callback function by ID
      * @param[in] jsCallbackId Callback function ID
-     * @param[in] hasError Whether there's an error (first parameter of callback)
-     * @param[in] jsonString JSON string data if no error (second parameter of callback)
+     * @param[in] jsonString JSON string data to pass to callback
      * @return true if callback executed successfully, false if callback doesn't exist or execution context is invalid
      */
-    bool executeJSCallbackFunc(int jsCallbackId, bool hasError, const CefString& jsonString);
+    bool executeJSCallbackFunc(int jsCallbackId, const CefString& jsonString);
 
     /**
      * @brief Register a persistent JS function for C++ to call
