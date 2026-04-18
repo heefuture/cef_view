@@ -41,6 +41,9 @@ struct CefConfig {
 
     std::string cookieableSchemesList = "http,https";
 
+    // Custom product token appended to User-Agent (e.g. "ArdotDesktop/1.0.0")
+    std::string userAgentProduct;
+
     int remoteDebuggingPort = 18432;  // 0 to disable
     // Log configuration
     int logSeverity = 0;              // Maps to cef_log_severity_t

@@ -89,6 +89,11 @@ static CefSettings getCefSettings(const CefConfig& config) {
     // Set background color from config
     settings.background_color = config.backgroundColor;
 
+    // Set custom User-Agent product token
+    if (!config.userAgentProduct.empty()) {
+        CefString(&settings.user_agent_product) = CefString(config.userAgentProduct);
+    }
+
 #if defined(WIN32) && !defined(SUB_PROCESS_DISABLED)
     std::string subProcessPath = PathUtil::GetAppWorkingDirectory() + "/browser.exe";
     CefString(&settings.browser_subprocess_path) = CefString(subProcessPath);
