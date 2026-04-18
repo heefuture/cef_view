@@ -15,15 +15,6 @@ else()
     set(APP_TARGET_OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIGURATION>")
 endif()
 
-# Logical target used to link the libcef library.
-if(CEF_USE_DEBUG)
-    # Standard distribution: use matching Debug/Release CEF libs.
-    ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
-else()
-    # Minimal distribution: only Release CEF lib available, use for all configurations.
-    ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_RELEASE}" "${CEF_LIB_RELEASE}")
-endif()
-
 set(CEFVIEWDIR ${CMAKE_CURRENT_SOURCE_DIR}/../cef_view)
 include_directories(${CEFVIEWDIR})
 
@@ -44,12 +35,20 @@ elseif(APPLE)
 endif()
 
 add_executable(${APP_TARGET} ${APP_SRCS})
-
 add_dependencies(${APP_TARGET} libcef_dll_wrapper cefview)
 
-target_link_libraries(${APP_TARGET} libcef_lib libcef_dll_wrapper ${CEF_STANDARD_LIBS} cefview)
-
 if(WIN32)
+    # Logical target used to link the libcef library.
+    if(CEF_USE_DEBUG)
+        # Standard distribution: use matching Debug/Release CEF libs.
+        ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
+    else()
+        # Minimal distribution: only Release CEF lib available, use for all configurations.
+        ADD_LOGICAL_TARGET("libcef_lib" "${CEF_LIB_RELEASE}" "${CEF_LIB_RELEASE}")
+    endif()
+
+    target_link_libraries(${APP_TARGET} libcef_lib libcef_dll_wrapper ${CEF_STANDARD_LIBS} cefview)
+
     if(USE_ATL)
         # add_definitions(-D_CEF_USE_ATL)
         # Required by VS2013 to link accessibility API functions.
@@ -109,6 +108,17 @@ if(WIN32)
     endif()
 
 elseif(APPLE)
+    # macOS loads CEF framework at runtime via CefScopedLibraryLoader
+    # (see app/mac/main.mm), so libcef_lib is not linked here.
+    target_link_libraries(${APP_TARGET}
+        libcef_dll_wrapper
+        ${CEF_STANDARD_LIBS}
+        cefview
+        "-framework Cocoa"
+        "-framework OpenGL"
+        "-framework IOSurface"
+    )
+
     # Variables referenced from the main Info.plist file.
     set(EXECUTABLE_NAME "${APP_TARGET}")
     set(PRODUCT_NAME "${APP_TARGET}")
@@ -120,10 +130,16 @@ elseif(APPLE)
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/mac/Info.plist.in
     )
-    target_link_libraries(${APP_TARGET} "-framework Cocoa" "-framework OpenGL" "-framework IOSurface")
 
     # Copy the CEF framework into the Frameworks directory and create symlinks.
-    COPY_MAC_FRAMEWORK("${APP_TARGET}" "${CEF_BINARY_DIR}" "${CEF_APP}")
+    # Minimal distribution only ships Release/, so unconditionally use it for all
+    # build configurations; standard distribution picks per-config via generator expr.
+    if(CEF_USE_DEBUG)
+        set(CEF_FRAMEWORK_SRC_DIR "${CEF_ROOT}/$<CONFIGURATION>")
+    else()
+        set(CEF_FRAMEWORK_SRC_DIR "${CEF_ROOT}/Release")
+    endif()
+    COPY_MAC_FRAMEWORK("${APP_TARGET}" "${CEF_FRAMEWORK_SRC_DIR}" "${CEF_APP}")
 
     # Helper target names matching those defined in src/sub_process/CMakeLists.txt.
     set(CEF_HELPER_TARGET "cefapp_Helper")

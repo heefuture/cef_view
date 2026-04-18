@@ -13,14 +13,12 @@
 #include "global/CefContext.h"
 
 @implementation AppDelegate {
-    cefview::CefContext* _cefContext;
     MainWindow* _mainWindow;
 }
 
-- (instancetype)initWithCefContext:(cefview::CefContext*)context {
+- (instancetype)init {
     self = [super init];
     if (self) {
-        _cefContext = context;
         _mainWindow = nil;
     }
     return self;
@@ -28,7 +26,7 @@
 
 - (void)applicationDidFinishLaunching:(NSNotification*)notification {
     // Create and show the main window
-    _mainWindow = [[MainWindow alloc] initWithCefContext:_cefContext];
+    _mainWindow = [[MainWindow alloc] init];
     [_mainWindow showWindow];
 }
 
@@ -44,9 +42,7 @@
         [_mainWindow closeBrowser];
     }
 
-    if (_cefContext) {
-        _cefContext->quitMessageLoop();
-    }
+    cefview::CefContext::instance().quitMessageLoop();
 
     return NSTerminateNow;
 }

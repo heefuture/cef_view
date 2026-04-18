@@ -12,17 +12,10 @@
 
 #import <Cocoa/Cocoa.h>
 
-namespace cefview {
-class CefContext;
-}
-
 @class MainWindow;
 
 /// NSApplicationDelegate that manages the application lifecycle and main window
 @interface AppDelegate : NSObject <NSApplicationDelegate>
-
-/// Initialize with a reference to the CefContext (must outlive this object)
-- (instancetype)initWithCefContext:(cefview::CefContext*)context;
 
 @end
 
