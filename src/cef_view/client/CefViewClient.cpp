@@ -109,15 +109,7 @@ CefRefPtr<CefMenuModel> model)
     if (auto clientDelegate = _clientDelegate.lock()) {
         clientDelegate->onBeforeContextMenu(browser, frame, params, model);
     }
-    else {
-        // Customize the context menu...
-        if ((params->GetTypeFlags() & (CM_TYPEFLAG_PAGE | CM_TYPEFLAG_FRAME)) != 0) {
-            if (model->GetCount() > 0) {
-                // Disable context menu
-                model->Clear();
-            }
-        }
-    }
+    // Keep default context menu enabled when no delegate is set.
 }
 
 bool CefViewClient::OnContextMenuCommand(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefContextMenuParams> params, int command_id, EventFlags event_flags)

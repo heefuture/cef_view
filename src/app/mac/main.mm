@@ -18,6 +18,7 @@
 #include "client/CefViewAppDelegateRenderer.h"
 
 #import "AppDelegate.h"
+#import "CefViewApplication.h"
 
 using namespace cefview;
 
@@ -30,7 +31,10 @@ int main(int argc, char* argv[]) {
     }
 
     @autoreleasepool {
-        [NSApplication sharedApplication];
+        // Install the CefAppProtocol-conforming NSApplication subclass before
+        // any other NSApp access. The first +sharedApplication call decides
+        // the concrete NSApp class, so this must run first.
+        [CefViewApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
         // Create delegates
@@ -55,15 +59,15 @@ int main(int argc, char* argv[]) {
         }
 
         // Initialize CEF
-        CefContext context(cefConfig);
-        int initResult = context.initialize(argc, argv, browserDelegate, rendererDelegate);
+        auto& context = CefContext::instance();
+        int initResult = context.initialize(argc, argv, cefConfig, browserDelegate, rendererDelegate);
         if (initResult >= 0) {
             // Sub-process completed
             return initResult;
         }
 
         // Create app delegate and launch
-        AppDelegate* delegate = [[AppDelegate alloc] initWithCefContext:&context];
+        AppDelegate* delegate = [[AppDelegate alloc] init];
         [NSApp setDelegate:delegate];
 
         // Activate the application
@@ -71,6 +75,9 @@ int main(int argc, char* argv[]) {
 
         // CefRunMessageLoop integrates with NSRunLoop, replacing [NSApp run]
         context.runMessageLoop();
+
+        // Explicitly shut down CEF on the main thread after the message loop exits.
+        context.shutdown();
     }
     return 0;
 }

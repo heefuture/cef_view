@@ -1524,6 +1524,11 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 
 #pragma mark - NSView Overrides
 
+- (BOOL)canBecomeKeyView
+{
+    return _browser != nullptr;
+}
+
 - (BOOL)acceptsFirstResponder
 {
     return YES;
@@ -1534,7 +1539,7 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     if (_browser) {
         _browser->GetHost()->SetFocus(true);
     }
-    return YES;
+    return [super becomeFirstResponder];
 }
 
 - (BOOL)resignFirstResponder
@@ -1542,7 +1547,15 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     if (_browser) {
         _browser->GetHost()->SetFocus(false);
     }
-    return YES;
+    return [super resignFirstResponder];
+}
+
+// AppKit IME queries the view's inputContext to position candidate windows
+// and dispatch marked-text events; returning our CEF-backed context keeps
+// the candidate panel anchored to the browser view.
+- (NSTextInputContext*)inputContext
+{
+    return _textInputContextOsrMac;
 }
 
 - (void)cut:(id)sender {

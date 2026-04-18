@@ -11,7 +11,6 @@
 
 #import <Cocoa/Cocoa.h>
 
-#include "global/CefContext.h"
 #include "view/CefWebViewSetting.h"
 
 #import "CefWebView.h"
@@ -20,16 +19,14 @@ static const int kWindowWidth = 1280;
 static const int kWindowHeight = 800;
 
 @implementation MainWindow {
-    cefview::CefContext* _cefContext;
     NSWindow* _window;
     NSVisualEffectView* _effectView;
     CefWebView* _cefWebView;
 }
 
-- (instancetype)initWithCefContext:(cefview::CefContext*)context {
+- (instancetype)init {
     self = [super init];
     if (self) {
-        _cefContext = context;
         _window = nil;
         _effectView = nil;
         _cefWebView = nil;

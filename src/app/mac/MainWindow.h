@@ -12,17 +12,13 @@
 
 #import <Cocoa/Cocoa.h>
 
-namespace cefview {
-class CefContext;
-}
-
 @class CefWebView;
 
 /// Main application window that hosts an NSVisualEffectView with a CefWebView overlay
 @interface MainWindow : NSObject <NSWindowDelegate>
 
-/// Initialize with a reference to the CefContext (must outlive this object)
-- (instancetype)initWithCefContext:(cefview::CefContext*)context;
+/// Initialize the main window
+- (instancetype)init;
 
 /// Show the window
 - (void)showWindow;

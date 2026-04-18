@@ -64,11 +64,10 @@ public:
      * - macOS: ~/Library/Caches/{appName}
      * - Linux: $XDG_CACHE_HOME/{appName} or ~/.cache/{appName}
      * Creates the directory if it does not exist.
-     * @param appName Application name to append as subdirectory.
-     *                On macOS, if empty, the current bundle name is used automatically.
-     * @return Full path to the cache directory, or empty string on failure
+     * @param appName Application name to append as subdirectory (must not contain path separators or invalid characters)
+     * @return Full path to the cache directory, or empty string if appName is invalid or directory creation fails
      */
-    static std::string GetAppCacheDirectory(const std::string& appName = "");
+    static std::string GetAppCacheDirectory(const std::string& appName);
 
 private:
     PathUtil() = delete;

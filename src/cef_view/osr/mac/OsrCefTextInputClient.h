@@ -75,7 +75,6 @@ inline bool IsMacOsrShortcutChar(char16_t character) {
 
 - (id)initWithBrowser:(CefRefPtr<CefBrowser>)browser;
 - (void)detach;
-- (void)setBrowser:(CefRefPtr<CefBrowser>)browser;
 - (void)HandleKeyEventBeforeTextInputClient:(NSEvent*)keyEvent;
 - (void)HandleKeyEventAfterTextInputClient:(CefKeyEvent)keyEvent;
 - (void)ChangeCompositionRange:(CefRange)range
