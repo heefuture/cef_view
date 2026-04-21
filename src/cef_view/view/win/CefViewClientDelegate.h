@@ -35,7 +35,7 @@ protected:
                                           CefProcessId sourceProcess,
                                           CefRefPtr<CefProcessMessage> message) override;
 
-    virtual void onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message) override;
+    virtual void onEditableFocusChanged(CefRefPtr<CefProcessMessage> message) override;
 #pragma endregion // CefClient
 
 #pragma region CefContextMenuHandler

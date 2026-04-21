@@ -315,6 +315,7 @@ extern NSString* NSTextInputReplacementRangeAttributeName;
     _browser->GetHost()->ImeCommitText(_textToBeInserted,
                                        CefRange::InvalidRange(), 0);
     _textToBeInserted.clear();
+    textInserted = YES;
   }
 
   // Update or cancel the composition. If some text has been inserted then we

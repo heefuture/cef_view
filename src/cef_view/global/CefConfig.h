@@ -42,7 +42,15 @@ struct CefConfig {
     std::string cookieableSchemesList = "http,https";
 
     // Custom product token appended to User-Agent (e.g. "ArdotDesktop/1.0.0")
+    // Note: CEF's user_agent_product REPLACES the "Chrome/<version>" token in
+    // the default UA. This breaks feature detection in libraries (slate-react /
+    // slate-dom) that probe UA for "Chrome/". Prefer setting userAgent (full UA)
+    // when you need to preserve the Chrome token while appending a product tag.
     std::string userAgentProduct;
+
+    // Full User-Agent override. When non-empty, takes precedence over
+    // userAgentProduct and is forwarded to CEF as settings.user_agent.
+    std::string userAgent;
 
     int remoteDebuggingPort = 18432;  // 0 to disable
     // Log configuration

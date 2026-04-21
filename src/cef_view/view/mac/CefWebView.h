@@ -29,14 +29,22 @@ class OsrRenderer;
     std::unique_ptr<cefview::OsrRenderer> _osrRenderer;
     cefview::CefWebViewSetting _settings;
     OsrCefTextInputClient* _textInputClient;
-    bool _focusOnEditableField;
+    NSTextInputContext* _textInputContextOsrMac;
+    bool _editableFocused;
 }
 
-/// Initialize with frame and settings
+/// Initialize with frame and settings. The caller is responsible for
+/// attaching the view to a parent via -addSubview: or NSTabViewItem.view.
+///
+/// The CEF browser is created eagerly during init for both OSR and
+/// native-window modes:
+/// - OSR mode: CEF only uses (__bridge void*)self as a windowless ID,
+///   so no view hierarchy is required.
+/// - Native-window mode: CEF addSubview:'s a child NSView into self.
+///   AppKit permits adding subviews to a detached NSView; the child
+///   follows self when self is later attached to a window hierarchy
+///   (e.g. NSWindow contentView or NSTabViewItem.view).
 - (instancetype)initWithFrame:(NSRect)frame settings:(const cefview::CefWebViewSetting&)settings;
-
-/// Initialize with parent view (creates browser)
-- (void)initWithParent:(NSView*)parentView;
 
 /// Close the browser
 - (void)closeBrowser;
@@ -44,11 +52,8 @@ class OsrRenderer;
 /// Callback invoked when browser is about to close (for coordinating window close)
 @property (nonatomic, copy) void (^browserCloseCallback)(void);
 
-/// Set browser view bounds
-- (void)setBoundsWithLeft:(int)left top:(int)top width:(int)width height:(int)height;
-
 /// Set visibility
-- (void)setViewVisible:(BOOL)visible;
+- (void)setVisible:(BOOL)visible;
 
 /// Get the view window handle
 - (NSView*)getWindowHandle;
@@ -120,7 +125,7 @@ class OsrRenderer;
 - (void)notifyMoveOrResizeStarted;
 
 /// Check if focus is on editable field
-- (BOOL)isFocusOnEditableField;
+- (BOOL)isEditableFocused;
 
 /// Create the CEF browser instance. Subclasses can override to customize browser creation.
 - (void)createCefBrowser;
@@ -128,11 +133,30 @@ class OsrRenderer;
 /// Initialize the OSR renderer. Subclasses can override to use a custom renderer.
 - (void)initOsrRenderer;
 
+/// Factory hook for creating the OSR renderer. Subclasses override this to
+/// swap in a platform- or product-specific renderer (e.g. Ardot's TGFX-based
+/// compositor). The base implementation returns a Metal renderer and leaves
+/// the Metal-to-OpenGL fallback to -initOsrRenderer.
+/// @param width Initial width in DIP.
+/// @param height Initial height in DIP.
+/// @param transparent Whether transparent painting is requested.
+/// @return A newly constructed renderer (not yet initialized), or nullptr on failure.
+- (std::unique_ptr<cefview::OsrRenderer>)createOsrRendererWithWidth:(int)width
+                                                             height:(int)height
+                                                        transparent:(bool)transparent;
+
 /// Create a CefKeyEvent from an NSEvent
 - (CefKeyEvent)createCefKeyEventFromNSEvent:(NSEvent*)event;
 
 /// Handle shortcut key events (Cmd+R, F12, etc.)
 - (BOOL)handleShortcutKeyWithKeyCode:(int)keyCode modifiers:(uint32_t)modifiers;
+
+/// Determine if a modifier key event represents key-up.
+- (BOOL)isKeyUpEvent:(NSEvent*)event;
+
+/// Handle focus change on editable field (triggered by renderer process message).
+/// Subclasses can override to perform additional processing.
+- (void)onEditableFocusChanged:(CefRefPtr<CefProcessMessage>)message;
 
 @end
 

@@ -78,7 +78,7 @@ bool CefViewClient::OnProcessMessageReceived(CefRefPtr<CefBrowser> browser, CefR
     if (message_name == kFocusedNodeChangedMessage) {
         // Notify delegate about focus change
         if (auto clientDelegate = _clientDelegate.lock()) {
-            clientDelegate->onFocusOnEditableFieldChanged(message);
+            clientDelegate->onEditableFocusChanged(message);
         }
         return true;
     }

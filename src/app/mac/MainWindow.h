@@ -14,7 +14,9 @@
 
 @class CefWebView;
 
-/// Main application window that hosts an NSVisualEffectView with a CefWebView overlay
+/// Main application window: an NSVisualEffectView contentView that hosts
+/// a top CefWebView (local page) stacked above an NSTabView whose tabs
+/// each host their own CefWebView.
 @interface MainWindow : NSObject <NSWindowDelegate>
 
 /// Initialize the main window
@@ -23,7 +25,7 @@
 /// Show the window
 - (void)showWindow;
 
-/// Close the embedded browser
+/// Close all embedded browsers (top view + every tab).
 - (void)closeBrowser;
 
 @end

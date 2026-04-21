@@ -176,7 +176,7 @@ elseif(APPLE)
         COMMAND ${CMAKE_COMMAND} -E echo "Copying app resources..."
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/../resource"
-            "${CEF_APP}/Contents/Resources/resources"
+            "${CEF_APP}/Contents/Resources"
     )
 endif()
 

@@ -15,7 +15,7 @@
 
 #include "global/CefConfig.h"
 #include "global/CefContext.h"
-#include "client/CefViewAppDelegateRenderer.h"
+#include "client/CefViewAppDelegateInterface.h"
 
 #import "AppDelegate.h"
 #import "CefViewApplication.h"
@@ -37,10 +37,12 @@ int main(int argc, char* argv[]) {
         [CefViewApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
-        // Create delegates
+        // The browser process only needs a browser-side delegate; the
+        // renderer-side delegate is registered inside the Helper bundle
+        // entry point (see src/sub_process/HelperProcess.mm), because
+        // macOS spawns renderer sub-processes as separate helper apps.
         std::shared_ptr<CefViewAppDelegateInterface> browserDelegate = nullptr;
-        std::shared_ptr<CefViewAppDelegateInterface> rendererDelegate =
-            std::make_shared<CefViewAppDelegateRenderer>();
+        std::shared_ptr<CefViewAppDelegateInterface> rendererDelegate = nullptr;
 
         // Configure CEF
         CefConfig cefConfig;

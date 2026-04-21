@@ -56,6 +56,7 @@ elseif(APPLE)
         ${CEFVIEWDIR}/bridge/CefJsBridgeRender.cpp
         ${CEFVIEWDIR}/bridge/CefJsHandler.cpp
         ${CEFVIEWDIR}/utils/CefSwitches.cpp
+        ${CEFVIEWDIR}/utils/mac/PathUtil.mm
     )
 
     # Determine the target output directory.

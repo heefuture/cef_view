@@ -297,7 +297,7 @@ void CefWebView::initOsrRenderer() {
 
     // Disable IME by default since focus is not on an editable field initially.
     // IME will be re-enabled when the user focuses on an editable element
-    // (via onFocusOnEditableFieldChanged).
+    // (via onEditableFocusChanged).
     _imeHandler->disableIME();
 }
 
@@ -949,19 +949,19 @@ void CefWebView::onProcessMessageReceived(int browserId, const std::string& mess
     // Process message handling (extensible)
 }
 
-void CefWebView::onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message)
+void CefWebView::onEditableFocusChanged(CefRefPtr<CefProcessMessage> message)
 {
     // A message is sent from ClientRenderDelegate to tell us whether the
     // currently focused DOM node is editable. Use of |m_bFocusOnEditableField|
     // is redundant with CefKeyEvent.focus_on_editable_field in OnPreKeyEvent
     // but is useful for demonstration purposes.
-    _focusOnEditableField = message->GetArgumentList()->GetBool(0);
+    _editableFocused = message->GetArgumentList()->GetBool(0);
 
     // Enable/disable IME based on whether the focused element is editable.
     // In CEF OSR mode, the host application must manage IME state explicitly,
     // unlike in Chrome where Chromium handles this internally.
     if (_imeHandler) {
-        if (_focusOnEditableField) {
+        if (_editableFocused) {
             _imeHandler->enableIME();
         } else {
             _imeHandler->disableIME();

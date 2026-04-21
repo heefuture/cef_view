@@ -401,16 +401,16 @@ public:
     void onProcessMessageReceived(int browserId, const std::string& messageName, const std::string& jsonArgs);
 
     /**
-     * @brief Called when focus on editable field changes
+     * @brief Called when the editable state of the focused DOM node changes.
      * @param[in] message The process message containing editable field state
      */
-    virtual void onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message);
+    virtual void onEditableFocusChanged(CefRefPtr<CefProcessMessage> message);
 
     /**
      * @brief Check if focus is on an editable field
      * @return true if focus is on an editable field
      */
-    bool isFocusOnEditableField() const { return _focusOnEditableField; }
+    bool isEditableFocused() const { return _editableFocused; }
 protected:
     static LRESULT CALLBACK windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -500,7 +500,7 @@ protected:
     std::unique_ptr<OsrImeHandlerWin> _imeHandler;
 
     // Focus state
-    bool _focusOnEditableField = false;
+    bool _editableFocused = false;
 };
 
 }  // namespace cefview
