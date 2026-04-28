@@ -54,6 +54,8 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     bool _isLoading;
     std::vector<std::string> _cachedJsCodes;
 
+    // Resize debounce
+    NSTimer* _resizeDebounceTimer;
 }
 
 #pragma mark - Initialization
@@ -259,6 +261,7 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
                                                              handler:^NSEvent*(NSEvent* event) {
         CefWebView* strongSelf = weakSelf;
         if (!strongSelf) return event;
+        if (strongSelf.window.firstResponder != strongSelf) return event;
 
         // Handle Command+. (stop key)
         if (([event modifierFlags] & NSEventModifierFlagCommand) &&
@@ -1590,32 +1593,50 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     int height = static_cast<int>(newSize.height);
     bool sizeChanged = (width != _settings.width || height != _settings.height);
 
-    // Keep cached settings in sync so subsequent getters / OSR re-inits
-    // observe the live size, not the construction-time value.
     _settings.width = width;
     _settings.height = height;
 
-    // Only OSR mode needs explicit resize / invalidate plumbing. In
-    // native-window mode CEF hosts its own child NSView that follows
-    // self via AppKit autoresizing; calling WasResized / Invalidate
-    // here would be redundant and -Invalidate is documented as
-    // OSR-only (on some CEF builds it fires a DCHECK). Both issues
-    // can cause the live-resize loop to stall the UI thread.
     if (_settings.offScreenRenderingEnabled) {
         if (_osrRenderer) {
             _osrRenderer->setBounds(0, 0, width, height);
         }
-        if (_browser) {
-            _browser->GetHost()->WasResized();
-            if (sizeChanged) {
-                _browser->GetHost()->Invalidate(PET_VIEW);
-            }
+        if (_browser && sizeChanged) {
+            [self scheduleBrowserResize];
         }
     }
 
     if (sizeChanged) {
         [self setNeedsDisplay:YES];
     }
+}
+
+- (void)scheduleBrowserResize
+{
+    if (_resizeDebounceTimer) {
+        [_resizeDebounceTimer invalidate];
+        _resizeDebounceTimer = nil;
+    }
+
+    __weak CefWebView* weakSelf = self;
+    _resizeDebounceTimer = [NSTimer scheduledTimerWithTimeInterval:0.3
+                                                          repeats:NO
+                                                            block:^(NSTimer* timer) {
+        [weakSelf performBrowserResize];
+    }];
+}
+
+- (void)performBrowserResize
+{
+    _resizeDebounceTimer = nil;
+    if (!_browser) return;
+
+    _browser->GetHost()->WasResized();
+    // 离屏模式cef会有一些丢帧行为，导致最后桢可能渲染不完全，加一个延时标脏的行为使其渲染
+    // https://github.com/cefsharp/CefSharp/issues/4953
+    CefRefPtr<CefBrowser> browser = _browser;
+    CefPostDelayedTask(TID_UI, base::BindOnce([](CefRefPtr<CefBrowser> b) {
+        b->GetHost()->Invalidate(PET_VIEW);
+    }, browser), 200);
 }
 
 - (void)viewDidMoveToWindow

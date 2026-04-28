@@ -54,7 +54,9 @@ bool CefJsBridgeRender::executeJSCallbackFunc(int jsCallbackId, const CefString&
         auto callback = it->second.second;
 
         if (context.get() && callback.get()) {
-            context->Enter();
+            if (!context->IsValid() || !context->Enter()) {
+                return false;
+            }
 
             CefV8ValueList arguments;
             // Pass jsonString directly as string, JS side calls JSON.parse() itself.
@@ -133,7 +135,9 @@ bool CefJsBridgeRender::executeJSFunc(const CefString& functionName, const CefSt
         auto function = it->second;
 
         if (context.get() && function.get()) {
-            context->Enter();
+            if (!context->IsValid() || !context->Enter()) {
+                return false;
+            }
 
             CefV8ValueList jsonParseArgs;
             jsonParseArgs.push_back(CefV8Value::CreateString(functionName));
