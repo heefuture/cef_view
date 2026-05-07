@@ -119,6 +119,11 @@ elseif(APPLE)
         "-framework IOSurface"
     )
 
+    # Enable ARC for all ObjC++ source files in the app target.
+    set_source_files_properties(${APP_SRCS} PROPERTIES
+        COMPILE_FLAGS "-fobjc-arc"
+    )
+
     # Variables referenced from the main Info.plist file.
     set(EXECUTABLE_NAME "${APP_TARGET}")
     set(PRODUCT_NAME "${APP_TARGET}")
@@ -176,7 +181,7 @@ elseif(APPLE)
         COMMAND ${CMAKE_COMMAND} -E echo "Copying app resources..."
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/../resource"
-            "${CEF_APP}/Contents/Resources/resources"
+            "${CEF_APP}/Contents/Resources"
     )
 endif()
 

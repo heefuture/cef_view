@@ -19,27 +19,74 @@ namespace cefview {
 const std::string PathUtil::sPathSep = "/";
 
 std::string PathUtil::GetAppDirectory() {
-    NSString* executablePath = [[NSBundle mainBundle] executablePath];
-    if (!executablePath) {
-        LOGE << "Failed to get executable path from NSBundle";
+    // In the browser process +[NSBundle mainBundle] is the host .app.
+    // In a CEF helper sub-process it is the embedded
+    // "<Host>.app/Contents/Frameworks/<Helper>.app" — walk back up to
+    // the host bundle so every process agrees on a single app root.
+    NSBundle* bundle = [NSBundle mainBundle];
+    NSString* bundlePath = [bundle bundlePath];
+    if (!bundlePath) {
+        LOGE << "Failed to get bundle path from NSBundle";
         return std::string();
     }
-    NSString* directory = [executablePath stringByDeletingLastPathComponent];
-    return std::string([directory UTF8String]);
+
+    NSString* frameworksDir = [bundlePath stringByDeletingLastPathComponent];
+    if ([[frameworksDir lastPathComponent] isEqualToString:@"Frameworks"]) {
+        NSString* contentsDir = [frameworksDir stringByDeletingLastPathComponent];
+        NSString* hostAppPath = [contentsDir stringByDeletingLastPathComponent];
+        if ([[hostAppPath pathExtension] isEqualToString:@"app"]) {
+            return std::string([hostAppPath UTF8String]);
+        }
+    }
+
+    return std::string([bundlePath UTF8String]);
 }
 
 std::string PathUtil::GetAppResourcePath() {
-    std::string appDir = GetAppDirectory();
-    if (appDir.empty()) {
-        return std::string();
-    }
+    @autoreleasepool {
+        NSBundle* mainBundle = [NSBundle mainBundle];
+        NSString* bundlePath = [mainBundle bundlePath];
+        if (!bundlePath) {
+            LOGE << "Failed to get bundle path from NSBundle";
+            return std::string();
+        }
 
-    fs::path resourcePath = fs::path(appDir) / "resources";
-    if (fs::exists(resourcePath) && fs::is_directory(resourcePath)) {
-        return resourcePath.string();
-    }
+        // In a CEF helper sub-process mainBundle points at the embedded
+        // "<Host>.app/Contents/Frameworks/<Helper>.app" — walk back up to
+        // the host bundle so every process resolves resources from the
+        // same host app.
+        if ([bundlePath containsString:@"Helper"]) {
+            NSArray* pathComponents = [bundlePath pathComponents];
+            NSMutableArray* mainAppComponents = [NSMutableArray array];
 
-    return appDir;
+            BOOL foundFrameworks = NO;
+            for (NSString* component in pathComponents) {
+                [mainAppComponents addObject:component];
+                if ([component isEqualToString:@"Frameworks"]) {
+                    foundFrameworks = YES;
+                    break;
+                }
+            }
+
+            if (foundFrameworks) {
+                [mainAppComponents removeLastObject];
+                NSString* mainAppPath = [NSString pathWithComponents:mainAppComponents];
+                NSBundle* mainAppBundle = [NSBundle bundleWithPath:mainAppPath];
+                if (mainAppBundle) {
+                    NSString* resourcePath = [mainAppBundle resourcePath];
+                    if (resourcePath) {
+                        return std::string([resourcePath UTF8String]);
+                    }
+                }
+            }
+        }
+
+        NSString* resourcePath = [mainBundle resourcePath];
+        if (resourcePath) {
+            return std::string([resourcePath UTF8String]);
+        }
+    }
+    return std::string();
 }
 
 std::string PathUtil::GetResourcePath(const std::string& resourceName) {

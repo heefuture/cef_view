@@ -15,6 +15,7 @@
 #include "osr/BytesWriteHandler.h"
 #include "include/cef_parser.h"
 
+#include <algorithm>
 #include <sstream>
 #include <functional>
 
@@ -38,9 +39,6 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     NSPasteboard* _pasteboard;
     NSString* _fileUTI;
 
-    // IME
-    NSTextInputContext* _textInputContextOsrMac;
-
     // Event monitors
     id _keyEventMonitor;
     id _endWheelMonitor;
@@ -56,8 +54,8 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     bool _isLoading;
     std::vector<std::string> _cachedJsCodes;
 
-    // DevTools window
-    NSWindow* _devToolsWindow;
+    // Resize debounce
+    NSTimer* _resizeDebounceTimer;
 }
 
 #pragma mark - Initialization
@@ -67,9 +65,24 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     self = [super initWithFrame:frame];
     if (self) {
         _settings = settings;
-        _deviceScaleFactor = 1.0f;
+        // Fill in geometry from the NSView frame when the caller did not
+        // specify explicit dimensions in the settings. createCefBrowser
+        // uses these values for native-window mode.
+        if (_settings.width <= 0 || _settings.height <= 0) {
+            _settings.x = 0;
+            _settings.y = 0;
+            _settings.width = static_cast<int>(frame.size.width);
+            _settings.height = static_cast<int>(frame.size.height);
+        }
+        // Use the main screen's backing scale as a sensible initial
+        // value; -viewDidMoveToWindow later overrides with the actual
+        // window's backing scale. Starting at 1.0 would cause the OSR
+        // layer to be created at half-resolution on Retina displays
+        // and require a costly refresh after the window attaches.
+        NSScreen* screen = [NSScreen mainScreen];
+        _deviceScaleFactor = screen ? static_cast<float>([screen backingScaleFactor]) : 1.0f;
         _isLoading = false;
-        _focusOnEditableField = false;
+        _editableFocused = false;
         _currentDragOp = NSDragOperationNone;
         _currentAllowedOps = NSDragOperationNone;
         _pasteboard = nil;
@@ -77,7 +90,6 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
         _endWheelMonitor = nil;
         _movingWindow = false;
         _nonDragArea = CGRectZero;
-        _devToolsWindow = nil;
 
         // Setup tracking area for mouse events
         [self setupTrackingArea];
@@ -86,45 +98,28 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
         [self registerForDraggedTypes:@[kCEFDragDummyPboardType,
                                         NSPasteboardTypeFileURL,
                                         NSPasteboardTypeString]];
+
+        // Create the CEF browser eagerly for both OSR and native-window
+        // modes. For native-window mode CEF will addSubview: a child
+        // NSView into self; AppKit permits this even when self is not
+        // yet in a window hierarchy — the child view follows self when
+        // the whole subtree is later attached (e.g. to an NSWindow or
+        // NSTabViewItem). The parent NSView only needs to be layer
+        // backed for native mode so that AppKit composites the CEF
+        // child view correctly.
+        if (!_settings.offScreenRenderingEnabled) {
+            [self setWantsLayer:YES];
+        }
+        [self createCefBrowser];
     }
     return self;
-}
-
-- (void)initWithParent:(NSView*)parentView
-{
-    if (!parentView) return;
-
-    // Get device scale factor from window
-    NSWindow* window = [parentView window];
-    if (window) {
-        _deviceScaleFactor = [window backingScaleFactor];
-    }
-
-    // Update settings if size is not specified
-    if (_settings.width <= 0 || _settings.height <= 0) {
-        NSRect parentBounds = [parentView bounds];
-        _settings.x = 0;
-        _settings.y = 0;
-        _settings.width = static_cast<int>(parentBounds.size.width);
-        _settings.height = static_cast<int>(parentBounds.size.height);
-    }
-
-    // Add to parent view
-    [parentView addSubview:self];
-
-    // Create CEF browser
-    [self createCefBrowser];
 }
 
 - (void)dealloc
 {
     [self closeBrowser];
     [self removeKeyEventMonitor];
-
-    if (_endWheelMonitor) {
-        [NSEvent removeMonitor:_endWheelMonitor];
-        _endWheelMonitor = nil;
-    }
+    [self removeWheelEventMonitor];
 
     if (_trackingArea) {
         [self removeTrackingArea:_trackingArea];
@@ -139,9 +134,15 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 
 - (void)closeBrowser
 {
+    [self removeWheelEventMonitor];
+
     if (_client && !_client->IsClosing()) {
         _client->CloseAllBrowser();
     }
+
+    _browser = nullptr;
+    _clientDelegate.reset();
+    _client = nullptr;
 }
 
 #pragma mark - Browser Creation
@@ -182,14 +183,28 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     NSRect frame = [self bounds];
     int width = static_cast<int>(frame.size.width);
     int height = static_cast<int>(frame.size.height);
+
+    // Fallback to the caller-provided geometry when the NSView frame is
+    // still zero (e.g. the view will be placed inside an NSTabViewItem
+    // that has no content rect yet). The OSR renderer creates its
+    // CAMetalLayer with this size, so starting non-zero avoids a blank
+    // first frame; later size changes flow through -setFrameSize: /
+    // setBounds() which eagerly updates drawableSize.
+    if (width <= 0 || height <= 0) {
+        width = _settings.width > 0 ? _settings.width : 1;
+        height = _settings.height > 0 ? _settings.height : 1;
+    }
+
     bool transparent = _settings.transparentPaintingEnabled;
 
-    // Prefer Metal renderer on macOS
-    _osrRenderer = std::make_unique<OsrRendererMetal>(
-        (__bridge void*)self, width, height, transparent);
+    _osrRenderer = [self createOsrRendererWithWidth:width height:height transparent:transparent];
+    if (!_osrRenderer) {
+        LOGE << "createOsrRenderer returned null";
+        return;
+    }
 
     if (!_osrRenderer->initialize()) {
-        LOGW << "Metal renderer init failed, falling back to OpenGL";
+        LOGW << "Primary renderer init failed, falling back to OpenGL";
         _osrRenderer = std::make_unique<OsrRendererGL>(
             (__bridge void*)self, width, height, transparent);
         if (!_osrRenderer->initialize()) {
@@ -200,6 +215,15 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     }
 
     _osrRenderer->setDeviceScaleFactor(_deviceScaleFactor);
+}
+
+- (std::unique_ptr<cefview::OsrRenderer>)createOsrRendererWithWidth:(int)width
+                                                             height:(int)height
+                                                        transparent:(bool)transparent
+{
+    // Prefer Metal renderer on macOS; callers handle GL fallback on failure.
+    return std::make_unique<OsrRendererMetal>(
+        (__bridge void*)self, width, height, transparent);
 }
 
 #pragma mark - Tracking Area
@@ -239,6 +263,7 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
                                                              handler:^NSEvent*(NSEvent* event) {
         CefWebView* strongSelf = weakSelf;
         if (!strongSelf) return event;
+        if (strongSelf.window.firstResponder != strongSelf) return event;
 
         // Handle Command+. (stop key)
         if (([event modifierFlags] & NSEventModifierFlagCommand) &&
@@ -262,47 +287,30 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     }
 }
 
-#pragma mark - Window Management
-
-- (void)setBoundsWithLeft:(int)left top:(int)top width:(int)width height:(int)height
+- (void)removeWheelEventMonitor
 {
-    if (width <= 0 || height <= 0) return;
-
-    bool sizeChanged = (width != _settings.width || height != _settings.height);
-
-    _settings.x = left;
-    _settings.y = top;
-    _settings.width = width;
-    _settings.height = height;
-
-    [self setFrame:NSMakeRect(left, top, width, height)];
-
-    if (_settings.offScreenRenderingEnabled && _osrRenderer) {
-        _osrRenderer->setBounds(0, 0, width, height);
-    }
-
-    if (_browser) {
-        _browser->GetHost()->WasResized();
-        if (sizeChanged) {
-            _browser->GetHost()->Invalidate(PET_VIEW);
-        }
-    }
-
-    if (sizeChanged) {
-        [self setNeedsDisplay:YES];
+    if (_endWheelMonitor) {
+        [NSEvent removeMonitor:_endWheelMonitor];
+        _endWheelMonitor = nil;
     }
 }
+
+#pragma mark - Window Management
 
 - (void)setNonDragArea:(CGRect)area {
     _nonDragArea = area;
 }
 
-- (void)setViewVisible:(BOOL)visible
+- (void)setVisible:(BOOL)visible
 {
     [self setHidden:!visible];
+}
 
+- (void)setHidden:(BOOL)hidden
+{
+    [super setHidden:hidden];
     if (_browser) {
-        _browser->GetHost()->WasHidden(!visible);
+        _browser->GetHost()->WasHidden(hidden);
     }
 }
 
@@ -330,12 +338,15 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
             _settings.url = url;
         }
     } else {
-        std::function<void(void)> loadUrlTask = [self, url]() {
-            if (_browser) {
-                CefRefPtr<CefFrame> frame = _browser->GetMainFrame();
+        __weak CefWebView* weakSelf = self;
+        std::function<void(void)> loadUrlTask = [weakSelf, url]() {
+            CefWebView* strongSelf = weakSelf;
+            if (!strongSelf) return;
+            if (strongSelf->_browser) {
+                CefRefPtr<CefFrame> frame = strongSelf->_browser->GetMainFrame();
                 if (frame) {
                     frame->LoadURL(url);
-                    _settings.url = url;
+                    strongSelf->_settings.url = url;
                 }
             }
         };
@@ -445,37 +456,15 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     if (!_browser) return NO;
 
     if (_browser->GetHost()->HasDevTools()) {
-        if (_devToolsWindow && [_devToolsWindow isVisible]) {
-            [_devToolsWindow makeKeyAndOrderFront:nil];
-        }
         return YES;
     }
 
-    // Create DevTools window
-    NSRect frame = NSMakeRect(100, 100, 1200, 800);
-    NSUInteger styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
-                          NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
-
-    _devToolsWindow = [[NSWindow alloc] initWithContentRect:frame
-                                                  styleMask:styleMask
-                                                    backing:NSBackingStoreBuffered
-                                                      defer:NO];
-    [_devToolsWindow setTitle:@"DevTools"];
-    [_devToolsWindow setReleasedWhenClosed:NO];
-
-    NSView* contentView = [_devToolsWindow contentView];
-    NSRect contentBounds = [contentView bounds];
-
     CefWindowInfo windowInfo;
     windowInfo.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
-    CefRect cefRect(0, 0, static_cast<int>(contentBounds.size.width),
-                    static_cast<int>(contentBounds.size.height));
-    windowInfo.SetAsChild((__bridge void*)contentView, cefRect);
+    windowInfo.SetAsWindowless(nullptr);
 
     CefBrowserSettings settings;
-    _browser->GetHost()->ShowDevTools(windowInfo, nullptr, settings, CefPoint());
-
-    [_devToolsWindow makeKeyAndOrderFront:nil];
+    _browser->GetHost()->ShowDevTools(windowInfo, _client, settings, CefPoint());
     return YES;
 }
 
@@ -483,10 +472,6 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 {
     if (_browser && _browser->GetHost()->HasDevTools()) {
         _browser->GetHost()->CloseDevTools();
-    }
-    if (_devToolsWindow) {
-        [_devToolsWindow close];
-        _devToolsWindow = nil;
     }
 }
 
@@ -529,61 +514,59 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 - (BOOL)getRootScreenRect:(CefRect&)rect
 {
     NSWindow* window = [self window];
-    if (!window) return NO;
-
-    NSRect windowFrame = [window frame];
-    NSScreen* screen = [window screen];
+    NSScreen* screen = window ? [window screen] : [NSScreen mainScreen];
     if (!screen) screen = [NSScreen mainScreen];
 
-    NSRect screenFrame = [screen frame];
-    rect.x = static_cast<int>(windowFrame.origin.x);
-    rect.y = static_cast<int>(screenFrame.size.height - windowFrame.origin.y - windowFrame.size.height);
-    rect.width = static_cast<int>(windowFrame.size.width);
-    rect.height = static_cast<int>(windowFrame.size.height);
+    if (window) {
+        NSRect windowFrame = [window frame];
+        NSRect screenFrame = [screen frame];
+        rect.x = static_cast<int>(windowFrame.origin.x);
+        rect.y = static_cast<int>(screenFrame.size.height - windowFrame.origin.y - windowFrame.size.height);
+        rect.width = static_cast<int>(windowFrame.size.width);
+        rect.height = static_cast<int>(windowFrame.size.height);
+    } else {
+        NSRect screenFrame = [screen frame];
+        rect.x = 0;
+        rect.y = 0;
+        rect.width = static_cast<int>(screenFrame.size.width);
+        rect.height = static_cast<int>(screenFrame.size.height);
+    }
     return YES;
 }
 
 - (BOOL)getViewRect:(CefRect&)rect
 {
-    rect.x = 0;
-    rect.y = 0;
+    // CefRenderHandler::GetViewRect is only invoked in OSR mode. For
+    // native-window mode Chromium manages the child NSView itself, so
+    // returning NO here lets the caller fall back to a safe default.
+    if (!_settings.offScreenRenderingEnabled) return NO;
 
-    // |bounds| is in OS X view coordinates.
+    // CEF expects the view rect in DIP coordinates. NSView.bounds is
+    // already in DIP, so return it directly.
     NSRect bounds = [self bounds];
 
-    // Convert to device coordinates.
-    bounds = [self convertRectToBacking:bounds];
-
-    // Convert to DIP coordinates.
-    rect.width = ScreenUtil::DeviceToLogical(static_cast<int>(bounds.size.width), _deviceScaleFactor);
-    if (rect.width == 0)
-        rect.width = 1;
-    rect.height = ScreenUtil::DeviceToLogical(static_cast<int>(bounds.size.height), _deviceScaleFactor);
-    if (rect.height == 0)
-        rect.height = 1;
+    rect.x = 0;
+    rect.y = 0;
+    rect.width = std::max(1, static_cast<int>(bounds.size.width));
+    rect.height = std::max(1, static_cast<int>(bounds.size.height));
 
     return YES;
 }
 
 - (BOOL)getScreenPointWithViewX:(int)viewX viewY:(int)viewY screenX:(int*)screenX screenY:(int*)screenY
 {
+    // Only OSR mode needs this: native-window mode lets Chromium map
+    // coordinates through its own NSView directly.
+    if (!_settings.offScreenRenderingEnabled) return NO;
+
     NSWindow* window = [self window];
     if (!window) return NO;
 
-    // (viewX, viewY) is in browser DIP coordinates.
-    // Convert to device coordinates.
-    NSPoint viewPoint = NSMakePoint(
-        ScreenUtil::LogicalToDevice(viewX, _deviceScaleFactor),
-        ScreenUtil::LogicalToDevice(viewY, _deviceScaleFactor));
-
-    // Convert to OS X view coordinates.
-    viewPoint = [self convertPointFromBacking:viewPoint];
-
-    // Reverse the Y component.
+    // On macOS CEF expects both input (viewX/Y) and output (screenX/Y)
+    // in DIP coordinates, so no backing-scale conversion is needed —
+    // just map through the standard AppKit coordinate spaces.
     NSRect bounds = [self bounds];
-    viewPoint.y = bounds.size.height - viewPoint.y;
-
-    // Convert to screen coordinates.
+    NSPoint viewPoint = NSMakePoint(viewX, bounds.size.height - viewY);
     NSPoint windowPoint = [self convertPoint:viewPoint toView:nil];
     NSPoint screenPoint = [window convertPointToScreen:windowPoint];
 
@@ -595,9 +578,12 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 
 - (BOOL)getScreenInfo:(CefScreenInfo&)screenInfo
 {
-    NSWindow* window = [self window];
-    if (!window) return NO;
+    // CefRenderHandler::GetScreenInfo is only invoked in OSR mode.
+    if (!_settings.offScreenRenderingEnabled) return NO;
 
+    // _deviceScaleFactor is kept in sync with the hosting window via
+    // -viewDidMoveToWindow and -windowDidChangeBackingProperties:,
+    // so the cached value matches what Chromium will use.
     screenInfo.device_scale_factor = _deviceScaleFactor;
 
     CefRect viewRect;
@@ -1064,15 +1050,15 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     }
 }
 
-- (void)onFocusOnEditableFieldChanged:(CefRefPtr<CefProcessMessage>)message
+- (void)onEditableFocusChanged:(CefRefPtr<CefProcessMessage>)message
 {
     CefRefPtr<CefListValue> args = message->GetArgumentList();
-    _focusOnEditableField = args->GetBool(0);
+    _editableFocused = args->GetBool(0);
 }
 
-- (BOOL)isFocusOnEditableField
+- (BOOL)isEditableFocused
 {
-    return _focusOnEditableField;
+    return _editableFocused;
 }
 
 #pragma mark - Mouse Events
@@ -1168,11 +1154,7 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
         return;
 
     [self sendScrollWheelEvent:event];
-
-    if (_endWheelMonitor) {
-        [NSEvent removeMonitor:_endWheelMonitor];
-        _endWheelMonitor = nil;
-    }
+    [self removeWheelEventMonitor];
 }
 
 /// Send scroll wheel event to CEF using raw CGEvent deltas.
@@ -1195,10 +1177,14 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 - (void)scrollWheel:(NSEvent*)event
 {
     if ([event phase] == NSEventPhaseBegan && !_endWheelMonitor) {
+        __weak CefWebView* weakSelf = self;
         _endWheelMonitor = [NSEvent
             addLocalMonitorForEventsMatchingMask:NSEventMaskScrollWheel
                                         handler:^(NSEvent* blockEvent) {
-                                            [self shortCircuitScrollWheelEvent:blockEvent];
+                                            CefWebView* strongSelf = weakSelf;
+                                            if (strongSelf) {
+                                                [strongSelf shortCircuitScrollWheelEvent:blockEvent];
+                                            }
                                             return blockEvent;
                                         }];
     }
@@ -1534,6 +1520,11 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     return YES;
 }
 
+- (BOOL)mouseDownCanMoveWindow
+{
+    return NO;
+}
+
 - (BOOL)becomeFirstResponder
 {
     if (_browser) {
@@ -1611,13 +1602,54 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 {
     [super setFrameSize:newSize];
 
-    if (_osrRenderer) {
-        _osrRenderer->setBounds(0, 0, static_cast<int>(newSize.width), static_cast<int>(newSize.height));
+    int width = static_cast<int>(newSize.width);
+    int height = static_cast<int>(newSize.height);
+    bool sizeChanged = (width != _settings.width || height != _settings.height);
+
+    _settings.width = width;
+    _settings.height = height;
+
+    if (_settings.offScreenRenderingEnabled) {
+        if (_osrRenderer) {
+            _osrRenderer->setBounds(0, 0, width, height);
+        }
+        if (_browser && sizeChanged) {
+            [self scheduleBrowserResize];
+        }
     }
 
-    if (_browser) {
-        _browser->GetHost()->WasResized();
+    if (sizeChanged) {
+        [self setNeedsDisplay:YES];
     }
+}
+
+- (void)scheduleBrowserResize
+{
+    if (_resizeDebounceTimer) {
+        [_resizeDebounceTimer invalidate];
+        _resizeDebounceTimer = nil;
+    }
+
+    __weak CefWebView* weakSelf = self;
+    _resizeDebounceTimer = [NSTimer scheduledTimerWithTimeInterval:0.3
+                                                          repeats:NO
+                                                            block:^(NSTimer* timer) {
+        [weakSelf performBrowserResize];
+    }];
+}
+
+- (void)performBrowserResize
+{
+    _resizeDebounceTimer = nil;
+    if (!_browser) return;
+
+    _browser->GetHost()->WasResized();
+    // 离屏模式cef会有一些丢帧行为，导致最后桢可能渲染不完全，加一个延时标脏的行为使其渲染
+    // https://github.com/cefsharp/CefSharp/issues/4953
+    CefRefPtr<CefBrowser> browser = _browser;
+    CefPostDelayedTask(TID_UI, base::BindOnce([](CefRefPtr<CefBrowser> b) {
+        b->GetHost()->Invalidate(PET_VIEW);
+    }, browser), 200);
 }
 
 - (void)viewDidMoveToWindow
@@ -1626,7 +1658,7 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 
     NSWindow* window = [self window];
     if (window) {
-        _deviceScaleFactor = [window backingScaleFactor];
+        [self setDeviceScaleFactor:static_cast<float>([window backingScaleFactor])];
 
         // Observe backing scale factor changes
         [[NSNotificationCenter defaultCenter] addObserver:self

@@ -79,9 +79,9 @@ void CefViewClientDelegate::callJSFunction(const CefString& functionName,
     }
 }
 
-void CefViewClientDelegate::onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message)
+void CefViewClientDelegate::onEditableFocusChanged(CefRefPtr<CefProcessMessage> message)
 {
-    _view->onFocusOnEditableFieldChanged(message);
+    _view->onEditableFocusChanged(message);
 }
 #pragma endregion // CefClient
 

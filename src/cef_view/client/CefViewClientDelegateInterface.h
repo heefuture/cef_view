@@ -30,10 +30,10 @@ public:
                                           CefRefPtr<CefProcessMessage> message) { return false; }
 
     /**
-     * @brief Called when focus on editable field changes
+     * @brief Called when the editable state of the focused DOM node changes.
      * @param[in] message The process message containing focus state arguments
      */
-    virtual void onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message) {}
+    virtual void onEditableFocusChanged(CefRefPtr<CefProcessMessage> message) {}
 #pragma endregion // CefClient
 
 #pragma region CefContextMenuHandler

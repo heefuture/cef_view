@@ -60,10 +60,10 @@ bool CefViewClientDelegate::onProcessMessageReceived(CefRefPtr<CefBrowser> brows
     return false;
 }
 
-void CefViewClientDelegate::onFocusOnEditableFieldChanged(CefRefPtr<CefProcessMessage> message)
+void CefViewClientDelegate::onEditableFocusChanged(CefRefPtr<CefProcessMessage> message)
 {
     if (_observer) {
-        [_observer onFocusOnEditableFieldChanged:message];
+        [_observer onEditableFocusChanged:message];
     }
 }
 #pragma endregion // CefClient

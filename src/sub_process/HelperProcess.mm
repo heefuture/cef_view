@@ -22,12 +22,12 @@
 namespace cefview {
 
 static std::string GetProcessType(int argc, char* argv[]) {
-    CefRefPtr<CefCommandLine> command_line = CefCommandLine::CreateCommandLine();
-    command_line->InitFromArgv(argc, argv);
-    if (!command_line->HasSwitch("type")) {
+    CefRefPtr<CefCommandLine> commandLine = CefCommandLine::CreateCommandLine();
+    commandLine->InitFromArgv(argc, argv);
+    if (!commandLine->HasSwitch("type")) {
         return "browser";
     }
-    return command_line->GetSwitchValue("type").ToString();
+    return commandLine->GetSwitchValue("type").ToString();
 }
 
 }  // namespace cefview
@@ -35,23 +35,27 @@ static std::string GetProcessType(int argc, char* argv[]) {
 int main(int argc, char* argv[]) {
     // Load the CEF framework library at runtime.
     // This is required for macOS helper processes due to sandbox constraints.
-    CefScopedLibraryLoader library_loader;
-    if (!library_loader.LoadInHelper()) {
+    CefScopedLibraryLoader libraryLoader;
+    if (!libraryLoader.LoadInHelper()) {
         return 1;
     }
 
-    CefMainArgs main_args(argc, argv);
+    CefMainArgs mainArgs(argc, argv);
     cefview::CefConfig config;
-    std::string process_type = cefview::GetProcessType(argc, argv);
+    std::string processType = cefview::GetProcessType(argc, argv);
 
     // Create CefViewApp with appropriate delegate based on process type.
-    CefRefPtr<cefview::CefViewApp> app;
-    if (process_type == "renderer") {
-        auto renderer_delegate = std::make_shared<cefview::CefViewAppDelegateRenderer>();
-        app = new cefview::CefViewApp(config, renderer_delegate);
-    } else {
-        app = new cefview::CefViewApp(config);
+    // The delegate must outlive CefExecuteProcess because CefViewApp stores
+    // it as a std::weak_ptr; a block-scoped shared_ptr would expire
+    // immediately and OnWebKitInitialized would skip delegate callbacks,
+    // leaving the `cefViewApp` JS bridge unregistered.
+    std::shared_ptr<cefview::CefViewAppDelegateInterface> delegate;
+    if (processType == "renderer") {
+        delegate = std::make_shared<cefview::CefViewAppDelegateRenderer>();
     }
+    CefRefPtr<cefview::CefViewApp> app = delegate
+        ? new cefview::CefViewApp(config, delegate)
+        : new cefview::CefViewApp(config);
 
-    return CefExecuteProcess(main_args, app.get(), nullptr);
+    return CefExecuteProcess(mainArgs, app.get(), nullptr);
 }

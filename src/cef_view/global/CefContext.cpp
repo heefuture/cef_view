@@ -89,8 +89,12 @@ static CefSettings getCefSettings(const CefConfig& config) {
     // Set background color from config
     settings.background_color = config.backgroundColor;
 
-    // Set custom User-Agent product token
-    if (!config.userAgentProduct.empty()) {
+    // Set User-Agent: prefer full UA override, else fall back to product token.
+    // Full UA override is needed to keep the "Chrome/<version>" token in the
+    // UA so feature detection in slate-react / slate-dom works correctly.
+    if (!config.userAgent.empty()) {
+        CefString(&settings.user_agent) = CefString(config.userAgent);
+    } else if (!config.userAgentProduct.empty()) {
         CefString(&settings.user_agent_product) = CefString(config.userAgentProduct);
     }
 

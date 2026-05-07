@@ -129,7 +129,11 @@ bool OsrRendererMetal::createMetalDevice() {
     metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
     metalLayer.framebufferOnly = YES;
     metalLayer.contentsScale = static_cast<CGFloat>(_deviceScaleFactor);
-    metalLayer.drawableSize = CGSizeMake(_viewWidth, _viewHeight);
+    // drawableSize must be in physical pixels, i.e. DIP × scale. _viewWidth
+    // / _viewHeight are cached in DIP so the caller (CefWebView) can hand
+    // us NSView bounds directly.
+    metalLayer.drawableSize = CGSizeMake(_viewWidth * _deviceScaleFactor,
+                                         _viewHeight * _deviceScaleFactor);
 
     if (_transparent) {
         metalLayer.opaque = NO;
@@ -353,6 +357,18 @@ void OsrRendererMetal::setBounds(int x, int y, int width, int height) {
         _pendingWidth = width;
         _pendingHeight = height;
         _hasPendingResize = true;
+
+        // Keep CAMetalLayer.drawableSize = DIP × scale so the backing
+        // store matches the physical pixel resolution of the screen.
+        // Applied eagerly so -nextDrawable never returns a 0-sized
+        // drawable between host NSView resize and the next render()
+        // call (views that start detached from the window tree would
+        // otherwise render blank on first display).
+        if (_metalLayer) {
+            CAMetalLayer* metalLayer = (__bridge CAMetalLayer*)_metalLayer;
+            metalLayer.drawableSize = CGSizeMake(width * _deviceScaleFactor,
+                                                 height * _deviceScaleFactor);
+        }
     }
 }
 
@@ -465,11 +481,19 @@ void OsrRendererMetal::scheduleRender() {
 }
 
 void OsrRendererMetal::setDeviceScaleFactor(float scaleFactor) {
+    if (_deviceScaleFactor == scaleFactor) {
+        return;
+    }
     _deviceScaleFactor = scaleFactor;
 
     if (_metalLayer) {
         CAMetalLayer* metalLayer = (__bridge CAMetalLayer*)_metalLayer;
         metalLayer.contentsScale = static_cast<CGFloat>(scaleFactor);
+        // drawableSize depends on the scale factor; recompute so the
+        // backing store matches the new pixel density (e.g. window
+        // dragged between 1x and 2x displays).
+        metalLayer.drawableSize = CGSizeMake(_viewWidth * scaleFactor,
+                                             _viewHeight * scaleFactor);
     }
 }
 
@@ -492,7 +516,8 @@ void OsrRendererMetal::applyPendingResize() {
 
     if (_metalLayer) {
         CAMetalLayer* metalLayer = (__bridge CAMetalLayer*)_metalLayer;
-        metalLayer.drawableSize = CGSizeMake(_viewWidth, _viewHeight);
+        metalLayer.drawableSize = CGSizeMake(_viewWidth * _deviceScaleFactor,
+                                             _viewHeight * _deviceScaleFactor);
     }
 }
 
