@@ -119,11 +119,7 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 {
     [self closeBrowser];
     [self removeKeyEventMonitor];
-
-    if (_endWheelMonitor) {
-        [NSEvent removeMonitor:_endWheelMonitor];
-        _endWheelMonitor = nil;
-    }
+    [self removeWheelEventMonitor];
 
     if (_trackingArea) {
         [self removeTrackingArea:_trackingArea];
@@ -138,9 +134,15 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 
 - (void)closeBrowser
 {
+    [self removeWheelEventMonitor];
+
     if (_client && !_client->IsClosing()) {
         _client->CloseAllBrowser();
     }
+
+    _browser = nullptr;
+    _clientDelegate.reset();
+    _client = nullptr;
 }
 
 #pragma mark - Browser Creation
@@ -285,6 +287,14 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     }
 }
 
+- (void)removeWheelEventMonitor
+{
+    if (_endWheelMonitor) {
+        [NSEvent removeMonitor:_endWheelMonitor];
+        _endWheelMonitor = nil;
+    }
+}
+
 #pragma mark - Window Management
 
 - (void)setNonDragArea:(CGRect)area {
@@ -328,12 +338,15 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
             _settings.url = url;
         }
     } else {
-        std::function<void(void)> loadUrlTask = [self, url]() {
-            if (_browser) {
-                CefRefPtr<CefFrame> frame = _browser->GetMainFrame();
+        __weak CefWebView* weakSelf = self;
+        std::function<void(void)> loadUrlTask = [weakSelf, url]() {
+            CefWebView* strongSelf = weakSelf;
+            if (!strongSelf) return;
+            if (strongSelf->_browser) {
+                CefRefPtr<CefFrame> frame = strongSelf->_browser->GetMainFrame();
                 if (frame) {
                     frame->LoadURL(url);
-                    _settings.url = url;
+                    strongSelf->_settings.url = url;
                 }
             }
         };
@@ -1141,11 +1154,7 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
         return;
 
     [self sendScrollWheelEvent:event];
-
-    if (_endWheelMonitor) {
-        [NSEvent removeMonitor:_endWheelMonitor];
-        _endWheelMonitor = nil;
-    }
+    [self removeWheelEventMonitor];
 }
 
 /// Send scroll wheel event to CEF using raw CGEvent deltas.
@@ -1168,10 +1177,14 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 - (void)scrollWheel:(NSEvent*)event
 {
     if ([event phase] == NSEventPhaseBegan && !_endWheelMonitor) {
+        __weak CefWebView* weakSelf = self;
         _endWheelMonitor = [NSEvent
             addLocalMonitorForEventsMatchingMask:NSEventMaskScrollWheel
                                         handler:^(NSEvent* blockEvent) {
-                                            [self shortCircuitScrollWheelEvent:blockEvent];
+                                            CefWebView* strongSelf = weakSelf;
+                                            if (strongSelf) {
+                                                [strongSelf shortCircuitScrollWheelEvent:blockEvent];
+                                            }
                                             return blockEvent;
                                         }];
     }
