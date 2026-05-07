@@ -143,6 +143,7 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     _browser = nullptr;
     _clientDelegate.reset();
     _client = nullptr;
+    _osrRenderer.reset();
 }
 
 #pragma mark - Browser Creation
