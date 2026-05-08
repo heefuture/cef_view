@@ -1398,7 +1398,7 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
                           oldUrl:(const std::string&)oldUrl
                              url:(const std::string&)url
 {
-    _settings.url = url;
+    // Can be overridden by subclass
 }
 
 - (void)onLoadingStateChangeWithBrowserId:(int)browserId

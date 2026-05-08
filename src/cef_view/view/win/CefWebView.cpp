@@ -888,7 +888,6 @@ void CefWebView::onTitleChange(int browserId, const std::string& title)
 
 void CefWebView::onUrlChange(int browserId, const std::string& oldUrl, const std::string& url)
 {
-    _settings.url = url;
 }
 
 #pragma region LoadHandler
