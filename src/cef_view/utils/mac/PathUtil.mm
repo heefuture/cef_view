@@ -150,12 +150,12 @@ bool PathUtil::CreatePath(const std::string& path) {
 }
 
 std::string PathUtil::GetAppCacheDirectory(const std::string& appName) {
-    // Resolve the directory name: use appName if provided, otherwise use the bundle name.
+    // Resolve the directory name: use appName if provided, otherwise use the bundle identifier.
     std::string dirName = appName;
     if (dirName.empty()) {
-        NSString* bundleName = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleName"];
-        if (bundleName) {
-            dirName = std::string([bundleName UTF8String]);
+        NSString* bundleId = [[NSBundle mainBundle] bundleIdentifier];
+        if (bundleId) {
+            dirName = std::string([bundleId UTF8String]);
         }
     }
     if (dirName.empty()) {

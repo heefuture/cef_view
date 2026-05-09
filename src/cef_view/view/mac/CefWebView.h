@@ -162,6 +162,9 @@ class OsrRenderer;
 /// Subclasses can override to perform additional processing.
 - (void)onEditableFocusChanged:(CefRefPtr<CefProcessMessage>)message;
 
+/// Called when page load completes. Subclasses can override to perform additional processing.
+- (void)onLoadEndWithUrl:(const std::string&)url;
+
 @end
 
 #endif  // CEFWEBVIEW_H
