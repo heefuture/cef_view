@@ -67,6 +67,11 @@ public:
     void deactivate();
 
     /**
+     * @brief Whether the browser is active (not in deactivated/lazy state).
+     */
+    bool isActive() const { return !_lazyInit; }
+
+    /**
      * @brief Set browser view bounds
      * @param[in] left New left position
      * @param[in] top New top position

@@ -50,6 +50,9 @@ class OsrRenderer;
 /// Call activate to recreate it later. No-op if already in lazy init state.
 - (void)deactivate;
 
+/// Whether the browser is active (not in deactivated/lazy state).
+- (BOOL)isActive;
+
 /// Callback invoked when browser is about to close (for coordinating window close)
 @property (nonatomic, copy) void (^browserCloseCallback)(void);
 

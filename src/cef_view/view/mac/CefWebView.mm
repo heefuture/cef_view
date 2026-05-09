@@ -161,6 +161,10 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     [self closeBrowser];
 }
 
+- (BOOL)isActive {
+    return !_lazyInit;
+}
+
 #pragma mark - Browser Creation
 
 - (void)createCefBrowser
