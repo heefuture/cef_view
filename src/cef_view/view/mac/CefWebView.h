@@ -31,23 +31,24 @@ class OsrRenderer;
     OsrCefTextInputClient* _textInputClient;
     NSTextInputContext* _textInputContextOsrMac;
     bool _editableFocused;
+    bool _lazyInit;
 }
 
-/// Initialize with frame and settings. The caller is responsible for
-/// attaching the view to a parent via -addSubview: or NSTabViewItem.view.
-///
-/// The CEF browser is created eagerly during init for both OSR and
-/// native-window modes:
-/// - OSR mode: CEF only uses (__bridge void*)self as a windowless ID,
-///   so no view hierarchy is required.
-/// - Native-window mode: CEF addSubview:'s a child NSView into self.
-///   AppKit permits adding subviews to a detached NSView; the child
-///   follows self when self is later attached to a window hierarchy
-///   (e.g. NSWindow contentView or NSTabViewItem.view).
+/// Initialize with frame and settings. CefBrowser is created eagerly.
 - (instancetype)initWithFrame:(NSRect)frame settings:(const cefview::CefWebViewSetting&)settings;
 
-/// Close the browser
-- (void)closeBrowser;
+/// Initialize with frame, settings, and lazy init flag.
+/// If lazyInit is YES, CefBrowser is NOT created during init; call initBrowser to create it later.
+- (instancetype)initWithFrame:(NSRect)frame
+                     settings:(const cefview::CefWebViewSetting&)settings
+                     lazyInit:(BOOL)lazyInit;
+
+/// Create the CefBrowser and load the URL from settings. No-op if not in lazy init state.
+- (void)activate;
+
+/// Close the browser and mark as lazy init state.
+/// Call activate to recreate it later. No-op if already in lazy init state.
+- (void)deactivate;
 
 /// Callback invoked when browser is about to close (for coordinating window close)
 @property (nonatomic, copy) void (^browserCloseCallback)(void);

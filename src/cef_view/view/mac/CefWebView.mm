@@ -62,9 +62,18 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 
 - (instancetype)initWithFrame:(NSRect)frame settings:(const CefWebViewSetting&)settings
 {
+    return [self initWithFrame:frame settings:settings lazyInit:NO];
+}
+
+- (instancetype)initWithFrame:(NSRect)frame
+                     settings:(const CefWebViewSetting&)settings
+                     lazyInit:(BOOL)lazyInit
+{
     self = [super initWithFrame:frame];
     if (self) {
+        _lazyInit = lazyInit;
         _settings = settings;
+
         // Fill in geometry from the NSView frame when the caller did not
         // specify explicit dimensions in the settings. createCefBrowser
         // uses these values for native-window mode.
@@ -99,18 +108,12 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
                                         NSPasteboardTypeFileURL,
                                         NSPasteboardTypeString]];
 
-        // Create the CEF browser eagerly for both OSR and native-window
-        // modes. For native-window mode CEF will addSubview: a child
-        // NSView into self; AppKit permits this even when self is not
-        // yet in a window hierarchy — the child view follows self when
-        // the whole subtree is later attached (e.g. to an NSWindow or
-        // NSTabViewItem). The parent NSView only needs to be layer
-        // backed for native mode so that AppKit composites the CEF
-        // child view correctly.
         if (!_settings.offScreenRenderingEnabled) {
             [self setWantsLayer:YES];
         }
-        [self createCefBrowser];
+        if (!_lazyInit) {
+            [self createCefBrowser];
+        }
     }
     return self;
 }
@@ -144,6 +147,18 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
     _clientDelegate.reset();
     _client = nullptr;
     _osrRenderer.reset();
+}
+
+- (void)activate {
+    if (!_lazyInit) return;
+    _lazyInit = false;
+    [self createCefBrowser];
+}
+
+- (void)deactivate {
+    if (_lazyInit) return;
+    _lazyInit = true;
+    [self closeBrowser];
 }
 
 #pragma mark - Browser Creation
