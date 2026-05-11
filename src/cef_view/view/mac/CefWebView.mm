@@ -56,6 +56,9 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
 
     // Resize debounce
     NSTimer* _resizeDebounceTimer;
+
+    // Gesture recognizer state
+    float _lastMagnification;
 }
 
 #pragma mark - Initialization
@@ -111,6 +114,12 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
         if (!_settings.offScreenRenderingEnabled) {
             [self setWantsLayer:YES];
         }
+
+        // Setup pinch-to-zoom gesture recognizer for OSR mode
+        if (_settings.offScreenRenderingEnabled) {
+            [self setupGestureRecognizers];
+        }
+
         if (!_lazyInit) {
             [self createCefBrowser];
         }
@@ -1209,6 +1218,44 @@ static NSString* const kNSURLTitlePboardType = @"public.url-name";
                                         }];
     }
     [self sendScrollWheelEvent:event];
+}
+
+#pragma mark - Gesture Recognizers
+
+- (void)setupGestureRecognizers {
+    _lastMagnification = 0.0f;
+    NSMagnificationGestureRecognizer* magnificationRecognizer =
+        [[NSMagnificationGestureRecognizer alloc] initWithTarget:self
+                                                          action:@selector(handleMagnification:)];
+    [self addGestureRecognizer:magnificationRecognizer];
+}
+
+/// Convert pinch-to-zoom gesture into Ctrl+MouseWheel event for CEF.
+- (void)handleMagnification:(NSMagnificationGestureRecognizer*)recognizer {
+    if (!_browser) return;
+
+    float magnification = [recognizer magnification];
+    float delta = magnification - _lastMagnification;
+    _lastMagnification = magnification;
+
+    if (recognizer.state == NSGestureRecognizerStateEnded) {
+        [recognizer setMagnification:0.0];
+        _lastMagnification = 0.0f;
+    }
+
+    if (recognizer.state == NSGestureRecognizerStateChanged) {
+        NSPoint viewPoint = [recognizer locationInView:self];
+        viewPoint.y = [self bounds].size.height - viewPoint.y;
+        viewPoint = [self convertPointToBacking:viewPoint];
+
+        CefMouseEvent mouseEvent;
+        mouseEvent.x = ScreenUtil::DeviceToLogical(static_cast<int>(viewPoint.x), _deviceScaleFactor);
+        mouseEvent.y = ScreenUtil::DeviceToLogical(static_cast<int>(viewPoint.y), _deviceScaleFactor);
+        mouseEvent.modifiers = static_cast<uint32_t>([NSEvent modifierFlags]) | EVENTFLAG_CONTROL_DOWN;
+
+        float zoomDelta = delta * 160;
+        _browser->GetHost()->SendMouseWheelEvent(mouseEvent, 0, static_cast<int>(zoomDelta));
+    }
 }
 
 #pragma mark - Keyboard Events
