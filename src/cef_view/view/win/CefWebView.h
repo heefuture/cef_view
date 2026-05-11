@@ -38,7 +38,7 @@ class OsrImeHandlerWin;
  */
 class CefWebView : public std::enable_shared_from_this<CefWebView> {
 public:
-    CefWebView(const CefWebViewSetting& settings);
+    CefWebView(const CefWebViewSetting& settings, bool lazyInit = false);
     CefWebView(const CefWebViewSetting& settings, HWND parentHwnd);
     ~CefWebView();
 
@@ -55,9 +55,21 @@ public:
     void init(HWND parentHwnd);
 
     /**
-     * @brief Close the browser
+     * @brief Create the CefBrowser and load the URL from settings.
+     * No-op if not in lazy init state.
      */
-    void closeBrowser();
+    void activate();
+
+    /**
+     * @brief Close the browser and mark as lazy init state.
+     * Call activate to recreate it later. No-op if already in lazy init state.
+     */
+    void deactivate();
+
+    /**
+     * @brief Whether the browser is active (not in deactivated/lazy state).
+     */
+    bool isActive() const { return !_lazyInit; }
 
     /**
      * @brief Set browser view bounds
@@ -416,6 +428,8 @@ protected:
 
     HWND createSubWindow(HWND parentHwnd, int x, int y, int width, int height, bool showWindow = true);
 
+    void closeBrowser();
+
     virtual void createCefBrowser();
 
     /**
@@ -458,6 +472,9 @@ protected:
     HWND _parentHwnd = nullptr;
     HWND _hwnd = nullptr;
     std::string _className;
+
+    // Lazy initialization: skip createCefBrowser in init()
+    bool _lazyInit = false;
 
     // CEF browser components
     CefRefPtr<CefBrowser> _browser;

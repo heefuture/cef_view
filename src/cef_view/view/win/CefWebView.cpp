@@ -134,8 +134,9 @@ LRESULT CALLBACK CefWebView::windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPA
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-CefWebView::CefWebView(const CefWebViewSetting& settings)
-  :  _settings(settings)
+CefWebView::CefWebView(const CefWebViewSetting& settings, bool lazyInit)
+  : _settings(settings)
+  , _lazyInit(lazyInit)
 {
 }
 
@@ -179,7 +180,9 @@ void CefWebView::init(HWND parentHwnd) {
         return;
     }
 
-    createCefBrowser();
+    if (!_lazyInit) {
+        createCefBrowser();
+    }
 }
 
 CefWebView::~CefWebView()
@@ -191,6 +194,18 @@ void CefWebView::closeBrowser() {
     if (_client && !_client->IsClosing()) {
         _client->CloseAllBrowser();
     }
+}
+
+void CefWebView::activate() {
+    if (!_lazyInit) return;
+    _lazyInit = false;
+    createCefBrowser();
+}
+
+void CefWebView::deactivate() {
+    if (_lazyInit) return;
+    _lazyInit = true;
+    closeBrowser();
 }
 
 void CefWebView::destroy() {
@@ -888,7 +903,6 @@ void CefWebView::onTitleChange(int browserId, const std::string& title)
 
 void CefWebView::onUrlChange(int browserId, const std::string& oldUrl, const std::string& url)
 {
-    _settings.url = url;
 }
 
 #pragma region LoadHandler

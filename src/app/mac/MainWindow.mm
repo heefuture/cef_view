@@ -199,10 +199,10 @@ static const int kWindowHeight = 800;
 
 - (void)closeBrowser {
     if (_topView) {
-        [_topView closeBrowser];
+        [_topView deactivate];
     }
     for (CefWebView* web in _bottomViews) {
-        [web closeBrowser];
+        [web deactivate];
     }
 }
 
