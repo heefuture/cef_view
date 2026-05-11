@@ -124,7 +124,17 @@ bool PathUtil::CreatePath(const std::string& path) {
 }
 
 std::string PathUtil::GetAppCacheDirectory(const std::string& appName) {
-    if (appName.empty()) {
+    // Resolve the directory name: use appName if provided, otherwise derive from the executable name.
+    std::string dirName = appName;
+    if (dirName.empty()) {
+        char buffer[MAX_PATH] = {};
+        DWORD length = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
+        if (length > 0) {
+            dirName = fs::path(buffer).stem().string();
+        }
+    }
+    if (dirName.empty()) {
+        LOGE << "Failed to resolve cache directory name";
         return std::string();
     }
 
@@ -134,7 +144,7 @@ std::string PathUtil::GetAppCacheDirectory(const std::string& appName) {
         return std::string();
     }
 
-    std::string path = std::string(localAppData) + sPathSep + appName;
+    std::string path = std::string(localAppData) + sPathSep + dirName;
     if (!CreatePath(path)) {
         LOGE << "Failed to create cache directory: " << path;
         return std::string();
