@@ -558,14 +558,14 @@ HWND CefWebView::getBrowserWindowHandle() const
 
 namespace {
 
-constexpr wchar_t kDevToolsWindowClass[] = L"CefDevToolsWindow";
-constexpr int kDevToolsWidth = 1200;
-constexpr int kDevToolsHeight = 800;
+constexpr wchar_t kPopupWindowClass[] = L"CefPopupWindow";
+constexpr int kPopupDefaultWidth = 1200;
+constexpr int kPopupDefaultHeight = 800;
 
 // Resource ID defined in app.rc
 #define IDI_APP_ICON 101
 
-LRESULT CALLBACK DevToolsWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
         case WM_SIZE: {
             HWND childHwnd = GetWindow(hwnd, GW_CHILD);
@@ -579,11 +579,16 @@ LRESULT CALLBACK DevToolsWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         case WM_CLOSE:
             DestroyWindow(hwnd);
             return 0;
+        case WM_PARENTNOTIFY:
+            if (LOWORD(wParam) == WM_DESTROY) {
+                PostMessage(hwnd, WM_CLOSE, 0, 0);
+            }
+            return 0;
     }
     return DefWindowProcW(hwnd, message, wParam, lParam);
 }
 
-void RegisterDevToolsWindowClass() {
+void RegisterPopupWindowClass() {
     static bool registered = false;
     if (registered) {
         return;
@@ -595,13 +600,13 @@ void RegisterDevToolsWindowClass() {
     WNDCLASSEXW wcex = {};
     wcex.cbSize = sizeof(WNDCLASSEXW);
     wcex.style = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc = DevToolsWndProc;
+    wcex.lpfnWndProc = PopupWndProc;
     wcex.hInstance = hInstance;
     wcex.hIcon = hIcon;
     wcex.hIconSm = hIcon;
     wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-    wcex.lpszClassName = kDevToolsWindowClass;
+    wcex.lpszClassName = kPopupWindowClass;
 
     RegisterClassExW(&wcex);
     registered = true;
@@ -622,7 +627,7 @@ bool CefWebView::openDevTools()
         return true;
     }
 
-    RegisterDevToolsWindowClass();
+    RegisterPopupWindowClass();
 
     // Create window title with URL to distinguish different DevTools windows
     std::string url = getCurrentUrl();
@@ -631,10 +636,10 @@ bool CefWebView::openDevTools()
     // Create independent top-level window for DevTools
     _devToolsHwnd = CreateWindowExW(
         WS_EX_APPWINDOW,
-        kDevToolsWindowClass,
+        kPopupWindowClass,
         windowTitle.c_str(),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
-        CW_USEDEFAULT, CW_USEDEFAULT, kDevToolsWidth, kDevToolsHeight,
+        CW_USEDEFAULT, CW_USEDEFAULT, kPopupDefaultWidth, kPopupDefaultHeight,
         nullptr,  // No parent - independent window
         nullptr, GetModuleHandle(nullptr), nullptr);
 
@@ -653,6 +658,36 @@ bool CefWebView::openDevTools()
     CefBrowserSettings settings;
     _browser->GetHost()->ShowDevTools(windowInfo, nullptr, settings, CefPoint());
     return true;
+}
+
+bool CefWebView::onBeforePopup(const CefString& url,
+                                  CefWindowInfo& windowInfo,
+                                  CefRefPtr<CefClient>& client,
+                                  CefBrowserSettings& settings) {
+    RegisterPopupWindowClass();
+
+    std::wstring title = url.ToWString();
+    HWND popupHwnd = CreateWindowExW(
+        WS_EX_APPWINDOW,
+        kPopupWindowClass,
+        title.c_str(),
+        WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
+        CW_USEDEFAULT, CW_USEDEFAULT, kPopupDefaultWidth, kPopupDefaultHeight,
+        nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
+
+    if (!popupHwnd) {
+        return true;
+    }
+
+    RECT clientRect = {};
+    GetClientRect(popupHwnd, &clientRect);
+
+    windowInfo.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
+    CefRect cefRect(0, 0, clientRect.right, clientRect.bottom);
+    windowInfo.SetAsChild(popupHwnd, cefRect);
+
+    client = nullptr;
+    return false;
 }
 
 void CefWebView::closeDevTools()

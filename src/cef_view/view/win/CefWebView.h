@@ -173,6 +173,17 @@ public:
     virtual bool openDevTools();
 
     /**
+     * @brief Handle popup window creation in non-OSR windowed mode.
+     * Creates an independent top-level HWND and configures windowInfo/client
+     * so CEF renders the popup as a child window, avoiding OSR conflicts.
+     * @return true to cancel popup, false to allow CEF to create the browser
+     */
+    bool onBeforePopup(const CefString& url,
+                         CefWindowInfo& windowInfo,
+                         CefRefPtr<CefClient>& client,
+                         CefBrowserSettings& settings);
+
+    /**
      * @brief Close developer tools
      */
     virtual void closeDevTools();

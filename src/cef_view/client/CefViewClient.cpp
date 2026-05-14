@@ -267,33 +267,11 @@ bool CefViewClient::OnBeforePopup(CefRefPtr<CefBrowser> browser,
     bool *no_javascript_access)
 {
     REQUIRE_UI_THREAD();
-    bool bRet = false;
     auto clientDelegate = _clientDelegate.lock();
     if (_browser && !target_url.empty() && clientDelegate) {
-        // Return true to continue opening link in current control, false to open in popup window
-        bRet = clientDelegate->onBeforePopup(_browser, frame, popup_id, target_url, target_frame_name, target_disposition, user_gesture, popupFeatures, windowInfo, client, settings, extra_info, no_javascript_access);
+        return clientDelegate->onBeforePopup(_browser, frame, popup_id, target_url, target_frame_name, target_disposition, user_gesture, popupFeatures, windowInfo, client, settings, extra_info, no_javascript_access);
     }
-
-    if (!bRet) {
-        // Get current main window dimensions
-        CefRect rect;
-        GetViewRect(browser, rect);
-
-        // If ViewRect is unreasonable, use default dimensions
-        if (rect.width <= 100 || rect.height <= 100) {
-            rect.width = 100;
-            rect.height = 100;
-        }
-
-        // Only set window dimensions, don't change other properties
-        windowInfo.bounds.width = rect.width;
-        windowInfo.bounds.height = rect.height;
-
-        // Use the same client handler
-        client = this;
-    }
-
-    return bRet; // Return true to not create new window, false to create new window
+    return false;
 }
 
 void CefViewClient::OnAfterCreated(CefRefPtr<CefBrowser> browser)

@@ -223,6 +223,9 @@ bool CefViewClientDelegate::onBeforePopup(CefRefPtr<CefBrowser> browser,
                                        CefRefPtr<CefDictionaryValue> &extraInfo,
                                        bool *noJavascriptAccess)
 {
+    if (_view) {
+        return _view->onBeforePopup(targetUrl, windowInfo, client, settings);
+    }
     return false;
 }
 
