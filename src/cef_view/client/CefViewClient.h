@@ -52,6 +52,10 @@ public:
 
     static int GetBrowserCount() { return sBrowserCount; }
 
+    /// Whether to quit the message loop when all browsers are closed.
+    /// Defaults to true. Set to false to keep the app alive after closing all browsers.
+    static bool sShouldTerminate;
+
 public:
 #pragma region CefClient
     virtual CefRefPtr<CefContextMenuHandler> GetContextMenuHandler() override { return this; }

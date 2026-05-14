@@ -13,6 +13,7 @@
 namespace cefview{
 
 int CefViewClient::sBrowserCount = 0;
+bool CefViewClient::sShouldTerminate = true;
 
 CefViewClient::CefViewClient(CefViewClientDelegateInterface::RefPtr delegate)
     : _clientDelegate(delegate)
@@ -332,7 +333,7 @@ void CefViewClient::OnBeforeClose(CefRefPtr<CefBrowser> browser)
     else {
     }
 
-    if (--sBrowserCount == 0) {
+    if (--sBrowserCount == 0 && sShouldTerminate) {
         // Quit the CEF message loop so that main() can proceed to CefShutdown.
         CefContext::instance().quitMessageLoop();
     }
